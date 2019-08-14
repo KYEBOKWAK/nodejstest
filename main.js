@@ -15,7 +15,7 @@ app.get('/', function (req, res) {
   //return 'adddd';
 });
 
-app.get('/healthCheck', function(req, res)
+app.get('/healthcheck', function(req, res)
 {
 	res.writeHead(200, { "Content-Type": "text/html" });
 	res.write("Health Check Page");
