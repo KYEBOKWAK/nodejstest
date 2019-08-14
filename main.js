@@ -1,6 +1,8 @@
 var express = require('express');
 var app = express();
 const cors = require('cors');
+//const env = require('dotenv');
+//require('dotenv').config();
 
 app.use(express.json())
 app.use(cors());
@@ -8,8 +10,16 @@ app.use(cors());
 //route, routing
 app.get('/', function (req, res) {
   //console.log(req.body);
-  res.send('Hello Worlddfsdf!');
+  //console.log(process.env.DB_HOST_READ);
+  res.send("adddd");
   //return 'adddd';
+});
+
+app.get('/healthCheck', function(req, res)
+{
+	res.writeHead(200, { "Content-Type": "text/html" });
+	res.write("Health Check Page");
+	res.end();
 });
 
 app.post('/abc', function (req, res) {
