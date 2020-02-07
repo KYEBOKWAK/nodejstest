@@ -48,6 +48,7 @@ app.use(express.json())
 app.use(cors());
 
 //middleware start
+/*
 app.use('/user', function(req, res, next){
   console.log('middel');
   const token = req.headers['x-access-token'] || req.query.token;
@@ -61,12 +62,19 @@ app.use('/user', function(req, res, next){
   }
 
   next();
-})
+});
+*/
 //middleware end
 
 //여기서부터 새로운 코드 간다!! START
 var main = require('./routes/main');
 app.use('/main', main);
+
+var projects = require('./routes/projects');
+app.use('/projects', projects);
+
+var user = require('./routes/user');
+app.use('/user', user);
 //여기서부터 새로운 코드 간다!! END
 
 //token START
@@ -928,13 +936,13 @@ app.post("/test", function(req, res){
 });
 
 
-app.listen(3000, function () {
-  console.log('Example app listening on port 3000!');
-});
-
-// app.listen(3000, "0.0.0.0", function () {
+// app.listen(3000, function () {
 //   console.log('Example app listening on port 3000!');
-// })
+// });
+
+app.listen(3000, "0.0.0.0", function () {
+  console.log('Example app listening on port 3000!');
+})
 
 /*
 var http = require('http');
