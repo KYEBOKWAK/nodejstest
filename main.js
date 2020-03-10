@@ -2,6 +2,13 @@ const exprieTimeMS = 60000;
 const phoneRandNumExpire = 180;
 //const phoneRandNumExpire = 5;
 //const exprieTimeDay = '7d';
+const EXPIRE_REFRESH_TOKEN = '7d';
+const EXPIRE_ACCESS_TOKEN = '1h';
+// const EXPIRE_REFRESH_TOKEN = '5m';
+// const EXPIRE_ACCESS_TOKEN = 10;
+// const REFRESH_TOKEN_RENEW_LAST_DAT_MIL_SEC = 180000; //밀리초 단위 refresh 재갱신 기준값.
+const REFRESH_TOKEN_RENEW_LAST_DAT_MIL_SEC = 0; //밀리초 단위 refresh 재갱신 기준값.
+const REFRESH_TOKEN_RENEW_LAST_DAT_DAY = 4; //일단위 //refresh 재갱신 기준값. 사용시 밀리초를 0으로 해야함. 예: 4 = 기간이 4일 남았을때 재갱신. refresh expire 시간보다 짧아야한다.
 
 var express = require('express');
 var app = express();
@@ -67,6 +74,279 @@ app.use('/user', function(req, res, next){
 //middleware end
 
 //여기서부터 새로운 코드 간다!! START
+
+function makeRefreshToken(id, data, before_refresh_token, res){
+  console.log('makeRefreshToken and AccessToken');
+  _jwt.CREATE(jwtType.TYPE_JWT_REFRESH_TOKEN, 
+    {
+      id: id,
+      type: jwtType.TYPE_JWT_REFRESH_TOKEN
+    }, 
+    EXPIRE_REFRESH_TOKEN, function(value){
+    if(value.state === 'error'){
+      return res.json({
+        result: {
+          state: 'error',
+          message: value.message
+        }
+      })
+    }else{
+      console.log('정상 리프래시 토큰 재발급!!');
+      let _refresh_token = value.token;
+
+      _jwt.CREATE(jwtType.TYPE_JWT_ACCESS_TOKEN, 
+        {
+          id: id,
+          type: jwtType.TYPE_JWT_ACCESS_TOKEN
+        }, 
+        EXPIRE_ACCESS_TOKEN, function(value){
+        if(value.state === 'error'){
+          return res.json({
+            result: {
+              state: 'error',
+              message: value.message
+            }
+          })
+        }else{
+          console.log('리프래시 and 액세스 재발급 성공!!');
+          //db update 해야함.
+          var date = moment().format('YYYY-MM-DD HH:mm:ss');
+          db.UPDATE("UPDATE refresh_tokens SET refresh_token=?, updated_at=? WHERE refresh_token=? AND user_id=?", 
+          [_refresh_token, date, before_refresh_token, id],
+          function(result){
+            return res.json({
+              result: {
+                ...data,
+                access_token: value.token,
+                refresh_token: _refresh_token
+              }
+            });
+          });
+          // return res.json({
+          //   result: {
+          //     ...data,
+          //     access_token: value.token,
+          //     refresh_token: _refresh_token
+          //   }
+          // });
+        }
+      });
+      /*
+      res.json({
+        result: {
+          ...data,
+          access_token: value.token
+        }
+      });
+      */
+    }
+  });
+}
+
+function makeAccessToken(id, data, res){
+  console.log('maekadsf', id);
+  _jwt.CREATE(jwtType.TYPE_JWT_ACCESS_TOKEN, 
+    {
+      id: id,
+      type: jwtType.TYPE_JWT_ACCESS_TOKEN
+    }, 
+    EXPIRE_ACCESS_TOKEN, function(value){
+    if(value.state === 'error'){
+      res.json({
+        result: {
+          state: 'error',
+          message: value.message
+        }
+      })
+    }else{
+      console.log('정상발급!!');
+      res.json({
+        result: {
+          ...data,
+          access_token: value.token
+        }
+      });
+    }
+  });
+}
+
+app.use(function (req, res, next) {
+  console.log(req.url);
+  let url = req.url;
+  let indexAnyString = url.indexOf('/any/');
+  if(indexAnyString < 0){
+    //any가 없으면 무조건 token 체크를 한다.
+    if(!req.body.data.access_token){
+      // console.log('none!!');
+      //엑세스토큰이 없다면 완전 오류임!!
+      return res.json({
+        result: {
+          state: 'error',
+          message: '토큰 정보가 없음. 재설치 해주세요.'
+        }
+      })
+    }else if(req.body.data.refresh_token && req.body.data.refresh_token !== ''){
+      console.log("리프레시 토큰 체크중");
+      console.log(req.body.data.refresh_token);
+      _jwt.READ(req.body.data.refresh_token, function(result){
+        console.log(result);
+        if(result.state === 'success'){
+          if(result.iss === process.env.JWT_TOKEN_ISSUER){
+            //리프레시 토큰 자체는 정상. 
+
+            //리프레시 안에 내용 점검.
+            db.SELECT("SELECT user_id, refresh_token, created_at FROM refresh_tokens WHERE refresh_token=? AND user_id=?", [req.body.data.refresh_token, result.id], function(db_result){
+              console.log(db_result);
+              if(db_result.length === 0){
+                return res.json({
+                  result: {
+                    state: 'error',
+                    message: '토큰 정보가 올바르지 않습니다.'
+                  }
+                })
+              }
+              console.log(db_result[0].user_id);
+              //DB와 일치하는 토큰 정보가 있다. 기간이 지났는지 확인
+            
+              util.getExpTimer(result.exp);
+              
+              let nowDate = new Date();
+              let expireDate = new Date(result.exp * 1000);
+              let gapMiliSec = expireDate.getTime() - nowDate.getTime();
+
+              let renewLastMiliSec = REFRESH_TOKEN_RENEW_LAST_DAT_MIL_SEC;
+              let renowLastDay = REFRESH_TOKEN_RENEW_LAST_DAT_DAY;
+
+              let get_day = Math.floor((((gapMiliSec/1000)/60)/60)/24);
+              // console.log('day!! : ' + get_day);
+              /*
+              let gap_sec = Math.floor((gapMiliSec/1000)%60);
+              let gap_min = Math.floor(((gapMiliSec/1000)/60)%60);
+              let get_hour = Math.floor((((gapMiliSec/1000)/60)/60)%24);
+              let get_day = Math.floor((((gapMiliSec/1000)/60)/60)/24);
+
+              console.log(get_day + " 일 " + get_hour + " 시 " + gap_min + " 분 " + gap_sec + ' 초');
+              */
+
+              if(renewLastMiliSec === 0){
+                //day로 비교할때
+                if(get_day <= renowLastDay){
+                  //refresh, access토큰 재갱신
+                  console.log("Refresh access 재갱신!");
+                  let _data = {
+                    state: 'setAllAccessToken'
+                  }
+                  makeRefreshToken(db_result[0].user_id, _data, db_result[0].refresh_token, res);
+                }else{
+                  //access토큰만 갱신
+                  console.log("access 재갱신!!");
+                  let _data = {
+                    state: 'setReAccessToken'
+                  }
+                  makeAccessToken(db_result[0].user_id, _data, res);
+                }
+              }else{
+                //밀리초로 비교할때
+                if(gapMiliSec <= renewLastMiliSec){
+                  //refresh, access토큰 재갱신
+                  console.log("Refresh access 재갱신!");
+                  let _data = {
+                    state: 'setAllAccessToken'
+                  }
+                  makeRefreshToken(db_result[0].user_id, _data, db_result[0].refresh_token, res);
+                }else{
+                  //access토큰만 갱신
+                  console.log("access 재갱신!!");
+                  let _data = {
+                    state: 'setReAccessToken'
+                  }
+                  makeAccessToken(db_result[0].user_id, _data, res);
+                }
+              }
+              /*
+              if(get_day <= renowLastDay){
+                //refresh, access토큰 재갱신
+                console.log("Refresh access 재갱신!");
+                let _data = {
+                  state: 'setAllAccessToken'
+                }
+                makeRefreshToken(db_result[0].user_id, _data, db_result[0].refresh_token, res);
+              }else{
+                //access토큰만 갱신
+                console.log("access 재갱신!!");
+                let _data = {
+                  state: 'setReAccessToken'
+                }
+                makeAccessToken(db_result[0].user_id, _data, res);
+              }
+              */
+              
+            });
+            // const user_id = result.data.id;
+          }
+          // makeAccessToken(user.id, res);
+          //리프레스 토큰이 만료 날짜가 거의 다 왔는지 확인한다.
+          //리프레시 토큰과 sql 리프레시 토큰이 일치하는지 확인한다.
+          //만약 리프레시 토큰 만료날짜가 1주일 남았으면 리프레시 토큰과 엑세스토큰 재발급
+          //만약 리프레시 토큰 만료날짜가 1주일 이상 남았으면 액세스토큰만 재발급
+          
+        }else if(result.state === 'error' && result.error.name === 'TokenExpiredError'){
+          //만기일 경우 refresh 를 요청해야함.
+          console.log('refresh도 만기!!');
+          return res.json({
+            result: {
+              state: 'expireRefreshToken'
+            }
+          })
+        }else{
+          console.log('알수 없는 에러지만 우선 토큰 익스파이어로 넘긴다.');
+          return res.json({
+            result: {
+              state: 'expireRefreshToken'
+            }
+          })
+        }
+        
+        // var dec = moment(result.error.expiredAt);
+        // console.log(dec.format('YYYY-MM-DD HH:mm:ss'));
+      });
+    }else if(req.body.data.access_token && req.body.data.access_token !== ''){
+      _jwt.READ(req.body.data.access_token, function(result){
+        console.log(result);
+        if(result.state === 'success'){
+          if(result.iss === process.env.JWT_TOKEN_ISSUER){
+            req.body.data.user_id = result.id;
+            console.log("$$$$$$" + result.id);
+            util.getExpTimer(result.exp);
+            next();
+          }
+        }else if(result.state === 'error' && result.error.name === 'TokenExpiredError'){
+          //만기일 경우 refresh 를 요청해야함.
+          console.log('만기!!');
+          return res.json({
+            result: {
+              state: 'call_refresh_token'
+            }
+          })
+        }
+        
+        // var dec = moment(result.error.expiredAt);
+        // console.log(dec.format('YYYY-MM-DD HH:mm:ss'));
+      });
+    }
+    // console.log(req.body.data);
+
+    //console.log(req.body.data.access_token);
+    // next();
+  }else{
+    next();
+  }
+  // console.log(indexAnyString);
+
+  // console.log('Time:', Date.now());
+  
+});
+
 var main = require('./routes/main');
 app.use('/main', main);
 
@@ -75,6 +355,26 @@ app.use('/projects', projects);
 
 var user = require('./routes/user');
 app.use('/user', user);
+
+app.post('/init', function(req, res){
+  console.log("init!");
+  return res.json({
+    result: {
+      state: 'success'
+    }
+  })
+});
+
+app.post('/login', function(req, res){
+  console.log("드디어 이곳에 왔다!!!!!!!!!!!!!!");
+  res.json({
+    result: {
+      state: 'success',
+      user_id: req.body.data.user_id
+
+    }
+  })
+});
 //여기서부터 새로운 코드 간다!! END
 
 //token START
@@ -627,6 +927,7 @@ app.get('/login/fail', function(req, res){
 });
 //route, routing
 app.get('/', function (req, res) {
+  console.log('aaaa');
   res.send(`크티 api 서버 해당 페이지를 보면 아니아니아니됨 `);
   //console.log(uuidv4());
 });
@@ -656,9 +957,9 @@ app.post('/login', function (req, res) {
 });
 */
 
-var makeAccessToken = function(id, email){
-  console.log('dafsdfdsf');
-};
+// var makeAccessToken = function(id, email){
+//   console.log('dafsdfdsf');
+// };
 
 app.get('/healthcheck', function(req, res)
 {
@@ -667,6 +968,7 @@ app.get('/healthcheck', function(req, res)
 	res.end();
 });
 
+/*
 app.post('/login/web', function(req, res){
   var userEmail = req.body.user_id;
 
@@ -739,15 +1041,15 @@ app.post('/login/web', function(req, res){
   });
 });
 
-
-app.post('/login', function(req, res){
-  var userEmail = req.body.user_id;
-
+*/
+app.post('/any/login', function(req, res){
+  var userEmail = req.body.data.user_email;
+  // var userPassword = req.body.data.user_p;
   const saltRounds = 10 ;   
-  const myPlaintextPassword = req.body.user_password;   
+  const myPlaintextPassword = req.body.data.user_p;   
   const someOtherPlaintextPassword = ' not_bacon ' ;
 
-  db.SELECT("SELECT * FROM users WHERE email = '"+userEmail+"'", function(result){
+  db.SELECT("SELECT * FROM users WHERE email = BINARY(?)", [userEmail], function(result){
       //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
       
       var data = {
@@ -757,11 +1059,16 @@ app.post('/login', function(req, res){
       
       if(result.length <= 0)
       {
-        console.log('아이디 없음!!');
+        // console.log('아이디 없음!!');
         data.state = 'error';
         data.message = '아이디가 존재하지 않습니다.';
 
-        return res.send(data);
+        // return res.send(data);
+        return res.json({
+          result: {
+            ...data
+          }
+        })
       }
 
       var user = result[0];
@@ -778,11 +1085,13 @@ app.post('/login', function(req, res){
           console.log('로그인 성공! in result');
           jwt.sign({
             id: user.id,
-            email: user.email
+            type: jwtType.TYPE_JWT_REFRESH_TOKEN
+            // email: user.email
           }, 
           process.env.TOKEN_SECRET, 
           { 
-            expiresIn: '10m',
+            // expiresIn: '60m',
+            expiresIn: EXPIRE_REFRESH_TOKEN,
             issuer: process.env.JWT_TOKEN_ISSUER,
             //issuer: 'localhost:8000',
             subject: 'userRefresh'
@@ -793,16 +1102,68 @@ app.post('/login', function(req, res){
               data.state = 'error';
               data.message = err;
 
-              return res.send(data);
+              //return res.send(data);
+              return res.json({
+                result: {
+                  ...data
+                }
+              })
             }
             else
             {
-              //user.access_token = token;
-              console.log('access token:'+token);
-              //data.access_token = token;
               data.state = 'success';
               data.refresh_token = token;
-              return res.send(data);
+              // return res.send(data);
+
+              //insert db start
+              var date = moment().format('YYYY-MM-DD HH:mm:ss');
+
+              var refreshTokenObject = {
+                user_id : user.id,
+                refresh_token : token,
+                device : 'deviceinfo',
+                created_at : date,
+                updated_at: date
+              };
+
+              
+              db.INSERT("INSERT INTO refresh_tokens SET ? ", refreshTokenObject, function(result){
+                console.log(result);
+
+                makeAccessToken(user.id, data, res);
+                /*
+                _jwt.CREATE(jwtType.TYPE_JWT_ACCESS_TOKEN, 
+                  {
+                    id: user.id,
+                    type: jwtType.TYPE_JWT_ACCESS_TOKEN
+                  }, 
+                '3m', function(value){
+                  if(value.state === 'error'){
+                    res.json({
+                      result: {
+                        state: 'error',
+                        message: value.message
+                      }
+                    })
+                  }else{
+                    console.log('정상발급!!');
+                    res.json({
+                      result: {
+                        ...data,
+                        access_token: value.token
+                      }
+                    });
+                  }
+                });
+                */
+              });
+              //insert db end
+
+              // return res.json({
+              //   result: {
+              //     ...data
+              //   }
+              // });
             }            
           });
         }
@@ -810,7 +1171,12 @@ app.post('/login', function(req, res){
           console.log('비번 틀림!!');
           data.state = 'error';
           data.message = '비밀번호가 틀렸습니다.';
-          return res.send(data);
+          // return res.send(data);
+          return res.json({
+            result: {
+              ...data
+            }
+          });
         }
       });
   });
@@ -936,13 +1302,13 @@ app.post("/test", function(req, res){
 });
 
 
-app.listen(3000, function () {
-  console.log('Example app listening on port 3000!');
-});
-
-// app.listen(3000, "0.0.0.0", function () {
+// app.listen(3000, function () {
 //   console.log('Example app listening on port 3000!');
-// })
+// });
+
+app.listen(3000, "0.0.0.0", function () {
+  console.log('Example app listening on port 3000!');
+})
 
 /*
 var http = require('http');
