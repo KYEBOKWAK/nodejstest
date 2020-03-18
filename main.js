@@ -12,6 +12,7 @@ const REFRESH_TOKEN_RENEW_LAST_DAT_DAY = 4; //일단위 //refresh 재갱신 기�
 
 var express = require('express');
 var app = express();
+
 //var template = require('./lib/template.js');
 const cors = require('cors');
 const env = require('dotenv');
@@ -176,7 +177,15 @@ app.use(function (req, res, next) {
   let indexAnyString = url.indexOf('/any/');
   if(indexAnyString < 0){
     //any가 없으면 무조건 token 체크를 한다.
-    if(!req.body.data.access_token){
+    if(req.body.data === undefined){
+      return res.json({
+        result: {
+          state: 'error',
+          message: '토큰 정보가 없음.'
+        }
+      })
+    }
+    else if(!req.body.data.access_token){
       // console.log('none!!');
       //엑세스토큰이 없다면 완전 오류임!!
       return res.json({
@@ -356,11 +365,17 @@ app.use('/projects', projects);
 var user = require('./routes/user');
 app.use('/user', user);
 
+var payView = require('./routes/pay');
+app.use('/pay', payView);
+
 app.post('/init', function(req, res){
   console.log("init!");
   return res.json({
     result: {
-      state: 'success'
+      state: 'success',
+      iamport_IMP: process.env.IAMPORT_IMP,
+      iamport_PG: process.env.IAMPORT_PG,
+      app_scheme: process.env.IAMPORT_APP_SCHEME
     }
   })
 });
