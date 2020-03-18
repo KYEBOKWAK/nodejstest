@@ -976,7 +976,7 @@ app.post('/login', function (req, res) {
 //   console.log('dafsdfdsf');
 // };
 
-app.get('/healthcheck', function(req, res)
+app.get('/any/healthcheck', function(req, res)
 {
 	res.writeHead(200, { "Content-Type": "text/html" });
 	res.write("Health Check Page");
