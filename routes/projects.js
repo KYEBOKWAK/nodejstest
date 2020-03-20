@@ -13,7 +13,7 @@ var mysql = require('mysql');
 router.post('/detail', function(req, res) {
   const project_id = req.body.data.project_id;
   
-  db.SELECT("SELECT project.id AS project_id, user.id AS user_id, user.name, user.profile_photo_url, user.introduce, project.title, project.poster_renew_url, project.poster_url, project.story, detailed_address, concert_hall FROM projects AS project" +
+  db.SELECT("SELECT project.id AS project_id, user.id AS user_id, user.name, user.profile_photo_url, user.introduce, project.title, project.poster_renew_url, project.poster_url, project.story, detailed_address, concert_hall, isDelivery FROM projects AS project" +
             " INNER JOIN users AS user" +
             " ON project.user_id=user.id" +
             " WHERE project.id=?", [project_id], function(result){
@@ -326,6 +326,16 @@ function getStateGoodsAmountCheck(GoodsData, localData){
 //티켓 구매
 router.post("/buy/temporary/ticket", function(req, res){
   //티켓 id, 수량 , 굿즈 id, 수량 
+  //test//
+  return res.json({
+    result: {
+      state: 'success',
+      order_id: 2
+      // ticket_id: _data.id,
+      // show_date: _data.show_date
+    }
+  });
+  ////////
   let state = res_state.init;
   let makeTicketIdArray = [];
   let queryWhereOr = "";
@@ -614,6 +624,7 @@ router.post("/buy/temporary/ticket", function(req, res){
                 return res.json({
                   result: {
                     state: 'success',
+                    order_id: _orderId
                     // ticket_id: _data.id,
                     // show_date: _data.show_date
                   }
@@ -629,6 +640,7 @@ router.post("/buy/temporary/ticket", function(req, res){
             return res.json({
               result: {
                 state: 'success',
+                order_id: _orderId
                 // ticket_id: _data.id,
                 // show_date: _data.show_date
               }
@@ -636,15 +648,6 @@ router.post("/buy/temporary/ticket", function(req, res){
           }
         }        
       });
-
-      // return res.json({
-      //   result: {
-      //     state: 'success',
-      //     // ticket_id: _data.id,
-      //     // show_date: _data.show_date
-      //   }
-      // });
-
     });
   });  
 });

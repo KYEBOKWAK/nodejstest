@@ -4,14 +4,21 @@ var router = express.Router();
 const cors = require('cors');
 const use = require('abrequire');
 
+const Util = use('lib/util.js');
+
+var Iamport = require('iamport');
+var iamport = new Iamport({
+  impKey: process.env.IAMPORT_API_KEY,
+  impSecret: process.env.IAMPORT_SECRET_KEY
+});
 
 app.use(express.json())
 app.use(cors());
 
-app.set('view engine', 'ejs');
-app.engine('html', require('ejs').renderFile);
+// app.set('view engine', 'ejs');
+// app.engine('html', require('ejs').renderFile);
 
-
+/*
 function templateHTML(basicURL){
     // console.log(process.env.IAMPORT_IMP);
     const iamport_IMP = process.env.IAMPORT_IMP;
@@ -60,7 +67,7 @@ function templateHTML(basicURL){
             }, function(rsp) {
                 // window.ReactNativeWebView.postMessage(rsp);
                 //모바일은 m_redirect_url 을 통해서 처리한다.
-                /*
+                
                 if ( rsp.success ) {
                     var msg = '결제가 완료되었습니다.';
                     msg += '고유ID : ' + rsp.imp_uid;
@@ -71,7 +78,7 @@ function templateHTML(basicURL){
                     var msg = '결제에 실패하였습니다.';
                     msg += '에러내용 : ' + rsp.error_msg;
                 }
-                */
+                
 
                 //alert(msg);
             });
@@ -84,6 +91,100 @@ function templateHTML(basicURL){
     </html>
     `
 }
+*/
+
+//rest api Iamport 요청 START
+router.post('/onetime', function(req, res){
+    // amount = req.body.data.amount;
+    const _data = req.body.data[0];
+    const user_id = req.body.data.user_id;
+    // console.log(_data);
+    const project_id = _data.project_id;
+    // const total_price = _data.total_price;
+
+    const paymentData = {
+        project_id: project_id,
+        card_number: _data.card_number,
+        expiry: Util.getCardExpire(_data.card_yy, _data.card_mm),
+        amount: _data.total_price, //onetime total_price는 order_id의 db 조회해서 total_price와 비교한다.
+        merchant_uid: Util.getPayNewMerchant_uid(project_id, user_id),
+        birth: _data.card_birth,
+        customer_uid: Util.getPayNewCustom_uid(user_id),
+        pwd_2digit: _data.card_pw_2digit,
+        name: _data.title,
+        buyer_name: '김종윤',
+        buyer_email: 'localhost8000@naver.com',
+        buyer_tel: '01095053639'
+    };
+    
+    iamport.subscribe.onetime({
+        ...paymentData
+    }).then(function(result){
+        // To do
+        console.log("success");
+        console.log(result);
+    }).catch(function(error){
+        // handle error
+        console.log("error");
+        console.log(error);
+    });
+    
+    
+    // return res.json({
+    //     result: {
+    //         state: 'error',
+    //         message: 'aaa'
+    //     }
+    // });
+});
+
+router.post('/schedule', function(req, res){
+    // amount = req.body.data.amount;
+    /*
+    const _data = req.body.data[0];
+    const user_id = req.body.data.user_id;
+    // console.log(_data);
+    const project_id = _data.project_id;
+    // const total_price = _data.total_price;
+    //schedule(params)
+    const paymentData = {
+        project_id: project_id,
+        card_number: _data.card_number,
+        expiry: Util.getCardExpire(_data.card_yy, _data.card_mm),
+        amount: _data.total_price, //onetime total_price는 order_id의 db 조회해서 total_price와 비교한다.
+        merchant_uid: Util.getPayNewMerchant_uid(project_id, user_id),
+        birth: _data.card_birth,
+        customer_uid: Util.getPayNewCustom_uid(user_id),
+        pwd_2digit: _data.card_pw_2digit,
+        name: _data.title,
+        buyer_name: '김종윤',
+        buyer_email: 'localhost8000@naver.com',
+        buyer_tel: '01095053639'
+    };
+    
+    iamport.subscribe.schedule({
+        ...paymentData
+    }).then(function(result){
+        // To do
+        console.log("success");
+        console.log(result);
+    }).catch(function(error){
+        // handle error
+        console.log("error");
+        console.log(error);
+    });
+    
+    */
+    // return res.json({
+    //     result: {
+    //         state: 'error',
+    //         message: 'aaa'
+    //     }
+    // });
+});
+//rest api Iamport 요청 ENd
+
+
 //?imp_uid=xxxxxxx&merchant_uid=yyyyyyy
 router.post('/any/payments/complete', function(req, res){
     console.log('######## payments complete!!');
@@ -93,7 +194,7 @@ router.post('/any/payments/complete', function(req, res){
         test: 'test'
     })
 });
-
+/*
 //ios 전용?? 어케할까
 router.get('/any/iamport', function(req, res) {
     console.log("1?!?!?!?!?!?!?");
@@ -111,8 +212,8 @@ router.get('/any/iamport', function(req, res) {
     //     aaa: 'bbbb'
     // })
 });
-
-
+*/
+/*
 router.post('/any/iamport', function(req, res) {
     console.log("1?!?!?!?!?!?!?");
     
@@ -132,5 +233,6 @@ router.post('/any/iamport', function(req, res) {
     //     aaa: 'bbbb'
     // })
 });
+*/
 
 module.exports = router;

@@ -28,7 +28,6 @@
     "connect-redis": "^3.4.2",
     "cors": "^2.8.5",
     "dotenv": "^8.0.0",
-    "ejs": "^3.0.1",
     "express": "^4.17.1",
     "express-session": "^1.16.2",
     "iamport": "^0.3.4",

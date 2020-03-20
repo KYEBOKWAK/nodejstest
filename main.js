@@ -44,6 +44,8 @@ const util = require('./lib/util.js');
 const moment = require('moment-timezone');
 moment.tz.setDefault("Asia/Seoul");
 
+var mysql = require('mysql');
+
 /////상단 새로운 코드 START////
 
 //app.use('/main', main);
@@ -370,14 +372,32 @@ app.use('/pay', payView);
 
 app.post('/init', function(req, res){
   console.log("init!");
-  return res.json({
-    result: {
-      state: 'success',
-      iamport_IMP: process.env.IAMPORT_IMP,
-      iamport_PG: process.env.IAMPORT_PG,
-      app_scheme: process.env.IAMPORT_APP_SCHEME
-    }
-  })
+  let userInfoQuery = "SELECT email, name, contact FROM users WHERE id=?";
+  userInfoQuery = mysql.format(userInfoQuery, req.body.data.user_id);
+
+  db.SELECT(userInfoQuery, [], (result) => {
+    if(result.state === 'error'){
+      return res.json({
+        result: {
+          state: 'error',
+          message: '유저 정보를 불러오지 못했습니다.'
+        }
+      })
+    };
+
+    return res.json({
+      result: {
+        state: 'success',
+        email: result[0].email,
+        name: result[0].name,
+        contact: result[0].contact,
+        iamport_IMP: process.env.IAMPORT_IMP,
+        iamport_PG: process.env.IAMPORT_PG,
+        app_scheme: process.env.IAMPORT_APP_SCHEME
+      }
+    });
+  });
+  
 });
 
 app.post('/login', function(req, res){
@@ -1317,13 +1337,13 @@ app.post("/test", function(req, res){
 });
 
 
-app.listen(3000, function () {
-  console.log('Example app listening on port 3000!');
-});
-
-// app.listen(3000, "0.0.0.0", function () {
+// app.listen(3000, function () {
 //   console.log('Example app listening on port 3000!');
-// })
+// });
+
+app.listen(3000, "0.0.0.0", function () {
+  console.log('Example app listening on port 3000!');
+})
 
 /*
 var http = require('http');
