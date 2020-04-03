@@ -290,7 +290,7 @@ function getStateTicketAmountCheck(ticketData, localData){
   if(_data.sum_order_count === null){
     return res_state.success;
   }
-  
+  console.log(_data);
   if(_data.sum_order_count >= _data.audiences_limit){
     return res_state.soldout_ticket;
   }else if(_data.sum_order_count + localData.count > _data.audiences_limit){
@@ -323,18 +323,221 @@ function getStateGoodsAmountCheck(GoodsData, localData){
   return res_state.success;
 }
 
+//supporter set api 
+router.post("/order/support", function(req, res){
+  let _data = req.body.data[0];
+
+  //통신이 끊김으로 인해서 support를 insert 했을수도 있으니, select를 먼저 해본다.
+  let query_selecct_support = "SELECT id, price FROM supporters WHERE supporters.order_id=?"
+  query_selecct_support = mysql.format(query_selecct_support, _data.order_id);
+  db.SELECT(query_selecct_support, [], function(result_select_support){
+    if(result_select_support.length === 0){
+      //0일경우 insert
+      var date = moment().format('YYYY-MM-DD HH:mm:ss');
+      let ticket_id = null;
+      for(let i = 0 ; i < _data.select_tickets.length ; i++){
+        let ticketObject = _data.select_tickets[i];
+        ticket_id = ticketObject.id;
+      }
+
+      let insertSupportObject = {
+        project_id: _data.project_id,
+        ticket_id: ticket_id,
+        user_id: req.body.data.user_id,
+        order_id: _data.order_id,
+        price: _data.support_price,
+        created_at: date,
+        updated_at: date
+      }
+      db.INSERT("INSERT INTO supporters SET ?;", insertSupportObject, function(result_insert_support){
+        console.log(result_insert_support);
+        return res.json({
+          result:{
+            state: 'success'
+          }
+        });
+      });
+    }else{
+      let _result_select_support = result_select_support[0];
+      if(_result_select_support.price === _data.support_price){
+        return res.json({
+          result:{
+            state: 'success'
+          }
+        });
+      }else{
+        return res.json({
+          state: 'error',
+          message: '후원 에러. 다시 구매해주시기 바랍니다.'
+        })
+      }
+    }
+  });
+
+});
+
+//실 결제전 주문정보 수정
+router.post("/order/edit", function(req, res){
+  let _data = req.body.data[0];
+
+  let orderQuery = "";
+  //할인정보가 있으면 orderQuery 에 같이 요청
+  if(_data.discount_id !== null){
+    orderQuery = "SELECT _order.id AS _order_id, discount.id AS discount_id, _order.discount_id AS order_discount_id, _order.total_price, _order.user_id, _order.project_id, _order.ticket_id, percent_value, _order.count, _order.price, _order.goods_meta, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN discounts AS discount ON discount.id=? LEFT JOIN supporters AS supporter ON supporter.order_id=_order.id WHERE _order.id=?;";
+    order_goods_query = "SELECT _goods.ticket_discount, count, price, order_goods.id AS order_goods_id FROM orders_goods AS order_goods LEFT JOIN goods AS _goods ON order_goods.goods_id=_goods.id WHERE order_goods.order_id=?;"
+    // order_goods_query = "SELECT * FROM orders_goods AS order_goods WHERE order_goods.order_id=?;"
+    // orderQuery = "SELECT _order.id AS _order_id, discount.id AS discount_id, _order.discount_id AS order_discount_id, total_price, user_id, _order.project_id, ticket_id, percent_value, count, price, goods_meta FROM orders AS _order LEFT JOIN discounts AS discount ON discount.id=? LEFT JOIN orders_goods ON orders_goods. WHERE _order.id=?";
+    orderQuery = mysql.format(orderQuery,[_data.discount_id, _data.order_id]);
+    order_goods_query = mysql.format(order_goods_query, _data.order_id);
+
+    orderQuery = orderQuery + order_goods_query;
+  }else{
+    orderQuery = "SELECT _order.id AS _order_id, total_price, _order.user_id, _order.project_id, _order.ticket_id, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN supporters AS supporter ON supporter.order_id=_order.id WHERE _order.id=?";
+    orderQuery = mysql.format(orderQuery, _data.order_id);
+  }
+  // let orderQuery = "SELECT id, total_price, user_id, project_id, ticket_id FROM orders WHERE id=?";
+  // orderQuery = mysql.format(orderQuery, _data.order_id);
+
+  db.SELECT_MULITPLEX(orderQuery, (result_order) => {
+    let _orderData = result_order[0];
+    if(result_order === undefined){
+      return res.json({
+        state: 'error',
+        message: 'DB 조회 에러!',
+        result: {
+        }
+      });
+    }
+
+    //support price+discount가 total_price와 맞는지 비교한다.
+    if(_data.discount_id !== null){
+      //굿즈에도 discount 정보가 있는지 확인한다.
+      _orderData = result_order[0][0];
+      let _order_goods_data = result_order[1];
+      let _order_goods_ticket_discount = 0;
+      let _order_goods_total_price = 0;
+      for(let i = 0 ; i < _order_goods_data.length ; i++){
+        //티켓당 굿즈에서 할인된 가격을 구한다.
+        let _order_goods_object = _order_goods_data[i];
+        // console.log(_order_goods_object.ticket_discount);
+        let ticketDiscount = _order_goods_object.ticket_discount * _order_goods_object.count;
+        let goodsPrice = _order_goods_object.price * _order_goods_object.count;
+
+        _order_goods_ticket_discount += ticketDiscount;
+        _order_goods_total_price += goodsPrice;
+      }
+      
+      let ticketPrice = _orderData.price * _orderData.count;
+      let add_discount_value = _orderData.percent_value * _orderData.count;
+
+      let ticket_discounting_total_price = ticketPrice - _order_goods_ticket_discount - add_discount_value;
+      if(ticket_discounting_total_price < 0){
+        ticket_discounting_total_price = 0;
+      }
+
+      let _support_price = 0;
+      let _supporter_id = _orderData.supporter_id
+      if(_orderData.supporter_price !== null){
+        _support_price = _orderData.supporter_price
+      }
+
+      let re_total_price = ticket_discounting_total_price + _order_goods_total_price + _support_price;
+      if(_data.total_price === re_total_price){
+        console.log(_orderData);
+        db.UPDATE("UPDATE orders AS _order SET total_price=?, discount_id=?, supporter_id=? WHERE _order.id=?;", 
+        [re_total_price, _data.discount_id, _supporter_id, _orderData._order_id], 
+        (result_update_orders) => {
+          if(result_update_orders === undefined){
+            return res.json({
+              state: 'error',
+              message: 'order update error!',
+              result: {
+              }
+            });
+          }
+
+          return res.json({
+            result: {
+              state: 'success',
+              total_price: re_total_price
+            }
+          });
+        });
+
+        // return res.json({
+        //   result: {
+        //     state: 'success',
+        //     total_price: re_total_price
+        //   }
+        // });
+      }else{
+        return res.json({
+          state: 'error',
+          message: '총 결제 금액이 일치하지 않습니다.',
+          result: {
+          }
+        });
+      }
+    }else{
+      //할인정보가 없을경우 후원만 체크한다.
+      // let reTotalPrice = _orderData.total_price + _data.support_price;
+      let _support_price = 0;
+      let _supporter_id = _orderData.supporter_id
+      if(_orderData.supporter_price !== null){
+        _support_price = _orderData.supporter_price
+      }
+
+      let reTotalPrice = _orderData.total_price + _support_price;
+      if(_data.total_price === reTotalPrice){
+        //update해야함!!!!
+        db.UPDATE("UPDATE orders AS _order SET total_price=?, supporter_id=? WHERE _order.id=?;", 
+        [re_total_price, _supporter_id, _orderData._order_id], 
+        (result_update_orders) => {
+          if(result_update_orders === undefined){
+            return res.json({
+              state: 'error',
+              message: 'order update error!',
+              result: {
+              }
+            });
+          }
+
+          return res.json({
+            result: {
+              state: 'success',
+              total_price: reTotalPrice
+            }
+          });
+        });
+      }else{
+        return res.json({
+          state: 'error',
+          message: '총 결제 금액이 일치하지 않습니다.',
+          result: {
+          }
+        });
+      }
+
+    }
+
+    // db.UPDATE("UPDATE orders SET ;", orderObject, function(result){});
+    // console.log(_data);
+
+    // return res.json({
+    //   result:{
+    //     state: res_state.success,
+    //     order_id: _orderData.id,
+    //     total_price: _orderData.total_price
+    //   }
+    // })
+
+  });
+});
+
 //티켓 구매
 router.post("/buy/temporary/ticket", function(req, res){
   //티켓 id, 수량 , 굿즈 id, 수량 
   //test//
-  return res.json({
-    result: {
-      state: 'success',
-      order_id: 2
-      // ticket_id: _data.id,
-      // show_date: _data.show_date
-    }
-  });
   ////////
   let state = res_state.init;
   let makeTicketIdArray = [];
@@ -372,7 +575,8 @@ router.post("/buy/temporary/ticket", function(req, res){
   let ticketQuery = "";
   let buyState = types.buyState.BUY_STATE_NONE;
   if(makeTicketIdArray.length > 0){
-    ticketQuery = "SELECT ticket.id AS ticket_id, ticket.price AS ticket_price, audiences_limit, buy_limit, ticket.project_id, sum(_order.count) AS sum_order_count, show_date FROM tickets AS ticket LEFT JOIN orders AS _order ON _order.ticket_id=ticket.id WHERE "+queryWhereOr+" GROUP BY ticket.id;";
+    // ticketQuery = "SELECT ticket.id AS ticket_id, ticket.price AS ticket_price, audiences_limit, buy_limit, ticket.project_id, sum(_order.count) AS sum_order_count, show_date FROM tickets AS ticket LEFT JOIN orders AS _order ON _order.ticket_id=ticket.id WHERE "+queryWhereOr+" GROUP BY ticket.id;";
+    ticketQuery = "SELECT ticket.id AS ticket_id, ticket.price AS ticket_price, audiences_limit, buy_limit, ticket.project_id, sum(_order.count) AS sum_order_count, show_date FROM tickets AS ticket LEFT JOIN orders AS _order ON _order.ticket_id=ticket.id AND _order.state<"+types.order.ORDER_STATE_PAY_END+"  WHERE "+queryWhereOr+" GROUP BY ticket.id;";
     ticketQuery = mysql.format(ticketQuery, makeTicketIdArray);
     buyState = types.buyState.BUY_STATE_ONLY_TICKET;
   }
@@ -388,9 +592,85 @@ router.post("/buy/temporary/ticket", function(req, res){
 
   if(makeTicketIdArray.length > 0 && makeGoodsIdArray.length > 0){
     buyState = types.buyState.BUY_STATE_TICKET_AND_GOODS;
+  }else if(makeTicketIdArray.length === 0 && makeGoodsIdArray.length === 0){
+    buyState = types.buyState.BUY_STATE_ONLY_SUPPORT;
   }
 
   let query = ticketQuery+goodsQuery;
+
+  if(buyState === types.buyState.BUY_STATE_ONLY_SUPPORT){
+    let userInfoQuery = "SELECT email, name, contact FROM users WHERE id=?";
+    userInfoQuery = mysql.format(userInfoQuery, req.body.data.user_id);
+
+    db.SELECT(userInfoQuery, [], (result) => {
+      if(result === undefined){
+        return res.json({
+          state: 'error',
+          message: 'DB 조회 에러!',
+          result: {
+          }
+        });
+      }
+
+      var date = moment().format('YYYY-MM-DD HH:mm:ss');
+      const _data = result[0];
+      let _onlySupportOrderObject = {
+        project_id : _project_id,
+        ticket_id : null,
+        user_id: _user_id,
+        state: types.order.ORDER_STATE_APP_PAY_WAIT,
+        count: 0,
+        contact: _data.contact,
+        price: 0,
+        total_price: 0,
+        type_commision: types.order.ORDER_TYPE_COMMISION_WITHOUT_COMMISION,
+        name: _data.name,
+        email: _data.email,
+        is_pick: '',
+        account_name: '',
+        order_story: '',
+        answer: '',
+        attended: '',
+        fail_message: '',
+        goods_meta: '{}',
+        imp_meta: '{}',
+        created_at : date,
+        updated_at: date
+      };
+
+      db.INSERT("INSERT INTO orders SET ?;", _onlySupportOrderObject, function(result){
+        console.log("success!!!!!!!");
+        console.log(result);
+        if(result === undefined){
+          return res.json({
+            state: 'error',
+            message: 'order insert error!',
+            result: {
+              // state: 'error',
+              // ticket_id: _data.id,
+              // show_date: _data.show_date
+            }
+          });
+        }
+
+        let _orderId = result.insertId;
+
+        return res.json({
+          result: {
+            state: 'success',
+            order_id: _orderId,
+            total_ticket_price: 0,
+            total_discount_price: 0,
+            total_goods_price: 0,
+            total_price: 0,
+            discount_info: []
+          }
+        });
+      })
+    });
+
+    return;
+  }
 
   //order의 count와, ticket의 limite
   db.SELECT_MULITPLEX(query, function(result){
@@ -514,6 +794,11 @@ router.post("/buy/temporary/ticket", function(req, res){
       }
     }
 
+    if(_total_ticket_price === 0){
+      //티켓 값이 0원이면 할인도 안된다.
+      _total_goods_discount_ticket = 0;
+    }
+
     //총 티켓가격에서 할인가 적용한다.
     _total_ticket_price = _total_ticket_price - _total_goods_discount_ticket;
     if(_total_ticket_price < 0){
@@ -562,6 +847,128 @@ router.post("/buy/temporary/ticket", function(req, res){
 
       // console.log(orderObject);
 
+      //할인 정보가 있는지 조회
+      let discountsQuery = "SELECT id AS discount_id, percent_value AS discount_value, content AS discount_content, submit_check AS discount_submit_check FROM discounts WHERE project_id=?";
+      discountsQuery = mysql.format(discountsQuery, _project_id);
+      db.SELECT(discountsQuery, [], (discount_result) => {
+        // console.log(discount_result);
+        /*
+        //test//
+        return res.json({
+          result: {
+            state: 'success',
+            order_id: 2,
+            total_ticket_price: _total_ticket_price,
+            total_discount_price: _total_goods_discount_ticket,
+            total_goods_price: _total_goods_price,
+            total_price: _total_price,
+            discount_info: [
+              ...discount_result
+            ]
+          }
+        });
+        */
+        ////////
+
+        db.INSERT("INSERT INTO orders SET ?;", orderObject, function(result){
+          console.log("success!!!!!!!");
+          console.log(result);
+          if(result === undefined){
+            return res.json({
+              state: 'error',
+              message: 'order insert error!',
+              result: {
+                // state: 'error',
+                // ticket_id: _data.id,
+                // show_date: _data.show_date
+              }
+            });
+          }else{
+            let _orderId = result.insertId;
+  
+            //굿즈 아이템이 있으면 최종적으로 orders_goods 에도 셋팅한다.
+            //orders_goods START
+            if(_goods_meta_array.length > 0){
+              let goodsInsertQueryArray = [];
+              let goodsInsertOptionArray = [];
+              for(let i = 0 ; i < _goods_meta_array.length ; i++){
+                const goodsObject = _goods_meta_array[i];
+  
+                let orders_goods_object = {
+                  project_id: _project_id,
+                  order_id: _orderId,
+                  user_id: _user_id,
+                  goods_id: goodsObject.id,
+                  count: goodsObject.count,
+                  created_at: date
+                };
+  
+                let queryObject = {
+                  key: i,
+                  value: "INSERT INTO orders_goods SET ?;"
+                }
+  
+                let insertOptionObject = {
+                  key: i,
+                  value: orders_goods_object
+                }
+  
+                goodsInsertQueryArray.push(queryObject);
+                goodsInsertOptionArray.push(insertOptionObject);
+              }
+  
+              db.INSERT_MULITPLEX(goodsInsertQueryArray, goodsInsertOptionArray, function(result){
+                if(result === undefined){
+                  return res.json({
+                    state: 'error',
+                    message: 'goods_order insert error!',
+                    result: {
+                      // state: 'error',
+                      // ticket_id: _data.id,
+                      // show_date: _data.show_date
+                    }
+                  });
+                }else{
+                  return res.json({
+                    result: {
+                      state: 'success',
+                      order_id: _orderId,
+                      total_ticket_price: _total_ticket_price,
+                      total_discount_price: _total_goods_discount_ticket,
+                      total_goods_price: _total_goods_price,
+                      total_price: _total_price,
+                      discount_info: [
+                        ...discount_result
+                      ]
+                    }
+                  });
+                }
+              });
+              //orders_goods END
+              // _goods_meta_array
+            }else{
+              //굿즈가 없을때
+              return res.json({
+                result: {
+                  state: 'success',
+                  order_id: _orderId,
+                  total_ticket_price: _total_ticket_price,
+                  total_discount_price: _total_goods_discount_ticket,
+                  total_goods_price: _total_goods_price,
+                  total_price: _total_price,
+                  discount_info: [
+                    ...discount_result
+                  ]
+                  // ticket_id: _data.id,
+                  // show_date: _data.show_date
+                }
+              });
+            }
+          }        
+        });
+      });
+
+      /*
       db.INSERT("INSERT INTO orders SET ?;", orderObject, function(result){
         console.log("success!!!!!!!");
         console.log(result);
@@ -648,6 +1055,7 @@ router.post("/buy/temporary/ticket", function(req, res){
           }
         }        
       });
+      */
     });
   });  
 });
