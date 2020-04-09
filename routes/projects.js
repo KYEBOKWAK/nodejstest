@@ -473,17 +473,11 @@ router.post("/order/edit", function(req, res){
           return res.json({
             result: {
               state: 'success',
-              total_price: re_total_price
+              total_price: re_total_price,
+              user_id: req.body.data.user_id,
             }
           });
         });
-
-        // return res.json({
-        //   result: {
-        //     state: 'success',
-        //     total_price: re_total_price
-        //   }
-        // });
       }else{
         return res.json({
           state: 'error',
@@ -505,7 +499,7 @@ router.post("/order/edit", function(req, res){
       if(_data.total_price === reTotalPrice){
         //update해야함!!!!
         db.UPDATE("UPDATE orders AS _order SET total_price=?, supporter_id=? WHERE _order.id=?;", 
-        [re_total_price, _supporter_id, _orderData._order_id], 
+        [reTotalPrice, _supporter_id, _orderData._order_id], 
         (result_update_orders) => {
           if(result_update_orders === undefined){
             return res.json({
@@ -519,7 +513,8 @@ router.post("/order/edit", function(req, res){
           return res.json({
             result: {
               state: 'success',
-              total_price: reTotalPrice
+              total_price: reTotalPrice,
+              user_id: req.body.data.user_id
             }
           });
         });
@@ -927,9 +922,8 @@ router.post("/buy/temporary/ticket", function(req, res){
                     // let goods_count_check_query = "SELECT SUM(count) AS order_goods_count, goods_id FROM orders_goods WHERE " + goodsCheckQueryTail + " GROUP BY goods_id";
                     let goods_count_check_query = "SELECT SUM(count) AS order_goods_count, goods_id, limit_count, goods.title FROM orders_goods LEFT JOIN goods ON goods.id=orders_goods.goods_id WHERE " + goodsCheckQueryTail + " GROUP BY goods_id";
                     goods_count_check_query = mysql.format(goods_count_check_query, goodsCheckQueryID);
-                    // console.log(goods_count_check_query);
+
                     db.SELECT(goods_count_check_query, [], function(result_goods_count_check_select){
-                      console.log(result_goods_count_check_select);
                       let isGoodsOverCounter = false;
                       let goodsOverCountObject = undefined;
                       for(let i = 0 ; i < result_goods_count_check_select.length ; i++){

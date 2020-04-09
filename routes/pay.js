@@ -15,6 +15,11 @@ var iamport = new Iamport({
 app.use(express.json())
 app.use(cors());
 
+function getUserIP(req) {
+    const addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    return addr;
+}
+
 // app.set('view engine', 'ejs');
 // app.engine('html', require('ejs').renderFile);
 
@@ -94,6 +99,14 @@ function templateHTML(basicURL){
 */
 
 //rest api Iamport 요청 START
+router.post('/complite', function(req, res){
+    res.json({
+        result:{
+            state: 'success'
+        }
+    })
+});
+
 router.post('/onetime', function(req, res){
     // amount = req.body.data.amount;
     const _data = req.body.data[0];
@@ -188,8 +201,9 @@ router.post('/schedule', function(req, res){
 //?imp_uid=xxxxxxx&merchant_uid=yyyyyyy
 router.post('/any/payments/complete', function(req, res){
     console.log('######## payments complete!!');
-    console.log(req.query.imp_uid);
-
+    // console.log(req.query.imp_uid);
+    let yourIP = getUserIP(req);
+    console.log(yourIP);
     return res.json({
         test: 'test'
     })
