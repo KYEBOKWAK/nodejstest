@@ -201,7 +201,8 @@ router.post('/schedule', function(req, res){
 //?imp_uid=xxxxxxx&merchant_uid=yyyyyyy
 router.post('/any/payments/complete', function(req, res){
     console.log('######## payments complete!!');
-    console.log(req.query.imp_uid);
+    // console.log(req.query.imp_uid);
+    console.log(req.body.data);
     let yourIP = getUserIP(req);
     // 52.78.100.19
     // 52.78.48.223
