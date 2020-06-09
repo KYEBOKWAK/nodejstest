@@ -13,6 +13,8 @@ const REFRESH_TOKEN_RENEW_LAST_DAT_DAY = 4; //일단위 //refresh 재갱신 기�
 var express = require('express');
 var app = express();
 
+const use = require('abrequire');
+
 //var template = require('./lib/template.js');
 const cors = require('cors');
 const env = require('dotenv');
@@ -46,7 +48,12 @@ moment.tz.setDefault("Asia/Seoul");
 
 var mysql = require('mysql');
 
+var cron = require('node-cron');
+
+var AppKeys = use('lib/AppKeys.js');
+
 /////상단 새로운 코드 START////
+// const bodyParser = require('body-parser');
 
 //app.use('/main', main);
 /////상단 새로운 코드 END////
@@ -54,7 +61,8 @@ var mysql = require('mysql');
 //redis 세션관리
 //var client = redis.createClient(process.env.REDIS_PORT, process.env.REDIS_URL);
 
-app.use(express.json())
+app.use(express.json());
+// app.use(bodyParser.json());
 app.use(cors());
 
 //middleware start
@@ -147,7 +155,7 @@ function makeRefreshToken(id, data, before_refresh_token, res){
 }
 
 function makeAccessToken(id, data, res){
-  console.log('maekadsf', id);
+  //console.log('maekadsf', id);
   _jwt.CREATE(jwtType.TYPE_JWT_ACCESS_TOKEN, 
     {
       id: id,
@@ -174,12 +182,13 @@ function makeAccessToken(id, data, res){
 }
 
 app.use(function (req, res, next) {
-  console.log(req.url);
+  //console.log(req.url);
   let url = req.url;
   let indexAnyString = url.indexOf('/any/');
   if(indexAnyString < 0){
     //any가 없으면 무조건 token 체크를 한다.
     if(req.body.data === undefined){
+      console.log("@@@@@@");
       return res.json({
         result: {
           state: 'error',
@@ -190,6 +199,7 @@ app.use(function (req, res, next) {
     else if(!req.body.data.access_token){
       // console.log('none!!');
       //엑세스토큰이 없다면 완전 오류임!!
+      console.log("1?!?!?!?!?!?");
       return res.json({
         result: {
           state: 'error',
@@ -197,17 +207,16 @@ app.use(function (req, res, next) {
         }
       })
     }else if(req.body.data.refresh_token && req.body.data.refresh_token !== ''){
-      console.log("리프레시 토큰 체크중");
-      console.log(req.body.data.refresh_token);
+      //console.log("리프레시 토큰 체크중");
+      //console.log(req.body.data.refresh_token);
       _jwt.READ(req.body.data.refresh_token, function(result){
-        console.log(result);
+        //console.log(result);
         if(result.state === 'success'){
           if(result.iss === process.env.JWT_TOKEN_ISSUER){
             //리프레시 토큰 자체는 정상. 
 
             //리프레시 안에 내용 점검.
             db.SELECT("SELECT user_id, refresh_token, created_at FROM refresh_tokens WHERE refresh_token=? AND user_id=?", [req.body.data.refresh_token, result.id], function(db_result){
-              console.log(db_result);
               if(db_result.length === 0){
                 return res.json({
                   result: {
@@ -216,7 +225,7 @@ app.use(function (req, res, next) {
                   }
                 })
               }
-              console.log(db_result[0].user_id);
+              //console.log(db_result[0].user_id);
               //DB와 일치하는 토큰 정보가 있다. 기간이 지났는지 확인
             
               util.getExpTimer(result.exp);
@@ -243,14 +252,14 @@ app.use(function (req, res, next) {
                 //day로 비교할때
                 if(get_day <= renowLastDay){
                   //refresh, access토큰 재갱신
-                  console.log("Refresh access 재갱신!");
+                  //console.log("Refresh access 재갱신!");
                   let _data = {
                     state: 'setAllAccessToken'
                   }
                   makeRefreshToken(db_result[0].user_id, _data, db_result[0].refresh_token, res);
                 }else{
                   //access토큰만 갱신
-                  console.log("access 재갱신!!");
+                  //console.log("access 재갱신!!");
                   let _data = {
                     state: 'setReAccessToken'
                   }
@@ -267,7 +276,7 @@ app.use(function (req, res, next) {
                   makeRefreshToken(db_result[0].user_id, _data, db_result[0].refresh_token, res);
                 }else{
                   //access토큰만 갱신
-                  console.log("access 재갱신!!");
+                  //console.log("access 재갱신!!");
                   let _data = {
                     state: 'setReAccessToken'
                   }
@@ -277,14 +286,14 @@ app.use(function (req, res, next) {
               /*
               if(get_day <= renowLastDay){
                 //refresh, access토큰 재갱신
-                console.log("Refresh access 재갱신!");
+                //console.log("Refresh access 재갱신!");
                 let _data = {
                   state: 'setAllAccessToken'
                 }
                 makeRefreshToken(db_result[0].user_id, _data, db_result[0].refresh_token, res);
               }else{
                 //access토큰만 갱신
-                console.log("access 재갱신!!");
+                //console.log("access 재갱신!!");
                 let _data = {
                   state: 'setReAccessToken'
                 }
@@ -303,14 +312,14 @@ app.use(function (req, res, next) {
           
         }else if(result.state === 'error' && result.error.name === 'TokenExpiredError'){
           //만기일 경우 refresh 를 요청해야함.
-          console.log('refresh도 만기!!');
+          //console.log('refresh도 만기!!');
           return res.json({
             result: {
               state: 'expireRefreshToken'
             }
           })
         }else{
-          console.log('알수 없는 에러지만 우선 토큰 익스파이어로 넘긴다.');
+          //console.log('알수 없는 에러지만 우선 토큰 익스파이어로 넘긴다.');
           return res.json({
             result: {
               state: 'expireRefreshToken'
@@ -319,21 +328,21 @@ app.use(function (req, res, next) {
         }
         
         // var dec = moment(result.error.expiredAt);
-        // console.log(dec.format('YYYY-MM-DD HH:mm:ss'));
+        // //console.log(dec.format('YYYY-MM-DD HH:mm:ss'));
       });
     }else if(req.body.data.access_token && req.body.data.access_token !== ''){
       _jwt.READ(req.body.data.access_token, function(result){
-        console.log(result);
+        //console.log(result);
         if(result.state === 'success'){
           if(result.iss === process.env.JWT_TOKEN_ISSUER){
             req.body.data.user_id = result.id;
-            console.log("$$$$$$" + result.id);
+            //console.log("$$$$$$" + result.id);
             util.getExpTimer(result.exp);
             next();
           }
         }else if(result.state === 'error' && result.error.name === 'TokenExpiredError'){
           //만기일 경우 refresh 를 요청해야함.
-          console.log('만기!!');
+          //console.log('만기!!');
           return res.json({
             result: {
               state: 'call_refresh_token'
@@ -342,37 +351,57 @@ app.use(function (req, res, next) {
         }
         
         // var dec = moment(result.error.expiredAt);
-        // console.log(dec.format('YYYY-MM-DD HH:mm:ss'));
+        // //console.log(dec.format('YYYY-MM-DD HH:mm:ss'));
       });
     }
-    // console.log(req.body.data);
+    // //console.log(req.body.data);
 
-    //console.log(req.body.data.access_token);
+    ////console.log(req.body.data.access_token);
     // next();
   }else{
     next();
   }
-  // console.log(indexAnyString);
+  // //console.log(indexAnyString);
 
-  // console.log('Time:', Date.now());
+  // //console.log('Time:', Date.now());
   
 });
 
-var main = require('./routes/main');
+let main = require('./routes/main');
 app.use('/main', main);
 
-var projects = require('./routes/projects');
+let projects = require('./routes/projects');
 app.use('/projects', projects);
 
-var user = require('./routes/user');
+let user = require('./routes/user');
 app.use('/user', user);
 
-var payView = require('./routes/pay');
+let payView = require('./routes/pay');
 app.use('/pay', payView);
 
-app.post('/init', function(req, res){
-  console.log("init!");
-  let userInfoQuery = "SELECT email, name, contact FROM users WHERE id=?";
+let mannayo = require('./routes/mannayo');
+app.use('/mannayo', mannayo);
+
+let comments = require('./routes/comments');
+app.use('/comments', comments);
+
+let creators = require('./routes/creators');
+app.use('/creators', creators);
+
+let orders = require('./routes/orders');
+app.use('/orders', orders);
+
+let uploader = require('./routes/uploader');
+app.use('/uploader', uploader);
+
+let likes = require('./routes/likes');
+app.use('/likes', likes);
+
+let find = require('./routes/find');
+app.use('/find', find);
+
+app.post("/init/user", function(req, res){
+  let userInfoQuery = "SELECT email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
   userInfoQuery = mysql.format(userInfoQuery, req.body.data.user_id);
 
   db.SELECT(userInfoQuery, [], (result) => {
@@ -391,17 +420,126 @@ app.post('/init', function(req, res){
         email: result[0].email,
         name: result[0].name,
         contact: result[0].contact,
-        iamport_IMP: process.env.IAMPORT_IMP,
-        iamport_PG: process.env.IAMPORT_PG,
-        app_scheme: process.env.IAMPORT_APP_SCHEME
+        user_id: result[0].id,
+        nick_name: result[0].nick_name,
+        profile_photo_url: result[0].profile_photo_url,
+        stateApp: AppKeys.STATE_APP_MAIN,
+        // iamport_IMP: process.env.IAMPORT_IMP,
+        // iamport_PG: process.env.IAMPORT_PG,
+        // app_scheme: process.env.IAMPORT_APP_SCHEME,
+        // findPlaceHolder: '그날의 이슈!'
+        // toastMessage: '오잇!'
       }
     });
   });
-  
 });
 
+app.post('/any/init', function(req, res){
+  //console.log("init!");
+  let accessToken = req.body.data.access_token;
+
+  let _findPlaceHolder = "그날의 이슈!";
+  let _recommendWord = ["아프리카", "유튜브", "인스타그램", "페이스북", "페이스북1", "페이스북2"];
+
+  if(accessToken === ''){
+    return res.json({
+      result: {
+        state: 'success',
+        iamport_IMP: process.env.IAMPORT_IMP,
+        iamport_PG: process.env.IAMPORT_PG,
+        app_scheme: process.env.IAMPORT_APP_SCHEME,
+        stateApp: AppKeys.STATE_APP_INIT,
+        findPlaceHolder: _findPlaceHolder,
+        recommendWord: _recommendWord
+        // toastMessage: '오잇!'
+      }
+    });
+  }else{
+    return res.json({
+      result: {
+        state: 'success',
+        iamport_IMP: process.env.IAMPORT_IMP,
+        iamport_PG: process.env.IAMPORT_PG,
+        app_scheme: process.env.IAMPORT_APP_SCHEME,
+        stateApp: AppKeys.STATE_APP_MAIN,
+        findPlaceHolder: _findPlaceHolder,
+        recommendWord: _recommendWord
+        // toastMessage: '오잇!'
+      }
+    });
+  }
+
+  /*
+  let userInfoQuery = "SELECT email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
+  userInfoQuery = mysql.format(userInfoQuery, req.body.data.user_id);
+
+  db.SELECT(userInfoQuery, [], (result) => {
+    if(result.state === 'error'){
+      return res.json({
+        result: {
+          state: 'error',
+          message: '유저 정보를 불러오지 못했습니다.'
+        }
+      })
+    };
+
+    return res.json({
+      result: {
+        state: 'success',
+        email: result[0].email,
+        name: result[0].name,
+        contact: result[0].contact,
+        user_id: result[0].id,
+        nick_name: result[0].nick_name,
+        profile_photo_url: result[0].profile_photo_url,
+        iamport_IMP: process.env.IAMPORT_IMP,
+        iamport_PG: process.env.IAMPORT_PG,
+        app_scheme: process.env.IAMPORT_APP_SCHEME,
+        findPlaceHolder: '그날의 이슈!'
+        // toastMessage: '오잇!'
+      }
+    });
+  });
+  */
+
+  /*
+  let userInfoQuery = "SELECT email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
+  userInfoQuery = mysql.format(userInfoQuery, req.body.data.user_id);
+
+  db.SELECT(userInfoQuery, [], (result) => {
+    if(result.state === 'error'){
+      return res.json({
+        result: {
+          state: 'error',
+          message: '유저 정보를 불러오지 못했습니다.'
+        }
+      })
+    };
+
+    return res.json({
+      result: {
+        state: 'success',
+        email: result[0].email,
+        name: result[0].name,
+        contact: result[0].contact,
+        user_id: result[0].id,
+        nick_name: result[0].nick_name,
+        profile_photo_url: result[0].profile_photo_url,
+        iamport_IMP: process.env.IAMPORT_IMP,
+        iamport_PG: process.env.IAMPORT_PG,
+        app_scheme: process.env.IAMPORT_APP_SCHEME,
+        findPlaceHolder: '그날의 이슈!'
+        // toastMessage: '오잇!'
+      }
+    });
+  });
+  */
+});
+
+// app.post("")
+
 app.post('/login', function(req, res){
-  console.log("드디어 이곳에 왔다!!!!!!!!!!!!!!");
+  
   res.json({
     result: {
       state: 'success',
@@ -440,19 +578,17 @@ app.post("/call/certify/number", function(req, res){
         randVal += String(util.getRandomNumber(0, 9));
       }
 
-      console.log(randVal);
-
       db_redis.save(result.data.token_uuid, randVal, phoneRandNumExpire, function(_result){
         if(_result.state === 'success'){
           //레디스 저장 성공
-          console.log('redis success');
+          //console.log('redis success');
           return res.send({
             ..._result
           });
         }
         else{
           //레디스 저장 실패
-          console.log('redis fail');
+          //console.log('redis fail');
           return res.send({
             ..._result
           });
@@ -478,7 +614,7 @@ app.post('/call/certify/confirm', function(req, res){
         db_redis.load(result.data.token_uuid, function(_result){
 
           if(_result.state === 'error'){
-            console.log('없음!!');
+            //console.log('없음!!');
             if(_result.error === 'noData'){
               return resolve({
                 state: 'error',
@@ -493,14 +629,14 @@ app.post('/call/certify/confirm', function(req, res){
             }
           }
           else if(_result.data === req.body.certify_number){
-            console.log('일치!!');
+            //console.log('일치!!');
             return resolve({
               state: 'success',
               phone: req.body.phone
             });
           }
           else{
-            console.log('불일치!!');
+            //console.log('불일치!!');
             return resolve({
               state: 'error',
               message: '인증번호가 다릅니다.'
@@ -550,7 +686,7 @@ app.post("/sms/send", function(req, res){
       content:"내용테스트"
     }
   }).then(function (response) {
-    console.log(response);
+    // console.log(response);
     //res.data.messages
   });
   return res.send({aaa:'aaa'});
@@ -962,7 +1098,6 @@ app.get('/login/fail', function(req, res){
 });
 //route, routing
 app.get('/', function (req, res) {
-  console.log('aaaa');
   res.send(`크티 api 서버 해당 페이지를 보면 아니아니아니됨 `);
   //console.log(uuidv4());
 });
@@ -1115,9 +1250,8 @@ app.post('/any/login', function(req, res){
       }
 
       bcrypt.compare(myPlaintextPassword, finalNodeGeneratedHash, function(error, result){
-        console.log('compare : ' + result);
+        
         if(result){
-          console.log('로그인 성공! in result');
           jwt.sign({
             id: user.id,
             type: jwtType.TYPE_JWT_REFRESH_TOKEN
@@ -1133,7 +1267,7 @@ app.post('/any/login', function(req, res){
           }, function(err, token){
             if (err) 
             {
-              console.log('jwt error : ' + err);
+              // console.log('jwt error : ' + err);
               data.state = 'error';
               data.message = err;
 
@@ -1163,7 +1297,7 @@ app.post('/any/login', function(req, res){
 
               
               db.INSERT("INSERT INTO refresh_tokens SET ? ", refreshTokenObject, function(result){
-                console.log(result);
+                // console.log(result);
 
                 makeAccessToken(user.id, data, res);
                 /*
@@ -1203,7 +1337,7 @@ app.post('/any/login', function(req, res){
           });
         }
         else{
-          console.log('비번 틀림!!');
+          // console.log('비번 틀림!!');
           data.state = 'error';
           data.message = '비밀번호가 틀렸습니다.';
           // return res.send(data);
@@ -1239,7 +1373,7 @@ app.post('/login/access', function(req, res){
     }, function(err, token){
       if (err) 
       {
-        console.log('jwt error : ' + err);
+        // console.log('jwt error : ' + err);
         data.state = 'error';
         data.message = err;
 
@@ -1255,7 +1389,7 @@ app.post('/login/access', function(req, res){
 
     //return res.send(decoded);
   }catch(error){
-    console.log(error);
+    // console.log(error);
     var data = {
       state : 'error',
       type : 'none',
@@ -1278,7 +1412,7 @@ app.post('/login/access', function(req, res){
 
 app.post('/init/web', function (req, res) {
   //처음 접속시 uuid가 있는지 확인 해준다.
-  console.log('init!!');
+  //console.log('init!!');
   /*
   db_redis.save('mainkey1', 'name', 'aaa', function(result){
     console.log(result);
@@ -1304,46 +1438,25 @@ app.post('/init/web', function (req, res) {
   });
 });
 
-app.post('/abc', function (req, res) {
-  console.log(req.body);
-  //res.send('Hello Worlddfsdf!');
 
-    res.send({
-      status: 'Data sukses diinput!',
-      no: null,
-      name: '이름',
-      usia: '뭐냐'});
+cron.schedule('* * * * *', function(){
+  console.log('node-cron 실행 테스트');
 });
 
-app.get("/test", function(req, res){
-  //var token = req.cookies.user;
-  //var token = req.cookies.user;
-  res.send({test});
-
-});
-
-app.post("/test", function(req, res){
-  //var token = req.cookies.user;
-  //var token = req.cookies.user;
-  console.log(req.body);
-
-  test = req.body.value;
+// cron.schedule('1,2,4,5 * * * *', () => {
+//   console.log('running every minute 1, 2, 4 and 5');
+// });
 
 
-  console.log('change : ' + test);
-
-  res.send({test});
-   
-});
 
 
-app.listen(3000, function () {
-  console.log('Example app listening on port 3000!');
-});
-
-// app.listen(3000, "0.0.0.0", function () {
+// app.listen(3000, function () {
 //   console.log('Example app listening on port 3000!');
-// })
+// });
+
+app.listen(3000, "0.0.0.0", function () {
+  console.log('Example app listening on port 3000!');
+})
 
 /*
 var http = require('http');
