@@ -435,6 +435,12 @@ router.post("/order/support", function(req, res){
             state: 'success'
           }
         });
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: error,
+          result:{}
+        })
       });
     }else{
       let _result_select_support = result_select_support[0];
@@ -541,6 +547,13 @@ router.post("/order/edit", function(req, res){
               user_id: req.body.data.user_id,
               order_id: _orderData._order_id,
               merchant_uid: _orderData.merchant_uid
+            }
+          });
+        }, (error) => {
+          return res.json({
+            state: 'error',
+            message: 'order update error!',
+            result: {
             }
           });
         });
@@ -744,6 +757,12 @@ router.post("/buy/temporary/ticket", function(req, res){
             discount_info: []
           }
         });
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: error,
+          result:{}
+        })
       })
 
       //only support 
@@ -925,6 +944,14 @@ router.post("/buy/temporary/ticket", function(req, res){
                     show_date: ticketData.show_date
                   }
                 });
+              }, (error) => {
+                return res.json({
+                  state: res_state.error,
+                  message: 'error',
+                  result: {
+
+                  }
+                })
               });
             }else{
 
@@ -1027,7 +1054,19 @@ router.post("/buy/temporary/ticket", function(req, res){
                                 title: goodsOverCountObject.title
                               }
                             });
+                          }, (error) => {
+                            return res.json({
+                              state: res_state.error,
+                              message: error,
+                              result:{}
+                            })
                           });
+                        }, (error) => {
+                          return res.json({
+                            state: res_state.error,
+                            message: error,
+                            result: {}
+                          })
                         });
                         
                         return;
@@ -1048,6 +1087,12 @@ router.post("/buy/temporary/ticket", function(req, res){
                         }
                       });
                     });
+                  }, (error) => {
+                    return res.json({
+                      state: res_state.error,
+                      message: error,
+                      result: {}
+                    })
                   });
                   
                 }else{
@@ -1072,6 +1117,12 @@ router.post("/buy/temporary/ticket", function(req, res){
           });
 
           // console.log(result_insert_order);
+        }, (error) => {
+          return res.json({
+            state: res_state.error,
+            message: error,
+            result:{}
+          })
         });        
         
         //여기는 티켓, 티켓 & 굿즈 구매 프로세스
@@ -1197,7 +1248,19 @@ router.post("/buy/temporary/ticket", function(req, res){
                         title: goodsOverCountObject.title
                       }
                     });
+                  }, (error) => {
+                    return res.json({
+                      state: res_state.error,
+                      message: error,
+                      result:{}
+                    })
                   });
+                }, (error) => {
+                  return res.json({
+                    state: res_state.error,
+                    message: error,
+                    result:{}
+                  })
                 });
                 
                 return;
@@ -1215,6 +1278,18 @@ router.post("/buy/temporary/ticket", function(req, res){
                 }
               });
             });
+          }, (error) => {
+            return res.json({
+              state: res_state.error,
+              message: error,
+              result:{}
+            })
+          })
+        }, (error) => {
+          return res.json({
+            state: res_state.error,
+            message: error,
+            result:{}
           })
         });
       }

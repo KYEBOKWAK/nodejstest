@@ -198,6 +198,12 @@ router.post("/create", function(req, res){
           creator_id: result_insert_creators.insertId
         }
       })
+    }, (error) => {
+      return res.json({
+        state: res_state.error,
+        message: error,
+        result:{}
+      })
     });
   })
 /*

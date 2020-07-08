@@ -188,13 +188,12 @@ router.post("/create", function(req, res){
         })
         
       })
-
-      // return res.json({
-      //   result: {
-      //     state: res_state.success,
-      //     isLike: true
-      //   }
-      // });
+    }, (error) => {
+      return res.json({
+        state: res_state.error,
+        message: error,
+        result:{}
+      })
     })
   })
 
@@ -269,6 +268,12 @@ router.post("/cancel", function(req, res){
         }
       })
       
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: error,
+      result:{}
     })
   });
 

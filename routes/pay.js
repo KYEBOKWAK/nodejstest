@@ -252,6 +252,13 @@ payComplite = (req, res, serializer_uid) => {
                         order_id: orderData.id
                     }
                 })            
+            }, (error) => {
+                return  res.json({
+                    result:{
+                        state: res_state.error,
+                        message: '주문정보 업데이트 실패'
+                    }
+                })
             });
         }else{
             if(serializer_uid === PAY_SERIALIZER_SCHEDULE){
@@ -282,6 +289,13 @@ payComplite = (req, res, serializer_uid) => {
                             order_id: orderData.id
                         }
                     })            
+                }, (error) => {
+                    return  res.json({
+                        result:{
+                            state: res_state.error,
+                            message: '주문정보 업데이트 실패'
+                        }
+                    })
                 });
             }else{
                 iamport.payment.getByImpUid({
@@ -319,6 +333,13 @@ payComplite = (req, res, serializer_uid) => {
                                     order_id: orderData.id
                                 }
                             })            
+                        }, (error) => {
+                            return  res.json({
+                                result:{
+                                    state: res_state.error,
+                                    message: '주문정보 업데이트 실패'
+                                }
+                            })
                         });
                     }else{
                         return  res.json({
@@ -733,6 +754,13 @@ router.post('/any/payments/complete', function(req, res){
                             state: res_state.success
                         }
                     })            
+                }, (error) => {
+                    return  res.json({
+                        result:{
+                            state: res_state.error,
+                            message: '주문정보 업데이트 실패'
+                        }
+                    })
                 });
             }else{
                 return  res.json({
@@ -781,6 +809,13 @@ router.post("/cancel", function(req, res){
                 state: res_state.success
             }
         })
+    }, (error) => {
+        return res.json({
+            state: res_state.error,
+            message: 'order cancel error',
+            result: {
+            }
+        });
     });
     // let orderQuery = mysql.format("SELECT id, state FROM orders AS _order WHERE _order.id=?", order_id);
     // db.SELECT(orderQuery, [], (result) => {

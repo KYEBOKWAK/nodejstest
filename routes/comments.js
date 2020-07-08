@@ -142,6 +142,12 @@ router.post("/add", function(req, res){
         state: res_state.success
       }
     })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: error,
+      result:{}
+    })
   })
 });
 
@@ -167,7 +173,19 @@ router.post("/remove", function(req, res){
             state: res_state.success
           }
         });
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: error,
+          result:{}
+        })
       });
+    }, (error) => {
+      return res.json({
+        state: res_state.error,
+        message: error,
+        result:{}
+      })
     });
   });
 });

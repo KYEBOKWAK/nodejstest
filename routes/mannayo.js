@@ -51,6 +51,12 @@ router.post("/request", function(req, res){
           state: 'success'
         }
       });
+    }, (error) => {
+      return res.json({
+        state: res_state.error,
+        message: error,
+        result:{}
+      })
     });
   });
 });
@@ -152,7 +158,6 @@ router.post("/popualer/thisweek", function(req, res){
   let mannayoQuery = "SELECT meetup.id AS meetup_id FROM meetups AS meetup WHERE deleted_at IS NULL ORDER BY meet_count DESC, meetup.id DESC LIMIT 4";
   // let mannayoQuery = "SELECT * FROM meetups AS meetup";
   db.SELECT(mannayoQuery, [], (result_mannayo_popular) => {
-    console.log(result_mannayo_popular);
     return res.json({
       result: {
         state: res_state.success,
@@ -166,7 +171,6 @@ router.post("/create/cover/list", function(req, res){
   let mannayoQuery = "SELECT meetup.id AS meetup_id FROM meetups AS meetup WHERE deleted_at IS NULL ORDER BY meet_count DESC, meetup.id DESC LIMIT 4";
   // let mannayoQuery = "SELECT * FROM meetups AS meetup";
   db.SELECT(mannayoQuery, [], (result_mannayo_popular) => {
-    console.log(result_mannayo_popular);
     return res.json({
       result: {
         state: res_state.success,
@@ -242,7 +246,6 @@ router.post("/get/my/all", function(req, res){
 
   // let mannayoQuery = "SELECT * FROM meetups AS meetup";
   db.SELECT(mannayoQuery, [], (result_mannayo) => {
-    // console.log()
     return res.json({
       result: {
         state: res_state.success,
@@ -267,7 +270,6 @@ router.post("/get/my/register", function(req, res){
 
   // let mannayoQuery = "SELECT * FROM meetups AS meetup";
   db.SELECT(mannayoQuery, [], (result_mannayo) => {
-    // console.log()
     return res.json({
       result: {
         state: res_state.success,
@@ -376,7 +378,6 @@ router.post("/check/overlap", function(req, res){
 
   let queryMannayoSelect = mysql.format("SELECT id FROM meetups WHERE creator_id=? AND what=? AND `where`=? AND deleted_at IS NULL", [creator_id, what, where]);
   db.SELECT(queryMannayoSelect, [], (result) => {
-    console.log(result);
     if(result.length === 0){
       //0개면 중복된 만나요 없음!!
       return res.json({
@@ -446,6 +447,18 @@ router.post("/create", function(req, res){
           meetup_id: meetup_id
         }
       })
+    }, (error) => {
+      return res.json({
+        state: res_state.error,
+        message: error,
+        result:{}
+      })
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: error,
+      result:{}
     })
   });
   

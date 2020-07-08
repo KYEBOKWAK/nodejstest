@@ -1,7 +1,8 @@
 const exprieTimeMS = 60000;
+// const phoneRandNumExpire = 180;
 const phoneRandNumExpire = 180;
-//const phoneRandNumExpire = 5;
-//const exprieTimeDay = '7d';
+
+
 const EXPIRE_REFRESH_TOKEN = '7d';
 const EXPIRE_ACCESS_TOKEN = '1h';
 // const EXPIRE_REFRESH_TOKEN = '5m';
@@ -14,6 +15,11 @@ var express = require('express');
 var app = express();
 
 const use = require('abrequire');
+
+var path = require('path');
+let favicon = require('serve-favicon');
+app.use(favicon(path.join(__dirname, 'public/img', 'favicon.ico')))
+// app.use(favicon(path.join(__dirname, 'public/img', 'favicon.ico')))
 
 //var template = require('./lib/template.js');
 const cors = require('cors');
@@ -38,8 +44,8 @@ var jwt = require('jsonwebtoken');
 
 const axios = require('axios');
 
-const sgMail = require('@sendgrid/mail');
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// const sgMail = require('@sendgrid/mail');
+// sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const util = require('./lib/util.js');
 
@@ -52,6 +58,12 @@ var cron = require('node-cron');
 
 var AppKeys = use('lib/AppKeys.js');
 
+var Types = use('lib/types.js');
+const res_state = use('lib/res_state.js');
+
+const Global_Func = use("lib/global_func.js");
+
+process.setMaxListeners(15);
 /////상단 새로운 코드 START////
 // const bodyParser = require('body-parser');
 
@@ -122,7 +134,7 @@ function makeRefreshToken(id, data, before_refresh_token, res){
           console.log('리프래시 and 액세스 재발급 성공!!');
           //db update 해야함.
           var date = moment().format('YYYY-MM-DD HH:mm:ss');
-          db.UPDATE("UPDATE refresh_tokens SET refresh_token=?, updated_at=? WHERE refresh_token=? AND user_id=?", 
+          db.UPDATE("UPDATE devices SET refresh_token=?, updated_at=? WHERE refresh_token=? AND user_id=?", 
           [_refresh_token, date, before_refresh_token, id],
           function(result){
             return res.json({
@@ -132,14 +144,13 @@ function makeRefreshToken(id, data, before_refresh_token, res){
                 refresh_token: _refresh_token
               }
             });
+          }, function(error){
+            return res.json({
+              state: res_state.error,
+              message: error,
+              result: {}
+            })
           });
-          // return res.json({
-          //   result: {
-          //     ...data,
-          //     access_token: value.token,
-          //     refresh_token: _refresh_token
-          //   }
-          // });
         }
       });
       /*
@@ -199,7 +210,6 @@ app.use(function (req, res, next) {
     else if(!req.body.data.access_token){
       // console.log('none!!');
       //엑세스토큰이 없다면 완전 오류임!!
-      console.log("1?!?!?!?!?!?");
       return res.json({
         result: {
           state: 'error',
@@ -216,7 +226,7 @@ app.use(function (req, res, next) {
             //리프레시 토큰 자체는 정상. 
 
             //리프레시 안에 내용 점검.
-            db.SELECT("SELECT user_id, refresh_token, created_at FROM refresh_tokens WHERE refresh_token=? AND user_id=?", [req.body.data.refresh_token, result.id], function(db_result){
+            db.SELECT("SELECT user_id, refresh_token, created_at FROM devices WHERE refresh_token=? AND user_id=?", [req.body.data.refresh_token, result.id], function(db_result){
               if(db_result.length === 0){
                 return res.json({
                   result: {
@@ -400,8 +410,18 @@ app.use('/likes', likes);
 let find = require('./routes/find');
 app.use('/find', find);
 
+let routerPassword = require('./routes/password');
+app.use('/password', routerPassword);
+
+let routerPush = require('./routes/push');
+app.use('/push', routerPush);
+
 app.post("/init/user", function(req, res){
-  let userInfoQuery = "SELECT email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
+  let userInfoQuery = "SELECT age, gender, email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
+  // console.log(req.body.data);
+
+  // let userInfoQuery = "SELECT user.age, user.gender, user.email, user.name, user.contact, user.id, user.nick_name, user.profile_photo_url, device.push_token FROM users AS user LEFT JOIN devices AS device ON device.user_id=user.id WHERE user.id=?";
+
   userInfoQuery = mysql.format(userInfoQuery, req.body.data.user_id);
 
   db.SELECT(userInfoQuery, [], (result) => {
@@ -422,6 +442,8 @@ app.post("/init/user", function(req, res){
         contact: result[0].contact,
         user_id: result[0].id,
         nick_name: result[0].nick_name,
+        age: result[0].age,
+        gender: result[0].gender,
         profile_photo_url: result[0].profile_photo_url,
         stateApp: AppKeys.STATE_APP_MAIN,
         // iamport_IMP: process.env.IAMPORT_IMP,
@@ -569,6 +591,186 @@ app.post('/token/uuid', function(req, res){
 //token END
 
 //phone certify check START
+
+app.post("/any/call/certify/number", function(req, res){
+
+  const contact = req.body.data.contact;
+  
+
+  // return res.json({});
+  //6자리수 생성
+  let randVal = '';
+  for(i = 0 ; i < 6 ; i++){
+    randVal += String(util.getRandomNumber(0, 9));
+  }
+
+  // console.log("SAVE!");
+  // console.log(contact);
+
+  
+
+  db_redis.save(contact, randVal, phoneRandNumExpire, function(_result){
+    if(_result.state === 'success'){
+      //레디스 저장 성공
+      //console.log('redis success');
+
+      // console.log(_result);
+      // return res.json({
+      //   result:{
+      //     state: res_state.success,
+      //     waitSec: _result.expire
+      //   }
+      // })
+
+      console.log(randVal);
+      return res.json({
+        result:{
+            state: res_state.success,
+            waitSec: _result.expire
+        }
+      })
+
+      /*
+      let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
+      Global_Func.sendSMS(contact, content, (result) => {
+          // console.log(result);
+          if(result.status === '200'){
+              return res.json({
+                  result:{
+                      state: res_state.success,
+                      waitSec: _result.expire
+                  }
+              })
+          }else{
+              return res.json({
+                  state: 'error',
+                  message: '인증번호 전송 오류',
+                  result:{
+                  }
+              })
+          }
+      })
+      */
+      
+    }
+    else{
+      //레디스 저장 실패
+      //console.log('redis fail');
+      return res.json({
+          result:{
+              state: 'error',
+              message: '레디스 저장 실패'
+          }
+      })
+    }
+  });
+
+  /*
+  db_redis.save(contact, randVal, phoneRandNumExpire, function(_result){
+    if(_result.state === 'success'){
+      //레디스 저장 성공
+      //console.log('redis success');
+
+      // console.log(_result);
+      // return res.json({
+      //     waitSec: _result.expire
+      //     // ..._result
+      // })
+
+      //test//
+      db_redis.load(contact, function(result_load){
+          console.log(result_load);
+      })
+      ///////
+
+      // let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요." 
+      // this.sendSMS(contact, content, (result) => {
+      //     // console.log(result);
+      //     if(result.status === '200'){
+      //         res.json({
+      //             // result:{
+      //             //     state: 'success'
+      //             // }
+      //             waitSec: _result.expire
+      //         })
+      //     }else{
+      //         res.json({
+      //             state: 'error',
+      //             message: '인증번호 전송 오류',
+      //             result:{
+      //             }
+      //         })
+      //     }
+      // })
+
+      
+    }
+    else{
+      //레디스 저장 실패
+      //console.log('redis fail');
+      return res.json({
+          result:{
+              state: 'error',
+              message: '레디스 저장 실패'
+          }
+      })
+    }
+  });
+  */
+});
+
+app.post('/any/call/certify/confirm', function(req, res){
+
+  const contact = req.body.data.contact;
+  const certify_number = req.body.data.certify_number;
+
+  // console.log(contact);
+  // console.log(certify_number);
+
+  db_redis.load(contact, function(_result){
+
+      // console.log(_result);
+      // return res.json({
+      //   _result
+      // })
+      if(_result.state === 'error'){
+          //console.log('없음!!');
+          if(_result.error === 'noData'){
+            return res.json({
+                state: 'error',
+                message: '인증시간이 지났습니다.'
+            });
+          }
+          else{
+            return res.json({
+                state: 'error',
+                message: '알 수 없는 에러'
+            });
+          }
+      }
+      else if(_result.data === certify_number){
+          //console.log('일치!!');
+          return res.json({
+            result: {
+              state: res_state.success,
+
+            }
+              // state: 'success',
+              // phone: req.body.phone
+          });
+      }
+      else{
+          //console.log('불일치!!');
+            return res.json({
+            state: 'error',
+            message: '인증번호가 다릅니다.',
+            result: {}
+          });
+      }
+  });
+});
+
+/*
 app.post("/call/certify/number", function(req, res){
   _jwt.READ(req.body.token_uuid, function(result){
     if(result.state === 'success'){
@@ -604,7 +806,9 @@ app.post("/call/certify/number", function(req, res){
     }
   })
 });
+*/
 
+/*
 app.post('/call/certify/confirm', function(req, res){
   new Promise(function(resolve, reject){
     _jwt.READ(req.body.token_uuid, function(result){
@@ -663,8 +867,10 @@ app.post('/call/certify/confirm', function(req, res){
     })
   });
 });
+*/
 //phone certify check END
 //phone check sms START
+/*
 app.post("/sms/send", function(req, res){
   axios({
     headers: 
@@ -691,22 +897,24 @@ app.post("/sms/send", function(req, res){
   });
   return res.send({aaa:'aaa'});
 });
+*/
 
-app.post('/email/send', function(req, res){
-  const msg = {
-    to: 'bogame@crowdticket.kr',
-    from: 'contact@crowdticket.kr',
-    subject: '새로운 서버에서 이메일 테스트입니다',
-    text: '본문 내용',
-    html: '<strong>이거슨 HTML!!</strong>',
-  };
-  sgMail.send(msg);
+app.post('/any/email/send', function(req, res){
+  // const msg = {
+  //   to: 'bogame@naver.com',
+  //   from: '크라우드티켓<contact@crowdticket.kr>',
+  //   subject: '새로운 서버에서 이메일 테스트입니다',
+  //   text: '본문 내용',
+  //   html: '<strong>이거슨 HTML!!</strong>',
+  // };
+  // sgMail.send(msg);
 
-  return res.send({aaa:'bbb'});
+  // return res.send({aaa:'bbb'});
 });
 //phone check sms END
 
 //redis 세션관리
+// var client = redis.createClient(process.env.REDIS_PORT, process.env.REDIS_URL);
 //var client = redis.createClient(process.env.REDIS_PORT, process.env.REDIS_URL);
 //console.log('redis client : ' + JSON.stringify(client));
 /*
@@ -1138,86 +1346,14 @@ app.get('/any/healthcheck', function(req, res)
 	res.end();
 });
 
-/*
-app.post('/login/web', function(req, res){
-  var userEmail = req.body.user_id;
-
-  const saltRounds = 10 ;   
-  const myPlaintextPassword = req.body.user_password;   
-  const someOtherPlaintextPassword = ' not_bacon ' ;
-
-  db.SELECT("SELECT * FROM users WHERE email = '"+userEmail+"'", function(result){
-      //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
-      var data = {
-        state : 'error',
-        message : 'none'
-      };
-      
-      if(result.length <= 0)
-      {
-        console.log('아이디 없음!!');
-        data.state = 'error';
-        data.message = '아이디가 존재하지 않습니다.';
-
-        return res.send(data);
-      }
-
-      var user = result[0];
-
-      var finalNodeGeneratedHash = user.password;
-      if(finalNodeGeneratedHash.indexOf('$2y$') === 0)
-      {
-        finalNodeGeneratedHash = finalNodeGeneratedHash.replace('$2y$', '$2b$');
-      }
-
-      bcrypt.compare(myPlaintextPassword, finalNodeGeneratedHash, function(error, result){
-        if(result){
-          console.log('로그인 성공! in result');
-          jwt.sign({
-            id: user.id,
-            email: user.email
-          }, 
-          process.env.TOKEN_SECRET, 
-          { 
-            expiresIn: exprieTimeMS+'ms',
-            issuer: process.env.JWT_TOKEN_ISSUER,
-            subject: 'userWebAccess'
-          }, function(err, token){
-            if (err) 
-            {
-              console.log('jwt error : ' + err);
-              data.state = 'error';
-              data.message = err;
-
-              return res.send(data);
-            }
-            else
-            {
-              console.log('access token:'+token);
-              data.state = 'success';
-              data.access_token = token;
-              data.expiresIn = exprieTimeMS;
-              return res.send(data);
-            }            
-          });
-        }
-        else{
-          console.log('비번 틀림!!');
-          data.state = 'error';
-          data.message = '비밀번호가 틀렸습니다.';
-          return res.send(data);
-        }
-      });
-  });
-});
-
-*/
 app.post('/any/login', function(req, res){
+  /*
   var userEmail = req.body.data.user_email;
   // var userPassword = req.body.data.user_p;
   const saltRounds = 10 ;   
   const myPlaintextPassword = req.body.data.user_p;   
   const someOtherPlaintextPassword = ' not_bacon ' ;
+  console.log(myPlaintextPassword);
 
   db.SELECT("SELECT * FROM users WHERE email = BINARY(?)", [userEmail], function(result){
       //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
@@ -1250,7 +1386,7 @@ app.post('/any/login', function(req, res){
       }
 
       bcrypt.compare(myPlaintextPassword, finalNodeGeneratedHash, function(error, result){
-        
+        console.log(result);
         if(result){
           jwt.sign({
             id: user.id,
@@ -1282,7 +1418,6 @@ app.post('/any/login', function(req, res){
             {
               data.state = 'success';
               data.refresh_token = token;
-              // return res.send(data);
 
               //insert db start
               var date = moment().format('YYYY-MM-DD HH:mm:ss');
@@ -1290,57 +1425,28 @@ app.post('/any/login', function(req, res){
               var refreshTokenObject = {
                 user_id : user.id,
                 refresh_token : token,
-                device : 'deviceinfo',
+                os : 'deviceinfo',
                 created_at : date,
                 updated_at: date
               };
 
               
-              db.INSERT("INSERT INTO refresh_tokens SET ? ", refreshTokenObject, function(result){
+              db.INSERT("INSERT INTO devices SET ? ", refreshTokenObject, function(result){
                 // console.log(result);
-
                 makeAccessToken(user.id, data, res);
-                /*
-                _jwt.CREATE(jwtType.TYPE_JWT_ACCESS_TOKEN, 
-                  {
-                    id: user.id,
-                    type: jwtType.TYPE_JWT_ACCESS_TOKEN
-                  }, 
-                '3m', function(value){
-                  if(value.state === 'error'){
-                    res.json({
-                      result: {
-                        state: 'error',
-                        message: value.message
-                      }
-                    })
-                  }else{
-                    console.log('정상발급!!');
-                    res.json({
-                      result: {
-                        ...data,
-                        access_token: value.token
-                      }
-                    });
-                  }
-                });
-                */
+              }, (error) => {
+                return res.json({
+                  state: res_state.error,
+                  message: error,
+                  result:{}
+                })
               });
-              //insert db end
-
-              // return res.json({
-              //   result: {
-              //     ...data
-              //   }
-              // });
             }            
           });
         }
         else{
-          // console.log('비번 틀림!!');
           data.state = 'error';
           data.message = '비밀번호가 틀렸습니다.';
-          // return res.send(data);
           return res.json({
             result: {
               ...data
@@ -1349,6 +1455,7 @@ app.post('/any/login', function(req, res){
         }
       });
   });
+  */
 });
 
 app.post('/login/access', function(req, res){
@@ -1438,6 +1545,355 @@ app.post('/init/web', function (req, res) {
   });
 });
 
+app.post("/any/check/email/sns", function(req, res){
+
+  //현재 문제: 이메일이 다를경우 
+  const sns_email = req.body.data.sns_email;
+  const sns_type = req.body.data.sns_type;
+  const sns_id = req.body.data.sns_id;
+  const isOtherSnsLogin = req.body.data.isOtherSnsLogin;
+
+  let queryString = "SELECT email, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact FROM users WHERE ";
+  if(sns_type === Types.login.facebook){
+    queryString += "facebook_id=?";
+    // queryUser = mysql.format("SELECT email, id, nick_name, name, age, gender, contact FROM users WHERE facebook_id=?", sns_id);
+  }else if(sns_type === Types.login.google){
+    queryString += "google_id=?";
+    // queryUser = mysql.format("SELECT email, id, nick_name, name, age, gender, contact FROM users WHERE google_id=?", sns_id);
+  }else if(sns_type === Types.login.kakao){
+    queryString += "kakao_id=?";
+    // queryUser = mysql.format("SELECT email, id, nick_name, name, age, gender, contact FROM users WHERE kakao_id=?", sns_id);
+  }else if(sns_type === Types.login.apple){
+    queryString += "apple_id=?";
+    // queryUser = mysql.format("SELECT email, id, nick_name, name, age, gender, contact FROM users WHERE apple_id=?", sns_id);
+  }
+
+  let queryUser = mysql.format(queryString, [sns_id]);
+
+  db.SELECT(queryUser, {}, (result) => {
+    // console.log(result);
+    if(result.length === 0){
+      //sns_id는 없는데, email은 있을 수 있음.
+      if(sns_email === null){
+        return res.json({
+          result:{
+            state: res_state.login_no_user
+          }
+        })
+      }
+
+      //sns_email 이 널이 아니면 검색 한번 해본다.
+      let queryUserEmail = mysql.format("SELECT email, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact FROM users WHERE email=?", [sns_email]);
+
+      db.SELECT(queryUserEmail, {}, (result_select_user_email) => {
+        if(result_select_user_email.length === 0){
+          return res.json({
+            result:{
+              state: res_state.login_no_user
+            }
+          })
+        }
+
+        const userData = result_select_user_email[0];
+
+        let _state = Types.res.RES_SUCCESS;
+        if(isOtherSnsLogin){
+          return res.json({
+            result:{
+              state: _state,
+              ...userData
+            }
+          })
+        }
+        
+        if(sns_type === Types.login.facebook){
+          if(userData.google_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_GOOGLE;
+          }else if(userData.kakao_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_KAKAO;
+          }else if(userData.apple_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_APPLE;
+          }
+        }else if(sns_type === Types.login.google){
+          if(userData.facebook_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_FACEBOOK;
+          }else if(userData.kakao_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_KAKAO;
+          }else if(userData.apple_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_APPLE;
+          }
+        }else if(sns_type === Types.login.kakao){
+          if(userData.facebook_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_FACEBOOK;
+          }else if(userData.google_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_GOOGLE;
+          }else if(userData.apple_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_APPLE;
+          }
+        }else if(sns_type === Types.login.apple){
+          // db_sns_id = userData.apple_id;
+          if(userData.facebook_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_FACEBOOK;
+          }else if(userData.google_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_GOOGLE;
+          }else if(userData.kakao_id != null){
+            _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_KAKAO;
+          }
+        }
+
+        return res.json({
+          result:{
+            state: _state,
+            ...userData
+          }
+        })
+      });
+
+      return;
+    }
+
+    const userData = result[0];
+
+    
+    // let db_sns_id = null;
+    let _state = Types.res.RES_SUCCESS;
+    if(isOtherSnsLogin){
+      return res.json({
+        result:{
+          state: _state,
+          ...userData
+        }
+      })
+    }
+
+    if(sns_type === Types.login.facebook){
+      if(userData.google_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_GOOGLE;
+      }else if(userData.kakao_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_KAKAO;
+      }else if(userData.apple_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_APPLE;
+      }
+    }else if(sns_type === Types.login.google){
+      if(userData.facebook_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_FACEBOOK;
+      }else if(userData.kakao_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_KAKAO;
+      }else if(userData.apple_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_APPLE;
+      }
+    }else if(sns_type === Types.login.kakao){
+      if(userData.facebook_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_FACEBOOK;
+      }else if(userData.google_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_GOOGLE;
+      }else if(userData.apple_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_APPLE;
+      }
+    }else if(sns_type === Types.login.apple){
+      // db_sns_id = userData.apple_id;
+      if(userData.facebook_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_FACEBOOK;
+      }else if(userData.google_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_GOOGLE;
+      }else if(userData.kakao_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_KAKAO;
+      }
+    }
+    
+
+    return res.json({
+      result:{
+        state: _state,
+        ...userData
+      }
+    })
+  })
+  
+  /*
+  //현재 문제: 이메일이 다를경우 
+  const sns_email = req.body.data.sns_email;
+  const sns_type = req.body.data.sns_type;
+  const sns_id = req.body.data.sns_id;
+
+  let queryUser = "";
+  if(sns_email === null || sns_email === undefined || sns_email === ""){
+    if(sns_type === Types.login.facebook){
+      queryUser = mysql.format("SELECT email, id, nick_name, name, age, gender, contact FROM users WHERE facebook_id=?", sns_id);
+    }else if(sns_type === Types.login.google){
+      queryUser = mysql.format("SELECT email, id, nick_name, name, age, gender, contact FROM users WHERE google_id=?", sns_id);
+    }else if(sns_type === Types.login.kakao){
+      queryUser = mysql.format("SELECT email, id, nick_name, name, age, gender, contact FROM users WHERE kakao_id=?", sns_id);
+    }else if(sns_type === Types.login.apple){
+      queryUser = mysql.format("SELECT email, id, nick_name, name, age, gender, contact FROM users WHERE apple_id=?", sns_id);
+    }
+  }else{
+    queryUser = mysql.format("SELECT email, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact FROM users WHERE email=?", sns_email);
+  }
+
+  db.SELECT(queryUser, {}, (result) => {
+    console.log(result);
+    if(result.length === 0){
+      return res.json({
+        result:{
+          state: res_state.login_no_user
+        }
+      })
+    }
+
+    const userData = result[0];
+    // let db_sns_id = null;
+    let _state = Types.res.RES_SUCCESS;
+    if(sns_type === Types.login.facebook){
+      if(userData.google_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_GOOGLE;
+      }else if(userData.kakao_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_KAKAO;
+      }else if(userData.apple_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_APPLE;
+      }
+    }else if(sns_type === Types.login.google){
+      if(userData.facebook_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_FACEBOOK;
+      }else if(userData.kakao_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_KAKAO;
+      }else if(userData.apple_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_APPLE;
+      }
+    }else if(sns_type === Types.login.kakao){
+      if(userData.facebook_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_FACEBOOK;
+      }else if(userData.google_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_GOOGLE;
+      }else if(userData.apple_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_APPLE;
+      }
+    }else if(sns_type === Types.login.apple){
+      // db_sns_id = userData.apple_id;
+      if(userData.facebook_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_FACEBOOK;
+      }else if(userData.google_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_GOOGLE;
+      }else if(userData.kakao_id != null){
+        _state = Types.res.RES_SUCCESS_LOGIN_SNS_ALREADY_KAKAO;
+      }
+    }
+
+    return res.json({
+      result:{
+        state: _state,
+        ...userData
+      }
+    })
+  })
+
+  */
+});
+app.post('/any/login/sns', function(req, res){
+  var userEmail = req.body.data.sns_email;
+  // var userPassword = req.body.data.user_p;
+  // const saltRounds = 10 ;   
+  // const myPlaintextPassword = req.body.data.user_p;   
+  // const someOtherPlaintextPassword = ' not_bacon ' ;
+
+  // type === kakao
+/*
+  db.SELECT("SELECT * FROM users WHERE email = BINARY(?)", [userEmail], function(result){
+      //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
+      
+      var data = {
+        state : 'error',
+        message : 'none'
+      };
+      
+      if(result.length <= 0)
+      {
+        // console.log('아이디 없음!!');
+        data.state = 'error';
+        data.message = '아이디가 존재하지 않습니다.';
+
+        // return res.send(data);
+        return res.json({
+          result: {
+            ...data
+          }
+        })
+      }
+
+      var user = result[0];
+
+      var finalNodeGeneratedHash = user.password;
+      if(finalNodeGeneratedHash.indexOf('$2y$') === 0)
+      {
+        finalNodeGeneratedHash = finalNodeGeneratedHash.replace('$2y$', '$2b$');
+      }
+
+      bcrypt.compare(myPlaintextPassword, finalNodeGeneratedHash, function(error, result){
+        
+        if(result){
+          jwt.sign({
+            id: user.id,
+            type: jwtType.TYPE_JWT_REFRESH_TOKEN
+            // email: user.email
+          }, 
+          process.env.TOKEN_SECRET, 
+          { 
+            // expiresIn: '60m',
+            expiresIn: EXPIRE_REFRESH_TOKEN,
+            issuer: process.env.JWT_TOKEN_ISSUER,
+            //issuer: 'localhost:8000',
+            subject: 'userRefresh'
+          }, function(err, token){
+            if (err) 
+            {
+              // console.log('jwt error : ' + err);
+              data.state = 'error';
+              data.message = err;
+
+              //return res.send(data);
+              return res.json({
+                result: {
+                  ...data
+                }
+              })
+            }
+            else
+            {
+              data.state = 'success';
+              data.refresh_token = token;
+
+              //insert db start
+              var date = moment().format('YYYY-MM-DD HH:mm:ss');
+
+              var refreshTokenObject = {
+                user_id : user.id,
+                refresh_token : token,
+                device : 'deviceinfo',
+                created_at : date,
+                updated_at: date
+              };
+
+              
+              db.INSERT("INSERT INTO devices SET ? ", refreshTokenObject, function(result){
+                // console.log(result);
+                makeAccessToken(user.id, data, res);
+              });
+            }            
+          });
+        }
+        else{
+          data.state = 'error';
+          data.message = '비밀번호가 틀렸습니다.';
+          return res.json({
+            result: {
+              ...data
+            }
+          });
+        }
+      });
+  });
+  */
+});
 
 cron.schedule('* * * * *', function(){
   console.log('node-cron 실행 테스트');
@@ -1447,9 +1903,6 @@ cron.schedule('* * * * *', function(){
 //   console.log('running every minute 1, 2, 4 and 5');
 // });
 
-
-
-
 // app.listen(3000, function () {
 //   console.log('Example app listening on port 3000!');
 // });
@@ -1457,149 +1910,3 @@ cron.schedule('* * * * *', function(){
 app.listen(3000, "0.0.0.0", function () {
   console.log('Example app listening on port 3000!');
 })
-
-/*
-var http = require('http');
-var fs = require('fs');
-var url = require('url');
-var qs = require('querystring');
-var template = require('./lib/template.js');
-var path = require('path');
-var sanitizeHtml = require('sanitize-html');
-
-var app = http.createServer(function(request,response){
-    var _url = request.url;
-    var queryData = url.parse(_url, true).query;
-    var pathname = url.parse(_url, true).pathname;
-    if(pathname === '/'){
-      if(queryData.id === undefined){
-        fs.readdir('./data', function(error, filelist){
-          var title = 'Welcome';
-          var description = 'Hello, Node.js';
-          var list = template.list(filelist);
-          var html = template.HTML(title, list,
-            `<h2>${title}</h2>${description}`,
-            `<a href="/create">create</a>`
-          );
-          response.writeHead(200);
-          response.end(html);
-        });
-      } else {
-        fs.readdir('./data', function(error, filelist){
-          var filteredId = path.parse(queryData.id).base;
-          fs.readFile(`data/${filteredId}`, 'utf8', function(err, description){
-            var title = queryData.id;
-            var sanitizedTitle = sanitizeHtml(title);
-            var sanitizedDescription = sanitizeHtml(description, {
-              allowedTags:['h1']
-            });
-            var list = template.list(filelist);
-            var html = template.HTML(sanitizedTitle, list,
-              `<h2>${sanitizedTitle}</h2>${sanitizedDescription}`,
-              ` <a href="/create">create</a>
-                <a href="/update?id=${sanitizedTitle}">update</a>
-                <form action="delete_process" method="post">
-                  <input type="hidden" name="id" value="${sanitizedTitle}">
-                  <input type="submit" value="delete">
-                </form>`
-            );
-            response.writeHead(200);
-            response.end(html);
-          });
-        });
-      }
-    } else if(pathname === '/create'){
-      fs.readdir('./data', function(error, filelist){
-        var title = 'WEB - create';
-        var list = template.list(filelist);
-        var html = template.HTML(title, list, `
-          <form action="/create_process" method="post">
-            <p><input type="text" name="title" placeholder="title"></p>
-            <p>
-              <textarea name="description" placeholder="description"></textarea>
-            </p>
-            <p>
-              <input type="submit">
-            </p>
-          </form>
-        `, '');
-        response.writeHead(200);
-        response.end(html);
-      });
-    } else if(pathname === '/create_process'){
-      var body = '';
-      request.on('data', function(data){
-          body = body + data;
-      });
-      request.on('end', function(){
-          var post = qs.parse(body);
-          var title = post.title;
-          var description = post.description;
-          fs.writeFile(`data/${title}`, description, 'utf8', function(err){
-            response.writeHead(302, {Location: `/?id=${title}`});
-            response.end();
-          })
-      });
-    } else if(pathname === '/update'){
-      fs.readdir('./data', function(error, filelist){
-        var filteredId = path.parse(queryData.id).base;
-        fs.readFile(`data/${filteredId}`, 'utf8', function(err, description){
-          var title = queryData.id;
-          var list = template.list(filelist);
-          var html = template.HTML(title, list,
-            `
-            <form action="/update_process" method="post">
-              <input type="hidden" name="id" value="${title}">
-              <p><input type="text" name="title" placeholder="title" value="${title}"></p>
-              <p>
-                <textarea name="description" placeholder="description">${description}</textarea>
-              </p>
-              <p>
-                <input type="submit">
-              </p>
-            </form>
-            `,
-            `<a href="/create">create</a> <a href="/update?id=${title}">update</a>`
-          );
-          response.writeHead(200);
-          response.end(html);
-        });
-      });
-    } else if(pathname === '/update_process'){
-      var body = '';
-      request.on('data', function(data){
-          body = body + data;
-      });
-      request.on('end', function(){
-          var post = qs.parse(body);
-          var id = post.id;
-          var title = post.title;
-          var description = post.description;
-          fs.rename(`data/${id}`, `data/${title}`, function(error){
-            fs.writeFile(`data/${title}`, description, 'utf8', function(err){
-              response.writeHead(302, {Location: `/?id=${title}`});
-              response.end();
-            })
-          });
-      });
-    } else if(pathname === '/delete_process'){
-      var body = '';
-      request.on('data', function(data){
-          body = body + data;
-      });
-      request.on('end', function(){
-          var post = qs.parse(body);
-          var id = post.id;
-          var filteredId = path.parse(id).base;
-          fs.unlink(`data/${filteredId}`, function(error){
-            response.writeHead(302, {Location: `/`});
-            response.end();
-          })
-      });
-    } else {
-      response.writeHead(404);
-      response.end('Not found');
-    }
-});
-app.listen(3000);
-*/

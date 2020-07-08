@@ -93,6 +93,8 @@ router.post('/wait/order', function(req, res){
             result: {
             }
           });
+        }, (error) => {
+            
         });
         */
         // return;

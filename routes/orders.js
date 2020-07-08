@@ -581,6 +581,13 @@ router.post("/get/wait/orderdata", function(req, res){
             result: {
             }
           });
+        }, (error) => {
+            return res.json({
+              state: res_state.error,
+              message: error,
+              result: {
+              } 
+            })
         });
         
         return;
@@ -655,6 +662,12 @@ router.post("/attended", function(req, res){
       result:{
         state: res_state.success
       }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: error,
+      result: {}
     })
   })
 });

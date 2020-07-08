@@ -187,7 +187,7 @@ router.post("/img/profile/save", function(req, res){
 
   const user_id = req.body.data.user_id;
 
-  let query_user = mysql.format("SELECT profile_photo_s3_type, id AS user_id FROM users WHERE id=?", user_id);
+  let query_user = mysql.format("SELECT profile_photo_s3_key, id AS user_id FROM users WHERE id=?", user_id);
   db.SELECT(query_user, {}, (result_select_user) => {
     if(result_select_user.length === 0){
       return res.json({
@@ -200,7 +200,7 @@ router.post("/img/profile/save", function(req, res){
 
     const userData = result_select_user[0];
 
-    if(userData.profile_photo_s3_type === null){
+    if(userData.profile_photo_s3_key === null){
       //null이면 아직 없음. //바로 save
 
       saveImageS3(user_id, req.body.data.contentType, req.body.data.imageBinary, function(result_s3){
@@ -218,22 +218,28 @@ router.post("/img/profile/save", function(req, res){
         let _data = {
           user_id: userData.user_id,
           profile_photo_url: result_s3.Location,
-          profile_photo_s3_type: result_s3.key
+          profile_photo_s3_key: result_s3.key
         }
         
-        db.UPDATE("UPDATE users AS user SET profile_photo_url=?, profile_photo_s3_type=? WHERE user.id=?;", [_data.profile_photo_url, _data.profile_photo_s3_type, _data.user_id], function(result_update_user){
+        db.UPDATE("UPDATE users AS user SET profile_photo_url=?, profile_photo_s3_key=? WHERE user.id=?;", [_data.profile_photo_url, _data.profile_photo_s3_key, _data.user_id], function(result_update_user){
           return res.json({
             result:{
               state: res_state.success,
               profile_photo_url: _data.profile_photo_url
             }
           })
+        }, (error) => {
+          return res.json({
+            state: res_state.error,
+            message: error,
+            result:{}
+          })
         });
       })
     }else{
       //delete 후 save
 
-      removeImageS3(userData.profile_photo_s3_type, function(result_removeS3){
+      removeImageS3(userData.profile_photo_s3_key, function(result_removeS3){
         if(result_removeS3.state === 'error'){
           return res.json({
             state: res_state.error,
@@ -256,15 +262,21 @@ router.post("/img/profile/save", function(req, res){
           let _data = {
             user_id: userData.user_id,
             profile_photo_url: result_s3.Location,
-            profile_photo_s3_type: result_s3.key
+            profile_photo_s3_key: result_s3.key
           }
           
-          db.UPDATE("UPDATE users AS user SET profile_photo_url=?, profile_photo_s3_type=? WHERE user.id=?;", [_data.profile_photo_url, _data.profile_photo_s3_type, _data.user_id], function(result_update_user){
+          db.UPDATE("UPDATE users AS user SET profile_photo_url=?, profile_photo_s3_key=? WHERE user.id=?;", [_data.profile_photo_url, _data.profile_photo_s3_key, _data.user_id], function(result_update_user){
             return res.json({
               result:{
                 state: res_state.success,
                 profile_photo_url: _data.profile_photo_url
               }
+            })
+          }, (error) => {
+            return res.json({
+              state: res_state.error,
+              message: error,
+              result:{}
             })
           });
         })
