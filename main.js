@@ -413,8 +413,8 @@ app.use('/find', find);
 let routerPassword = require('./routes/password');
 app.use('/password', routerPassword);
 
-let routerPush = require('./routes/push');
-app.use('/push', routerPush);
+let routerNotice = require('./routes/notice');
+app.use('/notice', routerNotice);
 
 app.post("/init/user", function(req, res){
   let userInfoQuery = "SELECT age, gender, email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
