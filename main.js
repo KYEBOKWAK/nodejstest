@@ -416,6 +416,9 @@ app.use('/password', routerPassword);
 let routerNotice = require('./routes/notice');
 app.use('/notice', routerNotice);
 
+let routerRooms = require('./routes/rooms');
+app.use('/rooms', routerRooms);
+
 app.post("/init/user", function(req, res){
   let userInfoQuery = "SELECT age, gender, email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
   // console.log(req.body.data);
