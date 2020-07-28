@@ -1906,10 +1906,10 @@ cron.schedule('* * * * *', function(){
 //   console.log('running every minute 1, 2, 4 and 5');
 // });
 
-// app.listen(3000, function () {
-//   console.log('Example app listening on port 3000!');
-// });
-
-app.listen(3000, "0.0.0.0", function () {
+app.listen(3000, function () {
   console.log('Example app listening on port 3000!');
-})
+});
+
+// app.listen(3000, "0.0.0.0", function () {
+//   console.log('Example app listening on port 3000!');
+// })

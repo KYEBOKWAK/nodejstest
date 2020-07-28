@@ -737,7 +737,7 @@ router.post("/order/count", function(req, res){
 
   // let queryOrder = mysql.format("SELECT COUNT(_order.id) AS order_count FROM orders AS _order LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN tickets AS ticket ON _order.ticket_id=ticket.id WHERE _order.user_id=? AND _order.ticket_id IS NOT NULL AND ticket.show_date <> ? AND (_order.state=? OR _order.state=?) GROUP BY _order.id ORDER BY ticket.show_date ASC", [user_id, '0000-00-00 00:00:00', types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_APP_PAY_COMPLITE]);
 
-  let queryOrder = mysql.format("SELECT _order.id, project.title, ticket.show_date FROM orders AS _order LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN tickets AS ticket ON _order.ticket_id=ticket.id WHERE _order.user_id=? AND _order.ticket_id IS NOT NULL AND ticket.show_date <> ? AND (_order.state=? OR _order.state=?) GROUP BY _order.id ORDER BY ticket.show_date ASC", [user_id, '0000-00-00 00:00:00', types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_APP_PAY_COMPLITE]);
+  let queryOrder = mysql.format("SELECT _order.id, project.title, ticket.show_date, _order.project_id FROM orders AS _order LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN tickets AS ticket ON _order.ticket_id=ticket.id WHERE _order.user_id=? AND _order.ticket_id IS NOT NULL AND ticket.show_date <> ? AND (_order.state=? OR _order.state=?) GROUP BY _order.id ORDER BY ticket.show_date ASC", [user_id, '0000-00-00 00:00:00', types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_APP_PAY_COMPLITE]);
 
   db.SELECT(queryOrder, {}, (result_select_order) => {
     let _orders = [];

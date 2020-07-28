@@ -468,23 +468,27 @@ router.post("/order/edit", function(req, res){
   let orderQuery = "";
   //할인정보가 있으면 orderQuery 에 같이 요청
   if(_data.discount_id !== null){
-    orderQuery = "SELECT _order.id AS _order_id, discount.id AS discount_id, _order.merchant_uid, _order.discount_id AS order_discount_id, _order.total_price, _order.user_id, _order.project_id, _order.ticket_id, percent_value, _order.count, _order.price, _order.goods_meta, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN discounts AS discount ON discount.id=? LEFT JOIN supporters AS supporter ON supporter.order_id=_order.id WHERE _order.id=?;";
+    // orderQuery = "SELECT _order.id AS _order_id, discount.id AS discount_id, _order.merchant_uid, _order.discount_id AS order_discount_id, _order.total_price, _order.user_id, _order.project_id, _order.ticket_id, percent_value, _order.count, _order.price, _order.goods_meta, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN discounts AS discount ON discount.id=? LEFT JOIN supporters AS supporter ON supporter.order_id=_order.id WHERE _order.id=?;";
+
+    orderQuery = "SELECT _order.id AS _order_id, discount.id AS discount_id, _order.merchant_uid, _order.discount_id AS order_discount_id, _order.total_price, _order.user_id, _order.project_id, _order.ticket_id, percent_value, _order.count, _order.price, _order.goods_meta, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN discounts AS discount ON discount.id=? LEFT JOIN supporters AS supporter ON supporter.id=_order.supporter_id WHERE _order.id=?;";
+
     order_goods_query = "SELECT _goods.ticket_discount, count, price, order_goods.id AS order_goods_id FROM orders_goods AS order_goods LEFT JOIN goods AS _goods ON order_goods.goods_id=_goods.id WHERE order_goods.order_id=?;"
-    // order_goods_query = "SELECT * FROM orders_goods AS order_goods WHERE order_goods.order_id=?;"
-    // orderQuery = "SELECT _order.id AS _order_id, discount.id AS discount_id, _order.discount_id AS order_discount_id, total_price, user_id, _order.project_id, ticket_id, percent_value, count, price, goods_meta FROM orders AS _order LEFT JOIN discounts AS discount ON discount.id=? LEFT JOIN orders_goods ON orders_goods. WHERE _order.id=?";
+    
     orderQuery = mysql.format(orderQuery,[_data.discount_id, _data.order_id]);
     order_goods_query = mysql.format(order_goods_query, _data.order_id);
 
     orderQuery = orderQuery + order_goods_query;
   }else{
-    orderQuery = "SELECT _order.id AS _order_id, total_price, _order.user_id, _order.project_id, _order.merchant_uid, _order.ticket_id, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN supporters AS supporter ON supporter.order_id=_order.id WHERE _order.id=?";
+    // orderQuery = "SELECT _order.id AS _order_id, total_price, _order.user_id, _order.project_id, _order.merchant_uid, _order.ticket_id, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN supporters AS supporter ON supporter.order_id=_order.id WHERE _order.id=?";
+    orderQuery = "SELECT _order.id AS _order_id, total_price, _order.user_id, _order.project_id, _order.merchant_uid, _order.ticket_id, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN supporters AS supporter ON supporter.id=_order.supporter_id WHERE _order.id=?";
+
     orderQuery = mysql.format(orderQuery, _data.order_id);
   }
   // let orderQuery = "SELECT id, total_price, user_id, project_id, ticket_id FROM orders WHERE id=?";
   // orderQuery = mysql.format(orderQuery, _data.order_id);
 
   db.SELECT_MULITPLEX(orderQuery, (result_order) => {
-    let _orderData = result_order[0];
+    
     if(result_order === undefined){
       return res.json({
         state: 'error',
@@ -493,6 +497,8 @@ router.post("/order/edit", function(req, res){
         }
       });
     }
+
+    let _orderData = result_order[0];
 
     //support price+discount가 total_price와 맞는지 비교한다.
     if(_data.discount_id !== null){
