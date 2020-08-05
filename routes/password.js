@@ -350,6 +350,9 @@ router.post("/any/find", function(req, res){
         }
         
         let querystring = hostname+"/password/any/reset/form?token="+value.token;
+
+        console.log("#### RESET PASSWORD ###");
+        console.log(querystring);
       
         let _html = 
         `

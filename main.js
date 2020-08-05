@@ -419,6 +419,9 @@ app.use('/notice', routerNotice);
 let routerRooms = require('./routes/rooms');
 app.use('/rooms', routerRooms);
 
+let chstUsers = require('./routes/chatusers');
+app.use('/chatusers', chstUsers);
+
 app.post("/init/user", function(req, res){
   let userInfoQuery = "SELECT age, gender, email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
   // console.log(req.body.data);
@@ -625,14 +628,15 @@ app.post("/any/call/certify/number", function(req, res){
       //   }
       // })
 
-      // console.log(randVal);
-      // return res.json({
-      //   result:{
-      //       state: res_state.success,
-      //       waitSec: _result.expire
-      //   }
-      // })
+      console.log(randVal);
+      return res.json({
+        result:{
+            state: res_state.success,
+            waitSec: _result.expire
+        }
+      })
 
+      /*
       
       let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
       Global_Func.sendSMS(contact, content, (result) => {
@@ -653,6 +657,7 @@ app.post("/any/call/certify/number", function(req, res){
               })
           }
       })
+      */
       
       
     }
@@ -1556,7 +1561,7 @@ app.post("/any/check/email/sns", function(req, res){
   const sns_id = req.body.data.sns_id;
   const isOtherSnsLogin = req.body.data.isOtherSnsLogin;
 
-  let queryString = "SELECT email, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact FROM users WHERE ";
+  let queryString = "SELECT email, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact, profile_photo_url FROM users WHERE ";
   if(sns_type === Types.login.facebook){
     queryString += "facebook_id=?";
     // queryUser = mysql.format("SELECT email, id, nick_name, name, age, gender, contact FROM users WHERE facebook_id=?", sns_id);
@@ -1586,7 +1591,7 @@ app.post("/any/check/email/sns", function(req, res){
       }
 
       //sns_email 이 널이 아니면 검색 한번 해본다.
-      let queryUserEmail = mysql.format("SELECT email, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact FROM users WHERE email=?", [sns_email]);
+      let queryUserEmail = mysql.format("SELECT email, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact, profile_photo_url FROM users WHERE email=?", [sns_email]);
 
       db.SELECT(queryUserEmail, {}, (result_select_user_email) => {
         if(result_select_user_email.length === 0){

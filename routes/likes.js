@@ -294,4 +294,30 @@ router.post("/cancel", function(req, res){
   */
 });
 
+router.post("/chatting", function(req, res){
+  const user_id = req.body.data.user_id;
+
+  let selectQuery = mysql.format("SELECT _like.user_id AS chat_user_id, room.id, room.id AS room_id, room.expire, room.target_id, room.room_name, project.title, project.poster_renew_url FROM likes AS _like LEFT JOIN rooms AS room ON _like.target_id=room.id LEFT JOIN projects AS project ON room.target_id=project.id LEFT JOIN chat_users AS chat_user ON chat_user.room_id=room.id AND chat_user.user_id=? WHERE _like.like_type=? AND _like.user_id=? AND room.target_type=?", [user_id, types.like.LIKE_CHAT, user_id, "project"]);
+
+  // let selectQuery = mysql.format("SELECT chat_user.id AS chat_user_id, room.id, room.id AS room_id, room.expire, target_id, room_name, project.title, project.poster_renew_url FROM rooms AS room LEFT JOIN orders AS _order ON room.target_id=_order.project_id LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN chat_users AS chat_user ON chat_user.user_id=_order.user_id AND chat_user.room_id=room.id WHERE _order.user_id=? AND (_order.state=? OR _order.state=? OR _order.state=? OR _order.state=? OR _order.state=?) GROUP BY room.id", [user_id, types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_PAY_NO_PAYMENT, types.order.ORDER_STATE_PAY_SCHEDULE, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_APP_PAY_IAMPORT_WEBHOOK_VERIFY_COMPLITE]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+    for(let i = 0 ; i < result.length ; i++){
+      result[i].room_title = result[i].title + " 오픈 채팅방";
+
+      // result[i].title = result[i].title + " 기간한정 채팅방";
+    }
+
+    // console.log(result);
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+
+  })
+});
+
 module.exports = router;
