@@ -617,49 +617,42 @@ app.post("/any/call/certify/number", function(req, res){
 
   db_redis.save(contact, randVal, phoneRandNumExpire, function(_result){
     if(_result.state === 'success'){
-      //레디스 저장 성공
-      //console.log('redis success');
-
-      // console.log(_result);
-      // return res.json({
-      //   result:{
-      //     state: res_state.success,
-      //     waitSec: _result.expire
-      //   }
-      // })
-
-      // console.log(randVal);
-      // return res.json({
-      //   result:{
-      //       state: res_state.success,
-      //       waitSec: _result.expire
-      //   }
-      // })
-
+      //레디스 저장 성공      
       
-      
-      let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
-      Global_Func.sendSMS(contact, content, (result) => {
-          // console.log(result);
-          if(result.status === '200'){
-              return res.json({
-                  result:{
-                      state: res_state.success,
-                      waitSec: _result.expire
-                  }
-              })
-          }else{
-              return res.json({
-                  state: 'error',
-                  message: '인증번호 전송 오류',
-                  result:{
-                  }
-              })
+      if(process.env.APP_TYPE === 'local'){
+        console.log(randVal);
+        return res.json({
+          result:{
+              state: res_state.success,
+              waitSec: _result.expire
           }
-      })
-      
-      
-      
+        })
+        // return res.json({
+        //   state: res_state.error,
+        //   message: "개발로컬에선 이렇게 옵니당 " + randVal,
+        //   result:{}
+        // })
+      }else{
+        let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
+        Global_Func.sendSMS(contact, content, (result) => {
+            // console.log(result);
+            if(result.status === '200'){
+                return res.json({
+                    result:{
+                        state: res_state.success,
+                        waitSec: _result.expire
+                    }
+                })
+            }else{
+                return res.json({
+                    state: 'error',
+                    message: '인증번호 전송 오류',
+                    result:{
+                    }
+                })
+            }
+        })
+      }
     }
     else{
       //레디스 저장 실패
@@ -1902,6 +1895,14 @@ app.post('/any/login/sns', function(req, res){
   });
   */
 });
+
+app.get("/any/sns/callback/apple", function(req, res){
+  return res.json({
+    result: {
+      state: res_state.success
+    }
+  })
+})
 
 cron.schedule('* * * * *', function(){
   console.log('node-cron 실행 테스트');
