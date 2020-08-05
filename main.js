@@ -628,15 +628,15 @@ app.post("/any/call/certify/number", function(req, res){
       //   }
       // })
 
-      console.log(randVal);
-      return res.json({
-        result:{
-            state: res_state.success,
-            waitSec: _result.expire
-        }
-      })
+      // console.log(randVal);
+      // return res.json({
+      //   result:{
+      //       state: res_state.success,
+      //       waitSec: _result.expire
+      //   }
+      // })
 
-      /*
+      
       
       let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
       Global_Func.sendSMS(contact, content, (result) => {
@@ -657,7 +657,7 @@ app.post("/any/call/certify/number", function(req, res){
               })
           }
       })
-      */
+      
       
       
     }
