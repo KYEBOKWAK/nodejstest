@@ -345,14 +345,19 @@ router.post("/any/find", function(req, res){
         })
       }else{  
         let hostname = req.headers.host;
-        if(hostname.indexOf("http://") === -1 || hostname.indexOf("https://") === -1){
-          hostname = "http://"+req.headers.host;
+        if(hostname.indexOf("http://") === -1 && hostname.indexOf("https://") === -1){
+          if(process.env.APP_TYPE === 'local'){
+            hostname = "http://"+req.headers.host;
+          }else{
+            hostname = "https://"+req.headers.host;
+          }
+          
         }
         
         let querystring = hostname+"/password/any/reset/form?token="+value.token;
 
-        console.log("#### RESET PASSWORD ###");
-        console.log(querystring);
+        // console.log("#### RESET PASSWORD ###");
+        // console.log(querystring);
       
         let _html = 
         `
