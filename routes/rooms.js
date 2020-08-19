@@ -74,6 +74,15 @@ router.post("/leave", function(req, res){
   const name = req.body.data.name;
   const room_name = req.body.data.room_name;
 
+  db.DELETE("DELETE FROM chat_users WHERE user_id=? AND room_id=?", [user_id, room_id], (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  })
+
+  /*
   axios.post(process.env.CROWDTICKET_CHATTING_SERVER_URL+"/message/leave", {
     room_name: room_name,
     name: name,
@@ -93,6 +102,7 @@ router.post("/leave", function(req, res){
   }).catch((error) => {
 
   })
+  */
 })
 
 router.post("/join", function(req, res){
@@ -135,6 +145,14 @@ router.post("/join", function(req, res){
             });
           }
 
+
+          return res.json({
+            result:{
+              state: res_state.success,
+              room_name: data.room_name
+            }
+          })
+          /*
           axios.post(process.env.CROWDTICKET_CHATTING_SERVER_URL+"/message/join", {
             room_name: data.room_name,
             name: name,
@@ -151,6 +169,7 @@ router.post("/join", function(req, res){
           }).catch((error) => {
 
           })
+          */
         })
       }else{
         //이미 채팅방에 들어가있음.

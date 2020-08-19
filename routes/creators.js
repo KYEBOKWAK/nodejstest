@@ -70,9 +70,6 @@ router.post("/search/crolling/channels", function(req, res){
     url: getURL
   })
   .then(function (response) {
-    // console.log(response.data);
-    // console.log("########");
-    // console.log(response.data);
     return res.json({
       result: {
         state: res_state.success,

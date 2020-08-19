@@ -422,6 +422,9 @@ app.use('/rooms', routerRooms);
 let chstUsers = require('./routes/chatusers');
 app.use('/chatusers', chstUsers);
 
+let routerMagazine = require('./routes/magazine');
+app.use('/magazine', routerMagazine);
+
 app.post("/init/user", function(req, res){
   let userInfoQuery = "SELECT age, gender, email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
   // console.log(req.body.data);
@@ -1584,7 +1587,7 @@ app.post("/any/check/email/sns", function(req, res){
       }
 
       //sns_email 이 널이 아니면 검색 한번 해본다.
-      let queryUserEmail = mysql.format("SELECT email, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact, profile_photo_url FROM users WHERE email=?", [sns_email]);
+      let queryUserEmail = mysql.format("SELECT email, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact, profile_photo_url FROM users WHERE email=BINARY(?)", [sns_email]);
 
       db.SELECT(queryUserEmail, {}, (result_select_user_email) => {
         if(result_select_user_email.length === 0){

@@ -47,7 +47,7 @@ router.post("/any/reset", function(req, res){
     if(result.state === 'success'){
       if(result.iss === process.env.JWT_TOKEN_ISSUER){
         const email = result.email;
-        let queryUser = mysql.format("SELECT id, email FROM users WHERE email=?", email);
+        let queryUser = mysql.format("SELECT id, email FROM users WHERE email=BINARY(?)", email);
         db.SELECT(queryUser, {}, (result_select_user) => {
           if(result_select_user.length === 0){
             return res.json({
@@ -70,7 +70,7 @@ router.post("/any/reset", function(req, res){
             }
 
             
-            db.UPDATE("UPDATE users SET password=? WHERE email=?", [convertToPhpHash, email], 
+            db.UPDATE("UPDATE users SET password=? WHERE email=BINARY(?)", [convertToPhpHash, email], 
             (result) => {
               return res.json({
                 state: res_state.success,
@@ -321,7 +321,7 @@ router.post("/any/find", function(req, res){
   // process.env.CROWDTICKET_WEB_API_URL
   let email = req.body.data.email;
 
-  let queryUser = mysql.format("SELECT id, email FROM users WHERE email=?", [email]);
+  let queryUser = mysql.format("SELECT id, email FROM users WHERE email=BINARY(?)", [email]);
   db.SELECT(queryUser, {}, (result_select_user) => {
     if(result_select_user.length === 0){
       return res.json({

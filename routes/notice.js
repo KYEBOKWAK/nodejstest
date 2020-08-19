@@ -19,20 +19,15 @@ const global = use('lib/global_const.js');
 const TAKE_NOTICE = 20; //공지 한번에 불러오는 양
 
 router.post("/get", function(req, res){
-  //target_id_data
   const lastNoticeID = req.body.data.lastNoticeID;
-//: string, : string, : string, target_id: number, target_id_data
   let queryNotice = "";
   if(lastNoticeID === 0){
     queryNotice = mysql.format("SELECT id, title, body, target_id_data, target_id, created_at, type_main, type_bottom, type_page FROM notices ORDER BY id DESC LIMIT ?", [TAKE_NOTICE]);
   }else{
     queryNotice = mysql.format("SELECT id, title, body, target_id_data, target_id, created_at, type_main, type_bottom, type_page FROM notices WHERE id<? ORDER BY id DESC LIMIT ?", [lastNoticeID, TAKE_NOTICE]);
   }
-  
-  // let queryNotice = mysql.format("SELECT id FROM notices ORDER BY id DESC LIMIT ?", [TAKE_NOTICE]);
 
   db.SELECT(queryNotice, {}, (result) => {
-    console.log(result);
     return res.json({
       result
     })

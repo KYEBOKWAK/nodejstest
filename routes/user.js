@@ -26,6 +26,7 @@ var validator = require("email-validator");
 // const axios = require('axios');
 // const Global_Func = use("lib/global_func.js");
 const sgMail = require('@sendgrid/mail');
+const { default: Axios } = require('axios');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const EXPIRE_REFRESH_TOKEN = '7d';
@@ -79,15 +80,15 @@ router.post("/any/info/update", function(req, res){
 
   let queryString = "";
   if(sns_type === types.login.facebook){
-    queryString = "UPDATE users SET age=?, gender=?, contact=?, facebook_id=? WHERE id=? AND email=?";
+    queryString = "UPDATE users SET age=?, gender=?, contact=?, facebook_id=? WHERE id=? AND email=BINARY(?)";
   }else if(sns_type === types.login.google){
-    queryString = "UPDATE users SET age=?, gender=?, contact=?, google_id=? WHERE id=? AND email=?";
+    queryString = "UPDATE users SET age=?, gender=?, contact=?, google_id=? WHERE id=? AND email=BINARY(?)";
   }else if(sns_type === types.login.kakao){
-    queryString = "UPDATE users SET age=?, gender=?, contact=?, kakao_id=? WHERE id=? AND email=?";
+    queryString = "UPDATE users SET age=?, gender=?, contact=?, kakao_id=? WHERE id=? AND email=BINARY(?)";
   }else if(sns_type === types.login.apple){
-    queryString = "UPDATE users SET age=?, gender=?, contact=?, apple_id=? WHERE id=? AND email=?";
+    queryString = "UPDATE users SET age=?, gender=?, contact=?, apple_id=? WHERE id=? AND email=BINARY(?)";
   }else{
-    queryString = "UPDATE users SET age=?, gender=?, contact=? WHERE id=? AND email=?";
+    queryString = "UPDATE users SET age=?, gender=?, contact=? WHERE id=? AND email=BINARY(?)";
   }
 
   if(sns_type === types.login.email){
@@ -853,7 +854,7 @@ router.post("/any/check/email/sns", function(req, res){
       })
     }
 
-  let queryUser = mysql.format("SELECT email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=?", email);
+  let queryUser = mysql.format("SELECT email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
   db.SELECT(queryUser, {}, (result) => {
     if(result.length === 0){
       //없는 email
@@ -1012,7 +1013,7 @@ router.post("/any/email/validator", function(req, res){
 router.post("/any/email/check", function(req, res){
   const email = req.body.data.email;
 
-  let queryUser = mysql.format("SELECT id, email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=?", email);
+  let queryUser = mysql.format("SELECT id, email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
 
   db.SELECT(queryUser, {}, (result) => {
     if(result.length === 0){
@@ -1131,6 +1132,98 @@ router.post("/push_token/update", function(req, res){
   // const 
 });
 
+router.post("/logout", function(req, res){
+  const user_id = req.body.data.user_id;
+  const refresh_token = req.body.data.token;
+
+  // console.log("@#$@#$#@$");
+  // console.log(req.body.data);
+  // console.log(refresh_token);
+
+  db.DELETE("DELETE FROM devices WHERE user_id=? AND refresh_token=?", [user_id, refresh_token], 
+  (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    });
+  })
+  
+});
+
+router.post("/device/list", function(req, res){
+  const user_id = req.body.data.user_id;
+  
+  const queryDevices = mysql.format("SELECT COUNT(id) AS device_count FROM devices WHERE user_id=?", [user_id]);
+
+  db.SELECT(queryDevices, {}, (result) => {
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        device_count: result[0].device_count
+      }
+    })
+  })
+});
+
+router.post("/device/other/logout", function(req, res){
+  const user_id = req.body.data.user_id;
+  const refresh_token = req.body.data.token;
+
+  db.DELETE("DELETE FROM devices WHERE user_id=? AND refresh_token NOT IN (?)", [user_id, refresh_token], 
+  (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    });
+  })
+
+});
+
+router.post("/out", function(req, res){
+  const user_id = req.body.data.user_id;
+  
+  let querySelectUser = mysql.format("SELECT email FROM users WHERE id=?", user_id);
+
+  db.SELECT(querySelectUser, {}, (result_select_user) => {
+    if(result_select_user.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: "유저 정보가 없습니다."
+      })
+    }
+
+    const user = result_select_user[0];
+    var date = moment().format('YYYY-MM-DD HH:mm:ss');
+
+    db.DELETE("DELETE FROM devices WHERE user_id=?", [user_id], 
+    (result_delete_devices) => {
+
+      let updateUserData = {
+        email: "delete"+user_id,
+        facebook_id: null,
+        google_id: null,
+        kakao_id: null,
+        apple_id: null,
+        name: '',
+        contact: '',
+  
+        deleted_at: date
+      };
+
+      db.UPDATE("UPDATE users SET email=?, facebook_id=?, google_id=?, kakao_id=?, apple_id=?, name=?, contact=?, deleted_at=?", [updateUserData.email, updateUserData.facebook_id, updateUserData.google_id, updateUserData.kakao_id, updateUserData.apple_id, updateUserData.name, updateUserData.contact, updateUserData.deleted_at], (result_update) => {
+        return res.json({
+          result:{
+            state: res_state.success
+          }
+        });
+      })
+    })
+  });  
+});
+
 router.post("/chat/list", function(req, res){
   const user_id = req.body.data.user_id;
 
@@ -1148,8 +1241,8 @@ router.post("/chat/list", function(req, res){
   let selectQuery = mysql.format("SELECT chat_user.id AS chat_user_id, room.id, room.id AS room_id, room.expire, target_id, room_name, project.title, project.poster_renew_url FROM rooms AS room LEFT JOIN orders AS _order ON room.target_id=_order.project_id LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN chat_users AS chat_user ON chat_user.user_id=_order.user_id AND chat_user.room_id=room.id WHERE _order.user_id=? AND (_order.state=? OR _order.state=? OR _order.state=? OR _order.state=? OR _order.state=?) GROUP BY room.id", [user_id, types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_PAY_NO_PAYMENT, types.order.ORDER_STATE_PAY_SCHEDULE, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_APP_PAY_IAMPORT_WEBHOOK_VERIFY_COMPLITE]);
 
   db.SELECT(selectQuery, {}, (result) => {
-    console.log("###########");
-    console.log(result);
+    // console.log("###########");
+    // console.log(result);
 
     for(let i = 0 ; i < result.length ; i++){
       result[i].room_title = result[i].title + " 오픈 채팅방";
@@ -1166,30 +1259,316 @@ router.post("/chat/list", function(req, res){
   })
 });
 
-// router.post("/chat/info", function(req, res){
-//   const user_id = req.body.data.user_id;
-//   const project_id = req.body.data.project_id;
+router.post("/update", function(req, res){
+  const user_id = req.body.data.user_id;
+  const name = req.body.data.name;
+  const nick_name = req.body.data.nick_name;
 
-//   // let selectQuery = mysql.format("SELECT chat_user.id AS chat_user_id, room.id, room.id AS room_id, room.expire, target_id, room_name, project.title, project.poster_renew_url FROM rooms AS room LEFT JOIN orders AS _order ON room.target_id=_order.project_id LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN chat_users AS chat_user ON chat_user.user_id=_order.user_id AND chat_user.room_id=room.id WHERE _order.user_id=? AND (_order.state=? OR _order.state=? OR _order.state=? OR _order.state=? OR _order.state=?) GROUP BY room.id", [user_id, types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_PAY_NO_PAYMENT, types.order.ORDER_STATE_PAY_SCHEDULE, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_APP_PAY_IAMPORT_WEBHOOK_VERIFY_COMPLITE]);
+  const password_now = req.body.data.password_now;
+  const password_new = req.body.data.password_new;
+  const password_new_check = req.body.data.password_new_check;
 
-//   let selectQuery = mysql.format("SELECT chat_user.id AS chat_user_id, room.id, room.id AS room_id, room.expire, target_id, room_name, project.title, project.poster_renew_url FROM rooms AS room LEFT JOIN orders AS _order ON room.target_id=_order.project_id LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN chat_users AS chat_user ON chat_user.user_id=_order.user_id AND chat_user.room_id=room.id WHERE _order.user_id=? AND room.target_id=? AND (_order.state=? OR _order.state=? OR _order.state=? OR _order.state=? OR _order.state=?) GROUP BY room.id", [user_id, project_id, types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_PAY_NO_PAYMENT, types.order.ORDER_STATE_PAY_SCHEDULE, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_APP_PAY_IAMPORT_WEBHOOK_VERIFY_COMPLITE]);
+  if(password_now !== ''){
+    //패스워드 값이 있을때
+    if(password_new !== password_new_check){
+      return res.json({
+        state: res_state.error,
+        message: '새 비밀번호가 일치하지 않습니다.',
+        result:{}
+      })
+    }
+
+    const myPlaintextPassword = password_now;
+    let querySelectUser = mysql.format("SELECT password FROM users WHERE id=?", user_id);
+    db.SELECT(querySelectUser, {}, function(result){
+      //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
+      var data = {
+        state : 'error',
+        message : 'none'
+      };
+      
+      if(result.length <= 0)
+      {
+        return res.json({
+          state: res_state.error,
+          message: "아이디가 존재하지 않습니다.",
+          result:{}
+        })
+      }
+
+      var user = result[0];
+
+      var finalNodeGeneratedHash = user.password;
+      if(finalNodeGeneratedHash.indexOf('$2y$') === 0)
+      {
+        finalNodeGeneratedHash = finalNodeGeneratedHash.replace('$2y$', '$2b$');
+      }
+
+      bcrypt.compare(myPlaintextPassword, finalNodeGeneratedHash, function(error, result){
+        if(result){
+
+          const saltRounds = 10 ;   
+          // const myPlaintextPassword = password_now ;   
+          const someOtherPlaintextPassword = ' not_bacon ' ;
+
+          bcrypt.hash(password_new, saltRounds, function(err, hash) {
+            // Store hash in your password DB.
+            let convertToPhpHash = hash;
+            if(convertToPhpHash.indexOf('$2b$') === 0)
+            {
+              convertToPhpHash = convertToPhpHash.replace('$2b$', '$2y$');
+            }            
+            
+            db.UPDATE("UPDATE users AS user SET nick_name=?, name=?, password=? WHERE user.id=?", [nick_name, name, convertToPhpHash, user_id], 
+            (result) => {
+              return res.json({
+                result:{
+                  state: res_state.success
+                }
+              })
+            });
+          });
+        }else{
+          return res.json({
+            state: res_state.error,
+            message: '비밀번호가 틀렸습니다.',
+            result:{}
+          })
+        }
+      });
+    });
+  }else{
+
+    //패스워드 수정은 아님.
+    db.UPDATE("UPDATE users AS user SET nick_name=?, name=? WHERE user.id=?", [nick_name, name, user_id], 
+    (result) => {
+      return res.json({
+        result:{
+          state: res_state.success
+        }
+      })
+    });
+  }
+});
+
+router.post("/contact", function(req, res){
+
+  let ask = req.body.data.ask;
+  let from = req.body.data.from;
+
+  let content = Util.getReplaceBRTagToEnter(ask);
+  
+  let _html = 
+  `
+  <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+  <html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+      <title>크티 문의 내용</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    </head>
+    <body style="margin:0%">
+      ${content}
+    </body>
+  </html>
+  `
 
 
-//   db.SELECT(selectQuery, {}, (result) => {
+  const msg = {
+    // to: 'cyan@crowdticket.kr',
+    to: process.env.EMAIL_FROM,
+    from: from,
+    subject: '크티 앱 문의 메일',
+    html: _html,
+  };
+  
+  sgMail.send(msg).then((result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  }).catch((error) => {
+    return res.json({
+      state: res_state.error,
+      message: '메일 전송 오류.', 
+      result:{}
+    })
+  });
+  
+});
 
-//     for(let i = 0 ; i < result.length ; i++){
-//       result[i].room_title = result[i].title + " 오픈 채팅방";
+router.post("/push/get", function(req, res){
+  const user_id = req.body.data.user_id;
+  const querySelectPush = mysql.format("SELECT chatting, notice, advertising FROM pushs WHERE user_id=?", user_id);
+  db.SELECT(querySelectPush, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '푸시 정보가 없습니다.',
+        result:{}
+      })
+    }
 
-//       result[i].room_item_title = result[i].title + " 기간한정 채팅방";
-//     }
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        ...data
+      }
+    })
+  })
+});
+
+router.post("/push/update", function(req, res){
+  const user_id = req.body.data.user_id;
+
+  const querySelectPush = mysql.format("SELECT id, chatting, notice, advertising FROM pushs WHERE user_id=?", user_id);
+  db.SELECT(querySelectPush, {}, (result_select_push) => {
+    if(result_select_push.length === 0){
+      let advertising = false;
+      if(req.body.data.advertising){
+        advertising = req.body.data.advertising;
+      }
+
+      let date = moment().format('YYYY-MM-DD HH:mm:ss');
+
+      //insert
+      const insertData = {
+        user_id: user_id,
+        chatting: true,
+        notice: true,
+        advertising: advertising,
+        advertising_at: date,
+        created_at: date,
+        updated_at: date
+      }
+
+      db.INSERT("INSERT INTO pushs SET ?", insertData, (result_insert) => {
+        return res.json({
+          result:{
+            state: res_state.success
+          }
+        })
+      }, (error) => {
+        
+      })
+    }else{
+      //update
+      let date = moment().format('YYYY-MM-DD HH:mm:ss');
+
+      const resultSelectPushData = result_select_push[0];
+
+      let chatting = resultSelectPushData.chatting? true : false;
+      let notice = resultSelectPushData.notice? true : false;
+      let advertising = resultSelectPushData.advertising? true : false;
+
+      let isChangeAdvertising = false;
+      let isChangeChatting = false;
+
+      if(req.body.data.chatting !== undefined){
+        if(chatting !== req.body.data.chatting){
+          isChangeChatting = true;
+        }
+
+        chatting = req.body.data.chatting;
+      }
     
-//     return res.json({
-//       result: {
-//         state: res_state.success,
-//         list: result
-//       }
-//     })
-//   })
-// })
+      if(req.body.data.notice !== undefined){
+        notice = req.body.data.notice;
+      }
+
+      if(req.body.data.advertising !== undefined){
+        if(advertising !== req.body.data.advertising){
+          isChangeAdvertising = true;
+        }
+        advertising = req.body.data.advertising;
+      }
+      
+      db.UPDATE("UPDATE pushs SET chatting=?, notice=?, advertising=?, updated_at=?, advertising_at=? WHERE user_id=?", [chatting, notice, advertising, date, date, user_id], (result_update) => {
+
+        if(isChangeChatting){
+          //채팅이 바꼈을경우 채팅 푸시 업데이트 해준다.
+          db.UPDATE("UPDATE chat_users SET push=? WHERE user_id=?", [chatting, user_id], (result_update_chatting) => {
+            return res.json({
+              result:{
+                state: res_state.success,
+                isChangeAdvertising: isChangeAdvertising,
+                advertising_at: date,
+                advertising: advertising
+              }
+            })
+          })
+        }else{
+          return res.json({
+            result:{
+              state: res_state.success,
+              isChangeAdvertising: isChangeAdvertising,
+              advertising_at: date,
+              advertising: advertising
+            }
+          })
+        }
+
+      });
+    }
+  })
+});
+
+router.post("/push/notice", function(req, res){
+  const user_id = req.body.data.user_id;
+
+  const querySelectPush = mysql.format("SELECT notice FROM pushs WHERE user_id=?", user_id);
+  db.SELECT(querySelectPush, {}, (result_select_push) => {
+    if(result_select_push.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '공지 푸시 에러',
+        result:{}
+      })
+    }
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        notice: result_select_push[0].notice
+      }
+    })
+  });
+});
+
+router.post("/push/chatting/room", function(req, res){
+  const chat_user_id = req.body.data.chat_user_id;
+
+  const querySelectChatUsers = mysql.format("SELECT push FROM chat_users WHERE id=?", chat_user_id);
+  db.SELECT(querySelectChatUsers, {}, (result_select_chat_user) => {
+    if(result_select_chat_user.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '채팅룸 푸시 셋팅 에러',
+        result:{}
+      })
+    }
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        push: result_select_chat_user[0].push
+      }
+    })
+  });
+});
+
+router.post("/push/chatting/room/update", function(req, res){
+  const chat_user_id = req.body.data.chat_user_id;
+  const isPush = req.body.data.isPush;
+  db.UPDATE("UPDATE chat_users SET push=? WHERE id=?", [isPush, chat_user_id], (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  });
+});
 
 module.exports = router;

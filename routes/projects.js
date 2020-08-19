@@ -50,10 +50,12 @@ router.post("/get", function(req, res){
   const target_id = req.body.data.target_id;
   const localTitle = req.body.data.localTitle;
 
+  const user_id = req.body.data.user_id;
+
   let mannayoQuery = "";
 
   if(listType === types.project_list_type.PROJECT_LIST_LIKE){
-    mannayoQuery = mysql.format("SELECT project.poster_url, _like.id, project.id AS project_id, project.title, project.poster_renew_url FROM likes AS _like LEFT JOIN projects AS project ON _like.target_id=project.id WHERE _like.like_type=? GROUP BY _like.id DESC LIMIT ? OFFSET ?", [types.like.LIKE_PROJECT, TAKE, skip]);
+    mannayoQuery = mysql.format("SELECT project.poster_url, _like.id, project.id AS project_id, project.title, project.poster_renew_url FROM likes AS _like LEFT JOIN projects AS project ON _like.target_id=project.id WHERE _like.like_type=? AND _like.user_id=? GROUP BY _like.id DESC LIMIT ? OFFSET ?", [types.like.LIKE_PROJECT, user_id, TAKE, skip]);
   }else if(listType === types.project_list_type.PROJECT_LIST_TICKETING){
 
     //현재시간

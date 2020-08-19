@@ -192,6 +192,8 @@ router.post("/get", function(req, res){
   const target_id = req.body.data.target_id;
   const localTitle = req.body.data.localTitle;
 
+  const user_id = req.body.data.user_id;
+
   let mannayoQuery = "";
 
   if(listType === types.mannayo_list.TYPE_MANNAYO_LIST_COLLECT_CREATOR){
@@ -202,7 +204,7 @@ router.post("/get", function(req, res){
     mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id FROM meetups AS meetup WHERE deleted_at IS NULL AND meetup.where=? ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [localTitle, TAKE, skip]);
   }else if(listType === types.mannayo_list.TYPE_MANNAYO_LIST_LIKE_MORE_BUTTON){
 
-    mannayoQuery = mysql.format("SELECT _like.id, meetup.id AS meetup_id FROM likes AS _like LEFT JOIN meetups AS meetup ON _like.target_id=meetup.id WHERE _like.like_type=? GROUP BY _like.id DESC LIMIT ? OFFSET ?", [types.like.LIKE_MANNAYO, TAKE, skip]);
+    mannayoQuery = mysql.format("SELECT _like.id, meetup.id AS meetup_id FROM likes AS _like LEFT JOIN meetups AS meetup ON _like.target_id=meetup.id WHERE _like.like_type=? AND _like.user_id=? GROUP BY _like.id DESC LIMIT ? OFFSET ?", [types.like.LIKE_MANNAYO, user_id, TAKE, skip]);
 
   }else if(listType === types.mannayo_list.TYPE_MANNAYO_LIST_FIND_MORE_BUTTON){
     const findWord = "%"+req.body.data.findWord+"%";
@@ -242,7 +244,7 @@ router.post("/get/my/all", function(req, res){
 
   // meetup.id AS meetup_id, creator_id, meet_count, creator.title, creator.thumbnail_url, comments_count, what, meetup.where, deleted_at 
 
-  let mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id, creator_id, meet_count, creator.title, creator.thumbnail_url, comments_count, what, meetup.where FROM meetup_users AS meetup_user LEFT JOIN meetups AS meetup ON meetup_user.meetup_id=meetup.id LEFT JOIN creators AS creator ON creator.id=meetup.creator_id WHERE meetup_user.user_id=? AND meetup.deleted_at IS NULL GROUP BY meetup_user.id ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [user_id, TAKE, skip]);
+  let mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id, creator_id, meet_count, creator.title, creator.thumbnail_url, comments_count, what, meetup.where FROM meetup_users AS meetup_user LEFT JOIN meetups AS meetup ON meetup_user.meetup_id=meetup.id LEFT JOIN creators AS creator ON creator.id=meetup.creator_id WHERE meetup_user.user_id=? AND meetup.deleted_at IS NULL AND meetup_user.deleted_at IS NULL GROUP BY meetup_user.id ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [user_id, TAKE, skip]);
 
   // let mannayoQuery = "SELECT * FROM meetups AS meetup";
   db.SELECT(mannayoQuery, [], (result_mannayo) => {
@@ -264,7 +266,7 @@ router.post("/get/my/register", function(req, res){
   const sortType = req.body.data.sortType;
   const TAKE = 3;
 
-  let mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id, creator_id, meet_count, creator.title, creator.thumbnail_url, comments_count, what, meetup.where FROM meetup_users AS meetup_user LEFT JOIN meetups AS meetup ON meetup_user.meetup_id=meetup.id LEFT JOIN creators AS creator ON creator.id=meetup.creator_id WHERE meetup.user_id=? AND meetup.deleted_at IS NULL GROUP BY meetup.id ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [user_id, TAKE, skip]);
+  let mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id, creator_id, meet_count, creator.title, creator.thumbnail_url, comments_count, what, meetup.where FROM meetup_users AS meetup_user LEFT JOIN meetups AS meetup ON meetup_user.meetup_id=meetup.id LEFT JOIN creators AS creator ON creator.id=meetup.creator_id WHERE meetup.user_id=? AND meetup.deleted_at IS NULL AND meetup_user.deleted_at IS NULL GROUP BY meetup.id ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [user_id, TAKE, skip]);
 
   // let mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id, creator_id, meet_count, creator.title, creator.thumbnail_url, comments_count, what, meetup.where FROM meetup_users AS meetup_user LEFT JOIN meetups AS meetup ON meetup_user.meetup_id=meetup.id LEFT JOIN creators AS creator ON creator.id=meetup.creator_id WHERE meetup_user.user_id=? AND meetup.deleted_at IS NULL GROUP BY meetup_user.id ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [user_id, TAKE, skip]);
 
