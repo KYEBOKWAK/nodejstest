@@ -98,7 +98,8 @@ router.post("/cancel", function(req, res){
 
 router.post("/collect", function(req, res){
   let creatorQuery = mysql.format("SELECT title, thumbnail_url, id, channel_id FROM creators ORDER BY id DESC;", []);
-  let mcnQuery = mysql.format("SELECT title, thumbnail_url, id, channel_id FROM creators ORDER BY id DESC;", []);
+  // let mcnQuery = mysql.format("SELECT title, thumbnail_url, id, channel_id FROM creators ORDER BY id DESC;", []);
+  let mcnQuery = mysql.format("SELECT title, thumbnail_url, id FROM mcn_companys ORDER BY RAND();", []);
   let localQuery = mysql.format("SELECT city.name, COUNT(meetup.id) AS local_meetup_count, meetup.deleted_at FROM cities AS city LEFT JOIN meetups AS meetup ON city.name=meetup.where AND meetup.deleted_at IS NULL GROUP BY city.name ORDER BY local_meetup_count DESC;", []);
   // db.SELECT("")
   db.SELECT_MULITPLEX(creatorQuery+mcnQuery+localQuery, 
@@ -199,7 +200,9 @@ router.post("/get", function(req, res){
   if(listType === types.mannayo_list.TYPE_MANNAYO_LIST_COLLECT_CREATOR){
     mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id FROM meetups AS meetup WHERE deleted_at IS NULL AND creator_id=? ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [target_id, TAKE, skip]);
   }else if(listType === types.mannayo_list.TYPE_MANNAYO_LIST_COLLECT_MCN){
-    mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id FROM meetups AS meetup WHERE deleted_at IS NULL AND creator_id=? ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [target_id, TAKE, skip]);
+    mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id FROM meetups AS meetup LEFT JOIN creators AS creator ON creator.id=meetup.creator_id LEFT JOIN mcn_companys AS mcn_company ON creator.mcn_company_id=mcn_company.id WHERE mcn_company.id=? AND meetup.deleted_at IS NULL ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [target_id, TAKE, skip]);
+
+    // mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id FROM meetups AS meetup WHERE deleted_at IS NULL AND creator_id=? ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [target_id, TAKE, skip]);
   }else if(listType === types.mannayo_list.TYPE_MANNAYO_LIST_COLLECT_LOCAL){
     mannayoQuery = mysql.format("SELECT meetup.id AS meetup_id FROM meetups AS meetup WHERE deleted_at IS NULL AND meetup.where=? ORDER BY meetup.id DESC LIMIT ? OFFSET ?", [localTitle, TAKE, skip]);
   }else if(listType === types.mannayo_list.TYPE_MANNAYO_LIST_LIKE_MORE_BUTTON){

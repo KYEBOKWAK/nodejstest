@@ -72,10 +72,13 @@ process.setMaxListeners(15);
 //const redis = require('redis');
 //redis 세션관리
 //var client = redis.createClient(process.env.REDIS_PORT, process.env.REDIS_URL);
+app.use(express.json({ limit : "50mb" }));
 
-app.use(express.json());
 // app.use(bodyParser.json());
 app.use(cors());
+
+// app.use(express.json({ limit : "50mb" }));
+// app.use(express.urlencoded({ limit:"50mb", extended: false }));
 
 //middleware start
 /*
@@ -248,15 +251,6 @@ app.use(function (req, res, next) {
               let renowLastDay = REFRESH_TOKEN_RENEW_LAST_DAT_DAY;
 
               let get_day = Math.floor((((gapMiliSec/1000)/60)/60)/24);
-              // console.log('day!! : ' + get_day);
-              /*
-              let gap_sec = Math.floor((gapMiliSec/1000)%60);
-              let gap_min = Math.floor(((gapMiliSec/1000)/60)%60);
-              let get_hour = Math.floor((((gapMiliSec/1000)/60)/60)%24);
-              let get_day = Math.floor((((gapMiliSec/1000)/60)/60)/24);
-
-              console.log(get_day + " 일 " + get_hour + " 시 " + gap_min + " 분 " + gap_sec + ' 초');
-              */
 
               if(renewLastMiliSec === 0){
                 //day로 비교할때

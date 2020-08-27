@@ -1224,19 +1224,65 @@ router.post("/out", function(req, res){
   });  
 });
 
+router.post("/chat/room/info", function(req, res){
+  const room_id = req.body.data.room_id;
+  // const user_id = req.body.data.user_id;
+
+  let selectQuery = mysql.format("SELECT room.target_id AS target_id, room.id AS room_id, room.expire, room.room_name, project.title, project.poster_renew_url FROM rooms AS room LEFT JOIN projects AS project ON room.target_id=project.id WHERE room.id=?", [room_id]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+    // console.log("###########");
+    // console.log(result);
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: "채팅방 정보 조회 에러",
+        result:{}
+      })
+    }
+
+    let data = result[0];
+    data.room_title = data.title + " 오픈 채팅방";
+    data.room_item_title = data.title + " 기간한정 채팅방";
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        ...data
+      }
+    })
+  })
+})
+
+router.post("/chat/room/isenter", function(req, res){
+  const user_id = req.body.data.user_id;
+  const room_id = req.body.data.room_id;
+
+  let selectQuery = mysql.format("SELECT id AS chat_user_id FROM chat_users WHERE room_id=? AND user_id=?", [room_id, user_id]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result:{
+          state: res_state.success,
+          chat_user_id: null
+        }
+      })
+    }
+
+    let data = result[0];
+    return res.json({
+      result:{
+        state: res_state.success,
+        chat_user_id: data.chat_user_id
+      }
+    })
+  })
+
+})
+
 router.post("/chat/list", function(req, res){
   const user_id = req.body.data.user_id;
-
-  //ORDER_STATE_PAY //웹 결제완료
-  //ORDER_STATE_PAY_NO_PAYMENT
-  //ORDER_STATE_PAY_SCHEDULE
-  //ORDER_STATE_APP_PAY_COMPLITE  //앱 결제 완료
-  // ORDER_STATE_APP_PAY_IAMPORT_WEBHOOK_VERIFY_COMPLITE
-
-  //room.id, room.expire, target_id, room_name, project.title, project.poster_renew_url
-  // let selectQuery = mysql.format("SELECT room.id AS room_id, project.title FROM rooms AS room LEFT JOIN orders AS _order ON room.target_id=_order.project_id LEFT JOIN projects AS project ON _order.project_id=project.id WHERE _order.user_id=? AND (_order.state=? OR _order.state=? OR _order.state=? OR _order.state=? OR _order.state=?) GROUP BY room.id", [user_id, types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_PAY_NO_PAYMENT, types.order.ORDER_STATE_PAY_SCHEDULE, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_APP_PAY_IAMPORT_WEBHOOK_VERIFY_COMPLITE]);
-
-  // let selectQuery = mysql.format("SELECT room.id, room.id AS room_id, room.expire, target_id, room_name, project.title, project.poster_renew_url FROM rooms AS room LEFT JOIN orders AS _order ON room.target_id=_order.project_id LEFT JOIN projects AS project ON _order.project_id=project.id WHERE _order.user_id=? AND (_order.state=? OR _order.state=? OR _order.state=? OR _order.state=? OR _order.state=?) GROUP BY room.id", [user_id, types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_PAY_NO_PAYMENT, types.order.ORDER_STATE_PAY_SCHEDULE, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_APP_PAY_IAMPORT_WEBHOOK_VERIFY_COMPLITE]);
 
   let selectQuery = mysql.format("SELECT chat_user.id AS chat_user_id, room.id, room.id AS room_id, room.expire, target_id, room_name, project.title, project.poster_renew_url FROM rooms AS room LEFT JOIN orders AS _order ON room.target_id=_order.project_id LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN chat_users AS chat_user ON chat_user.user_id=_order.user_id AND chat_user.room_id=room.id WHERE _order.user_id=? AND (_order.state=? OR _order.state=? OR _order.state=? OR _order.state=? OR _order.state=?) GROUP BY room.id", [user_id, types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_PAY_NO_PAYMENT, types.order.ORDER_STATE_PAY_SCHEDULE, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_APP_PAY_IAMPORT_WEBHOOK_VERIFY_COMPLITE]);
 
@@ -1257,6 +1303,30 @@ router.post("/chat/list", function(req, res){
       }
     })
   })
+
+  /*
+  const user_id = req.body.data.user_id;
+
+  let selectQuery = mysql.format("SELECT chat_user.id AS chat_user_id, room.id, room.id AS room_id, room.expire, target_id, room_name, project.title, project.poster_renew_url FROM rooms AS room LEFT JOIN orders AS _order ON room.target_id=_order.project_id LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN chat_users AS chat_user ON chat_user.user_id=_order.user_id AND chat_user.room_id=room.id WHERE _order.user_id=? AND (_order.state=? OR _order.state=? OR _order.state=? OR _order.state=? OR _order.state=?) GROUP BY room.id", [user_id, types.order.ORDER_STATE_PAY, types.order.ORDER_STATE_PAY_NO_PAYMENT, types.order.ORDER_STATE_PAY_SCHEDULE, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_APP_PAY_IAMPORT_WEBHOOK_VERIFY_COMPLITE]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+    // console.log("###########");
+    // console.log(result);
+
+    for(let i = 0 ; i < result.length ; i++){
+      result[i].room_title = result[i].title + " 오픈 채팅방";
+
+      result[i].room_item_title = result[i].title + " 기간한정 채팅방";
+    }
+    
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+  */
 });
 
 router.post("/update", function(req, res){
