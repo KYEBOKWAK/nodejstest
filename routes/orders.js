@@ -672,4 +672,49 @@ router.post("/attended", function(req, res){
   })
 });
 
+router.post("/answer/get", function(req, res){
+  const order_id = req.body.data.order_id;
+
+  const querySelect = mysql.format("SELECT answer FROM orders WHERE id=?", order_id);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '질문이 없습니다.',
+        result:{}
+      })
+    }
+
+    const data = result[0];
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        answer: data.answer
+      }
+    })
+  })
+})
+
+router.post("/cancel", function(req, res){
+  const order_id = req.body.data.order_id;
+  
+
+  db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_CANCEL, order_id], 
+  (result_order_update) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        order_state: types.order.ORDER_STATE_CANCEL
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '취소 실패. 계속 실패할 경우 크티에 문의 바랍니다.',
+      result:{}
+    })
+  })
+})
+
 module.exports = router;

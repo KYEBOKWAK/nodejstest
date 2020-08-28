@@ -40,6 +40,34 @@ router.post("/ticketing/list", function(req, res){
   })
 });
 
+router.post("/expire", function(req, res){
+  const project_id = req.body.data.project_id
+
+  let querySelectProject = mysql.format("SELECT funding_closing_at FROM projects WHERE id=?", project_id);
+  db.SELECT(querySelectProject, {}, (result_select) => {
+    if(result_select.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '프로젝트 아이디 오류',
+        result:{}
+      })
+    }
+
+    const data = result_select[0];
+    let isExpire = false;
+    if(Util.isExpireTime(data.funding_closing_at)){
+      isExpire = true;
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        isExpire: isExpire
+      }
+    })
+  });
+});
+
 router.post("/get", function(req, res){
   const skip = req.body.data.skip;
   const TAKE = 6;
@@ -81,7 +109,11 @@ router.post("/get", function(req, res){
 
 router.post('/survey', function(req, res){
   const project_id = req.body.data.project_id;
-  db.SELECT("SELECT question, id FROM questions WHERE project_id=? ORDER BY order_number ASC", [project_id], (result_question) => {
+
+  const order_id = req.body.data.order_id;
+
+  let querySelect = mysql.format("SELECT question, id FROM questions WHERE project_id=? ORDER BY order_number ASC", [project_id]);
+  db.SELECT(querySelect, {}, (result_question) => {
     if(result_question.length === 0){
       return res.json({
         result:{
@@ -98,6 +130,24 @@ router.post('/survey', function(req, res){
       }
     });
   });
+
+  // db.SELECT("SELECT question, id FROM questions WHERE project_id=? ORDER BY order_number ASC", [project_id], (result_question) => {
+  //   if(result_question.length === 0){
+  //     return res.json({
+  //       result:{
+  //         state: res_state.success,
+  //         survey: []
+  //       }
+  //     });
+  //   }
+  
+  //   return res.json({
+  //     result:{
+  //       state: res_state.success,
+  //       survey: [...result_question]
+  //     }
+  //   });
+  // });
   
 });
 

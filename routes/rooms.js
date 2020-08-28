@@ -210,7 +210,11 @@ router.post("/list", function(req, res){
 
   // let querySelect = mysql.format("SELECT room.id, target_id, room_name FROM rooms AS room LEFT JOIN chat_users AS chat_user ON room.id=chat_user.room_id WHERE chat_user.user_id=?", user_id);
 
+  // const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
   let querySelect = mysql.format("SELECT room.id, room.expire, target_id, room_name, project.title, project.poster_renew_url FROM rooms AS room LEFT JOIN chat_users AS chat_user ON room.id=chat_user.room_id LEFT JOIN projects AS project ON project.id=room.target_id WHERE chat_user.user_id=?", user_id);
+
+  console.log(querySelect);
 
   db.SELECT(querySelect, {}, (result) => {
     // console.log(result);
@@ -275,6 +279,35 @@ router.post("/leave", function(req, res){
   */
 })
 
+router.post("/expire", function(req, res){
+  const room_id = req.body.data.room_id;
+
+  const querySelectRooms = mysql.format("SELECT expire FROM rooms AS room WHERE room.id=?", [room_id]);
+  db.SELECT(querySelectRooms, {}, (result_select_rooms) => {
+    if(result_select_rooms.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '방 정보를 찾을 수 없습니다.'
+      })
+    }
+
+    let data = result_select_rooms[0];
+    let isExpire = false;
+    if(Util.isExpireTime(data.expire)){
+      //expire됐으면 
+      isExpire = true;
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        isExpire: isExpire
+      }
+    })
+
+  });
+});
+
 router.post("/join", function(req, res){
   const user_id = req.body.data.user_id;
   const target_id = req.body.data.target_id;
@@ -293,6 +326,15 @@ router.post("/join", function(req, res){
     }
 
     let data = result_select_rooms[0];
+
+    if(Util.isExpireTime(data.expire)){
+      //expire됐으면 
+      return res.json({
+        state: res_state.error,
+        message: '이미 종료된 채팅방입니다.',
+        result:{}
+      })
+    }
 
     data.room_title = data.title + " 오픈 채팅방";
 
@@ -318,7 +360,6 @@ router.post("/join", function(req, res){
             });
           }
 
-
           return res.json({
             result:{
               state: res_state.success,
@@ -332,6 +373,7 @@ router.post("/join", function(req, res){
         })
       }else{
         //이미 채팅방에 들어가있음.
+        
         return res.json({
           result:{
             state: res_state.success,
