@@ -139,7 +139,7 @@ router.post('/wait/order', function(req, res){
 });
 
 router.post('/topthumbnail', function(req, res) {
-  db.SELECT("SELECT url, title, type  FROM maincarousel", [], function(result){
+  db.SELECT("SELECT url, title, type, target_id, target_id_name, page_key FROM maincarousel", [], function(result){
     res.json({
       result
     })
