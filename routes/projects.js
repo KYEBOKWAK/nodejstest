@@ -206,33 +206,514 @@ router.post('/survey/save', function(req, res){
   });
 });
 
-router.post('/detail', function(req, res) {
+// function getTotalTicketLimitCount()
+// {
+//   $tickets = $this->tickets;
+//   $limitTicketCount = 0;
+//   foreach($tickets as $ticket){
+//     $limitTicketCount += $ticket->audiences_limit;
+//   }
+
+//   return $limitTicketCount;
+// }
+
+getMainExplain = (project_target, pledged_amount, type, ticket_limit_count, funding_closing_at, picking_closing_at, event_type) => {
+
+  let pledgedTarget = "원";
+  //인원, 금액 결정
+  if(project_target == "people")
+  {
+    pledgedTarget = "명";
+  }
+
+  // pledgedTarget = pledged_amount + pledgedTarget;
+  pledgedTarget = Util.getNumberWithCommas(pledged_amount) + pledgedTarget;
+  if(type == "sale")
+  {
+    //즉시 결제면 무조건 명수로 나온다.
+    pledgedTarget = Util.getNumberWithCommas(ticket_limit_count)+"명";
+  }
+
+  let maxText = '';
+  let textEnd = '이 참여할 수 있는 이벤트 입니다.';
+  if(type == "funding")
+  {
+    maxText = '최소 ';
+    textEnd = '이 모여야 진행되는 이벤트입니다.';
+  }
+
+  let fundingEndTime = moment(funding_closing_at).format('YYYY년 MM월 DD일');
+
+  //if($this->type == "pick")
+  if(event_type === types.project.EVENT_TYPE_PICK_EVENT){
+
+    let pickingEndTime = moment(picking_closing_at).format('YYYY년 MM월 DD일');
+    let mainExplain = '';
+    const isPickingFinish = Util.isExpireTime(picking_closing_at);
+    const isClosing = Util.isExpireTime(funding_closing_at);
+
+    if(isPickingFinish)
+    {
+      mainExplain = "추첨이 완료되어 이벤트가 종료되었습니다.";
+    }
+    else if(isClosing)
+    {
+      mainExplain = pickingEndTime + "까지 추첨이 진행됩니다.";
+    }
+    else
+    {
+      mainExplain = fundingEndTime + '까지 신청 가능합니다.';
+    }
+
+    return mainExplain;
+  }
+
+  //2018년 8월 31일 까지 최소 100명이 모여야 진행되는 이벤트입니다.(최대 200명) //참여할 수 있는 이벤트 입니다.
+
+  return fundingEndTime + '까지 ' + maxText + pledgedTarget + textEnd;
+}
+
+function isOldProject(poster_url){
+  if(poster_url)
+  {
+    return true;
+  }
+
+  return false;
+}
+
+function getTotalFundingAmount(orders, project_target){
+  let totalFundingAmount = 0;
+
+  if(project_target == "people")
+  {
+    // 이건 사람수 오더의 count로 체크
+    // totalFundingAmount = $this->getTotalTicketOrderCount();
+    // $totalBuyCount = 0;
+    for(let i = 0 ; i < orders.length ; i++){
+      const orderData = orders[i];
+      totalFundingAmount += orderData.count;
+    }
+  }
+  else
+  {
+    for(let i = 0 ; i < orders.length ; i++){
+      const orderData = orders[i];
+      const totalPrice = orderData.total_price;
+
+      let commission = 0;
+
+      if(orderData.ticket_price)
+      {
+        if(orderData.ticket_price > 0)
+        {
+          if(orderData.type_commision === types.order.ORDER_TYPE_COMMISION_WITHOUT_COMMISION){
+            commission = 0;
+          }else{
+            commission = orderData.count * 500;
+          }
+        }
+      }
+
+      totalFundingAmount += totalPrice - commission;
+    }
+  }
+
+  return totalFundingAmount;
+}
+
+getNowAmount = (type, funded_amount, funding_closing_at, event_type, project_target, poster_url, sale_start_at, orders, picking_closing_at) => {
+  //구매 인원 수
+  //현재 91명 신청 완료
+  let nowAmount = "";
+
+  if(isOldProject(poster_url))
+  {
+    //예전 프로젝트
+    if(type == 'sale')
+    {
+      nowAmount = "현재 " + Util.getNumberWithCommas(funded_amount) + "명 참여 가능";
+    }
+    else
+    {
+      nowAmount = "현재 " + Util.getNumberWithCommas(funded_amount) + "원 모임";
+    }
+  }
+  else
+  {
+    if(!Util.isSaling(sale_start_at))
+    {
+      nowAmount = "오픈 예정입니다.";//오픈예정 임시코드
+    }
+    else
+    {
+      if(type == 'sale')
+      {
+        /*$nowAmount = "현재 ". number_format($this->getAmountTicketCount()) ."명 참여 가능";*/
+        nowAmount = "현재 참여 가능";
+        if(Util.isExpireTime(funding_closing_at))
+        {
+          nowAmount = "티켓팅이 마감되었습니다.";
+        }
+      }
+      else if(event_type === types.project.EVENT_TYPE_PICK_EVENT)
+      {
+        nowAmount = "현재 신청 가능";
+
+        // if($this->isFinishedAndPickingFinished())
+        const isPickingFinish = Util.isFinishedAndPickingFinished(picking_closing_at, funding_closing_at);
+        if(isPickingFinish)
+        {
+          nowAmount = "추첨이 끝났습니다.";
+        }
+        else if(Util.isExpireTime(funding_closing_at))
+        {
+          nowAmount = "추첨중 입니다.";
+        }
+      }
+      else
+      {
+        // let totalFundingAmount = this.getTotalFundingAmount();
+        let totalFundingAmount = getTotalFundingAmount(orders, project_target);
+        nowAmount = "현재 " + Util.getNumberWithCommas(totalFundingAmount) + "원 모임";
+
+        if(project_target == "people")
+        {
+          nowAmount = "신청자 " + Util.getNumberWithCommas(totalFundingAmount) + "명";
+        }
+      }
+    }
+  }
+
+  return nowAmount;
+}
+
+function getProgress(type, pledged_amount, funded_amount, poster_url, project_target, orders){
+  //티켓팅과 펀딩으로 구분.
+  if(type == 'sale')
+  {
+    return 0;
+  }
+
+
+  //펀딩일때
+  if (pledged_amount > 0)
+  {
+    if(isOldProject(poster_url))
+    {
+      return ((funded_amount / pledged_amount) * 100);
+    }
+
+    return ((getTotalFundingAmount(orders, project_target) / pledged_amount) * 100);
+  }
+
+  return 0;
+}
+
+
+router.post('/detail/explain', function(req, res){
+
   const project_id = req.body.data.project_id;
+  // const querySelect = mysql.format("SELECT project.type, project.pledged_amount, project.picking_closing_at, price, show_date, project.funding_closing_at, project.sale_start_at, project.event_type FROM tickets AS ticket LEFT JOIN projects AS project ON ticket.project_id=project.id WHERE project_id=? ORDER BY price ASC", project_id);
+
+  // const querySelect = mysql.format("SELECT project.funded_amount, SUM(ticket.audiences_limit) AS ticket_limit_count, project_target, project.type, project.pledged_amount, project.picking_closing_at, price, show_date, project.funding_closing_at, project.sale_start_at, project.event_type FROM tickets AS ticket LEFT JOIN projects AS project ON ticket.project_id=project.id WHERE project_id=? ORDER BY price ASC", project_id);
+
+  // const querySelect = mysql.format("SELECT poster_url, SUM(_order.price) AS order_all_count, project.funded_amount, SUM(ticket.audiences_limit) AS ticket_limit_count, project_target, project.type, project.pledged_amount, project.picking_closing_at, ticket.price, show_date, project.funding_closing_at, project.sale_start_at, project.event_type FROM tickets AS ticket LEFT JOIN projects AS project ON ticket.project_id=project.id LEFT JOIN orders AS _order ON _order.ticket_id=ticket.id WHERE ticket.project_id=? ORDER BY ticket.price ASC", project_id);
+
+  // const querySelect = mysql.format("SELECT poster_url, project.funded_amount, SUM(ticket.audiences_limit) AS ticket_limit_count, project_target, project.type, project.pledged_amount, project.picking_closing_at, ticket.price, show_date, project.funding_closing_at, project.sale_start_at, project.event_type FROM tickets AS ticket LEFT JOIN projects AS project ON ticket.project_id=project.id WHERE ticket.project_id=? ORDER BY ticket.price ASC;", project_id);
+
+  const querySelect = mysql.format("SELECT project.ticket_notice, poster_url, project.funded_amount, project_target, project.type, project.pledged_amount, project.picking_closing_at, ticket.price, show_date, project.funding_closing_at, project.sale_start_at, project.event_type, ticket.audiences_limit FROM tickets AS ticket LEFT JOIN projects AS project ON ticket.project_id=project.id WHERE ticket.project_id=? GROUP BY ticket.id ORDER BY ticket.price ASC;", project_id);
+
+  // const orderQuerySelect = mysql.format("SELECT _order.id, SUM(_order.price) AS order_all_count, ticket.price AS ticket_price, SUM(_order.count) AS sum_order_count, total_price, type_commision, _order.count FROM orders AS _order LEFT JOIN tickets AS ticket ON ticket.id=_order.ticket_id WHERE _order.project_id=? AND _order.state<? AND _order.deleted_at IS NULL GRUP BY _order.id;", [project_id, types.order.ORDER_STATE_PAY_END]);
+
+  const orderQuerySelect = mysql.format("SELECT _order.id, ticket.price AS ticket_price, total_price, type_commision, _order.count FROM orders AS _order LEFT JOIN tickets AS ticket ON ticket.id=_order.ticket_id WHERE _order.project_id=? AND _order.state<? AND _order.deleted_at IS NULL GROUP BY _order.id", [project_id, types.order.ORDER_STATE_PAY_END]);
   
-  db.SELECT("SELECT project.id AS project_id, user.id AS user_id, user.name, user.profile_photo_url, user.introduce, project.title, project.poster_renew_url, project.poster_url, project.story, detailed_address, concert_hall, isDelivery, project.type FROM projects AS project" +
-            " INNER JOIN users AS user" +
-            " ON project.user_id=user.id" +
-            " WHERE project.id=?", [project_id], function(result){
-              res.json({
-                result
-              });
-            });
+
+  db.SELECT_MULITPLEX(querySelect+orderQuerySelect, function(result){
+  // db.SELECT(orderQuerySelect, {}, function(result){
+    if(result[0].length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '티켓이 없습니다.',
+        result:{}
+      })
+    }
+
+    const data = result[0][0];
+    const orders = result[1];
+    
+
+    let ticket_limit_count = 0;
+    for(let i = 0 ; i < result[0].length ; i++){
+      const ticket = result[0][i];
+      ticket_limit_count += ticket.audiences_limit;
+    }
+    
+    let _ticket_price_text = Util.getNumberWithCommas(data.price);
+    
+    if(data.price === 0){
+      _ticket_price_text = "무료";
+    }
+
+    let _ticket_expire = Util.getDetailShowDateText(data.show_date);
+    
+    // let _ticket_explain = '';
+    const diffDays = Util.getDetailCloseExplainText(data.funding_closing_at);
+    const isClosing = Util.isExpireTime(data.funding_closing_at);
+
+
+    let _explain_title_custom = '';
+    let _explain_detail_first = '';
+    let _explain_detail_second = this.getMainExplain(data.project_target, data.pledged_amount, data.type, ticket_limit_count, data.funding_closing_at, data.picking_closing_at, data.event_type);
+    let _explain_detail_third = this.getNowAmount(data.type, data.funded_amount, data.funding_closing_at, data.event_type, data.project_target, data.poster_url, data.sale_start_at, orders, data.picking_closing_at);
+
+    if(data.event_type === types.project.EVENT_TYPE_PICK_EVENT){
+      const isPickingFinish = Util.isFinishedAndPickingFinished(data.picking_closing_at, data.funding_closing_at);
+      if(isPickingFinish){
+        _explain_detail_first = "신청종료(추첨확정)"
+      }else if(isClosing){
+        _explain_detail_first = "신청이 마감되었습니다."
+      }else{
+        _explain_detail_first = "신청가능"
+      }
+    }else{
+      _explain_detail_first = "진행중"
+
+      if(isClosing){
+        _explain_detail_first = "종료됨"
+      }
+    }
+
+    let _progressValue = Math.floor(getProgress(data.type, data.pledged_amount, data.funded_amount, data.poster_url, data.project_target, orders));
+
+    
+    const isSaling = Util.isSaling(data.sale_start_at);
+    let _saleStartTime = null;
+    let _saleStartMilliSec = null;
+    
+    if(!isSaling){
+      // _explain_title_custom = '오픈 대기중이에요!',
+      _explain_detail_first = "오픈 예정";
+
+      _saleStartTime = moment(data.sale_start_at).format('YYYY-MM-DD HH:mm');
+      _saleStartMilliSec = Util.getDiffSaleTime(data.sale_start_at);
+    }
+
+    // console.log(isSaling);
+    
+
+    // let _ticket_explain = Util.getDetailCloseExplainText(data.funding_closing_at);
+
+    // console.log(result[0].price);
+
+
+    //별도의 데이터들//
+    const _expireDate = moment(data.funding_closing_at).format('YYYY년 MM월 DD일');
+
+    let pledgedTarget = "원";
+    //인원, 금액 결정
+    if(data.project_target == "people")
+    {
+      pledgedTarget = "명";
+    }
+
+    // pledgedTarget = pledged_amount + pledgedTarget;
+    pledgedTarget = Util.getNumberWithCommas(data.pledged_amount) + pledgedTarget;
+    if(data.type == "sale")
+    {
+      //즉시 결제면 무조건 명수로 나온다.
+      pledgedTarget = Util.getNumberWithCommas(ticket_limit_count)+"명";
+    }
+
+    let _picking_closing_at = null;
+    if(data.picking_closing_at){
+      _picking_closing_at = moment(data.picking_closing_at).format('YYYY년 MM월 DD일');
+    }
+
+    //////////////
+    return res.json({
+      result:{
+        state: res_state.success,
+        isClosing: isClosing,
+        ticket_price: data.price,
+        ticket_price_text: _ticket_price_text,
+        ticket_expire: _ticket_expire,
+        // ticket_explain: _ticket_explain,
+        project_diff_days: diffDays,
+        explain_title_custom: _explain_title_custom,
+
+
+        explain_detail_first: _explain_detail_first,
+        explain_detail_second: '',  //이건 당장은 안쓴다.
+        explain_detail_third: _explain_detail_third,
+
+        // explain_detail_first: _explain_detail_first,
+        // explain_detail_second: _explain_detail_second,  //이건 당장은 안쓴다.
+        // explain_detail_third: _explain_detail_third,
+
+        progressValue: _progressValue,
+
+        expireDate: _expireDate,
+        pledgedTarget: pledgedTarget,
+
+        project_target: data.project_target,
+        pledged_amount: data.pledged_amount,
+        type: data.type,
+        ticket_limit_count: ticket_limit_count, 
+        funding_closing_at: moment(data.funding_closing_at).format('YYYY년 MM월 DD일'), 
+        picking_closing_at: _picking_closing_at, 
+        event_type: data.event_type,
+        isPickingFinish: Util.isExpireTime(data.picking_closing_at),
+        isSaling: isSaling,
+        saleStartTime: _saleStartTime,
+        saleStartMilliSec: _saleStartMilliSec,
+        ticket_notice: data.ticket_notice
+      }
+    })
+    
+  });
 
   /*
-  db.SELECT("SELECT channel.url as channelLink, categories_channel_id, user.name, user.profile_photo_url, user.introduce, project.title, project.poster_renew_url, project.poster_url, project.story FROM projects AS project" +
-            " INNER JOIN users AS user" +
-            " ON project.user_id=user.id" +
-            " INNER JOIN channels AS channel" +
-            " ON project.user_id=channel.user_id" +
-            " WHERE project.id="+req.params.id, function(result){
-              res.json({
-                result
-              });
-            });
-            */
-            //name, title, poster_renew_url, poster_url, story
-  // db.SELECT("SELECT title, poster_renew_url, poster_url, story FROM projects" + 
-  //           " WHERE id="+req.params.id, function(result){
+  const project_id = req.body.data.project_id;
+  // const querySelect = mysql.format("SELECT project.type, project.pledged_amount, project.picking_closing_at, price, show_date, project.funding_closing_at, project.sale_start_at, project.event_type FROM tickets AS ticket LEFT JOIN projects AS project ON ticket.project_id=project.id WHERE project_id=? ORDER BY price ASC", project_id);
+
+  // const querySelect = mysql.format("SELECT project.funded_amount, SUM(ticket.audiences_limit) AS ticket_limit_count, project_target, project.type, project.pledged_amount, project.picking_closing_at, price, show_date, project.funding_closing_at, project.sale_start_at, project.event_type FROM tickets AS ticket LEFT JOIN projects AS project ON ticket.project_id=project.id WHERE project_id=? ORDER BY price ASC", project_id);
+
+  // const querySelect = mysql.format("SELECT poster_url, SUM(_order.price) AS order_all_count, project.funded_amount, SUM(ticket.audiences_limit) AS ticket_limit_count, project_target, project.type, project.pledged_amount, project.picking_closing_at, ticket.price, show_date, project.funding_closing_at, project.sale_start_at, project.event_type FROM tickets AS ticket LEFT JOIN projects AS project ON ticket.project_id=project.id LEFT JOIN orders AS _order ON _order.ticket_id=ticket.id WHERE ticket.project_id=? ORDER BY ticket.price ASC", project_id);
+
+  const querySelect = mysql.format("SELECT poster_url, SUM(_order.price) AS order_all_count, project.funded_amount, SUM(ticket.audiences_limit) AS ticket_limit_count, project_target, project.type, project.pledged_amount, project.picking_closing_at, ticket.price, show_date, project.funding_closing_at, project.sale_start_at, project.event_type FROM tickets AS ticket LEFT JOIN projects AS project ON ticket.project_id=project.id WHERE ticket.project_id=? ORDER BY ticket.price ASC;", project_id);
+
+  const orderQuerySelect = mysql.format("SELECT  FROM orders AS _order WHERE _order.project_id AND _order.state<? AND _order.deleted_at IS NULL;", [project_id, types.order.ORDER_STATE_PAY_END]);
+  
+
+  db.SELECT(querySelect, {}, function(result){
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '티켓이 없습니다.',
+        result:{}
+      })
+    }
+
+    const data = result[0];
+
+    // console.log(data.order_all_count);
+
+    let _ticket_price_text = Util.getNumberWithCommas(data.price);
+    
+    if(data.price === 0){
+      _ticket_price_text = "무료";
+    }
+
+    let _ticket_expire = Util.getDetailShowDateText(data.show_date);
+    
+    // let _ticket_explain = '';
+    const diffDays = Util.getDetailCloseExplainText(data.funding_closing_at);
+    const isClosing = Util.isExpireTime(data.funding_closing_at);
+
+    // if(isClosing){
+    //   _ticket_explain = `신청 종료`;
+    // }
+    // else if(diffDays < 0){
+    //   _ticket_explain = `신청 종료`;
+    // }else if(diffDays === 0){
+    //   _ticket_explain = `오늘까지 신청할 수 있어요!`;
+    // }else{
+    //   _ticket_explain = `신청 종료까지 ${diffDays}일 남았어요!`;
+    // }
+
+    let _explain_title_custom = '';
+    let _explain_detail_first = '';
+    let _explain_detail_second = this.getMainExplain(data.project_target, data.pledged_amount, data.type, data.ticket_limit_count, data.funding_closing_at, data.picking_closing_at, data.event_type);
+    let _explain_detail_third = this.getNowAmount(data.type, data.funded_amount, data.funding_closing_at, data.event_type, data.project_target, data.poster_url, data.sale_start_at);
+
+    if(data.event_type === types.project.EVENT_TYPE_PICK_EVENT){
+      const isPickingFinish = Util.isFinishedAndPickingFinished(data.picking_closing_at, data.funding_closing_at);
+      if(isPickingFinish){
+        _explain_detail_first = "신청종료(추첨확정)"
+      }else if(isClosing){
+        _explain_detail_first = "신청이 마감되었습니다."
+      }else{
+        _explain_detail_first = "신청가능"
+      }
+    }else{
+      _explain_detail_first = "진행중"
+
+      if(isClosing){
+        _explain_detail_first = "종료됨"
+      }
+    }
+
+    
+    const isSaling = Util.isSaling(data.sale_start_at);
+    if(!isSaling){
+      _explain_title_custom = '오픈 대기중이에요!',
+      _explain_detail_first = "오픈 예정";
+    }
+
+    // console.log(isSaling);
+    
+
+    // let _ticket_explain = Util.getDetailCloseExplainText(data.funding_closing_at);
+
+    // console.log(result[0].price);
+    return res.json({
+      result:{
+        state: res_state.success,
+        isClosing: isClosing,
+        ticket_price: data.price,
+        ticket_price_text: _ticket_price_text,
+        ticket_expire: _ticket_expire,
+        // ticket_explain: _ticket_explain,
+        project_diff_days: diffDays,
+        explain_title_custom: _explain_title_custom,
+
+        explain_detail_first: _explain_detail_first,
+        explain_detail_second: _explain_detail_second,
+        explain_detail_third: _explain_detail_third
+      }
+    })
+    
+  });
+  */
+});
+
+router.post('/detail', function(req, res) {
+  const project_id = req.body.data.project_id;
+  const querySelect = mysql.format("SELECT project_type, project.id AS project_id, user.id AS user_id, user.name, user.profile_photo_url, user.introduce, project.title, project.poster_renew_url, project.poster_url, project.story, detailed_address, concert_hall, isDelivery, project.type, city.name AS city, temporary_date FROM projects AS project LEFT JOIN cities AS city ON city.id=project.city_id LEFT JOIN users AS user ON project.user_id=user.id WHERE project.id=?", project_id);
+  
+  //project_type
+  db.SELECT(querySelect, {}, function(result){
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '없는 프로젝트 입니다.',
+        result:{}
+      })
+    }
+
+    let data = result[0];
+
+    if(data.project_type === 'artist'){
+      data.project_type = "아티스트";
+    }else{
+      data.project_type = "크리에이터";
+    }
+
+    res.json({
+      result:{
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    });
+  });
+
+  // db.SELECT("SELECT project.id AS project_id, user.id AS user_id, user.name, user.profile_photo_url, user.introduce, project.title, project.poster_renew_url, project.poster_url, project.story, detailed_address, concert_hall, isDelivery, project.type FROM projects AS project" +
+  //           " INNER JOIN users AS user" +
+  //           " ON project.user_id=user.id" +
+  //           " WHERE project.id=?", [project_id], function(result){
   //             res.json({
   //               result
   //             });
@@ -242,18 +723,24 @@ router.post('/detail', function(req, res) {
 router.post('/tickets', function(req, res) {
   let project_id = req.body.data.project_id;
 
-  //db.SELECT("SELECT ticket.id, audiences_limit, buy_limit, ticket.price, show_date, category, count(`order`.id) AS order_count FROM tickets AS ticket" + 
-  db.SELECT("SELECT ticket.id, audiences_limit, buy_limit, ticket.price, show_date, category, sum(`order`.count) AS order_count FROM tickets AS ticket" + 
-            " LEFT JOIN `orders` AS `order`" +
-            " ON `order`.ticket_id=ticket.id" +
-            " AND `order`.state<"+types.order.ORDER_STATE_PAY_END+
-            " WHERE ticket.project_id=?" +
-            " GROUP BY ticket.id" +
-            " ORDER BY ticket.show_date DESC", [project_id], function(result){
+  let querySelect = mysql.format("SELECT is_quantity_show, categories_ticket.title AS categories_ticket_title, ticket.id, audiences_limit, buy_limit, ticket.price, show_date, category, sum(`order`.count) AS order_count FROM tickets AS ticket LEFT JOIN `orders` AS `order` ON `order`.ticket_id=ticket.id AND `order`.state<? LEFT JOIN categories_tickets AS categories_ticket ON categories_ticket.id=ticket.category WHERE ticket.project_id=? GROUP BY ticket.id ORDER BY ticket.show_date DESC", [types.order.ORDER_STATE_PAY_END, project_id]);
+  db.SELECT(querySelect, {}, function(result){
               res.json({
                 result
               });
             });
+  
+  // db.SELECT("SELECT category, ticket.id, audiences_limit, buy_limit, ticket.price, show_date, category, sum(`order`.count) AS order_count FROM tickets AS ticket" + 
+  //           " LEFT JOIN `orders` AS `order`" +
+  //           " ON `order`.ticket_id=ticket.id" +
+  //           " AND `order`.state<"+types.order.ORDER_STATE_PAY_END+
+  //           " WHERE ticket.project_id=?" +
+  //           " GROUP BY ticket.id" +
+  //           " ORDER BY ticket.show_date DESC", [project_id], function(result){
+  //             res.json({
+  //               result
+  //             });
+  //           });
 });
 
 router.get('/:id/tickets/:ticket_id', function(req, res) {
@@ -783,6 +1270,7 @@ router.post("/buy/temporary/ticket", function(req, res){
         answer: '',
         attended: '',
         fail_message: '',
+        pay_method: '',
         goods_meta: '{}',
         imp_meta: '{}',
         merchant_uid: _merchant_uid,
@@ -1031,6 +1519,7 @@ router.post("/buy/temporary/ticket", function(req, res){
                       user_id: _user_id,
                       goods_id: goodsObject.id,
                       count: goodsObject.count,
+                      pay_method: '',
                       created_at: date
                     };
       
@@ -1206,7 +1695,9 @@ router.post("/buy/temporary/ticket", function(req, res){
           attended: '',
           fail_message: '',
           goods_meta: _goods_meta,
+          merchant_uid: _merchant_uid,
           imp_meta: '{}',
+          pay_method: '',
           created_at : date,
           updated_at: date
         };
@@ -1355,6 +1846,21 @@ router.post("/buy/temporary/ticket", function(req, res){
     });
 
   });
+});
+
+router.post("/get/eventtypesub", function(req, res){
+  const project_id = req.body.data.project_id;
+
+  let querySelect = mysql.format("SELECT event_type_sub FROM projects WHERE id=?", [project_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        event_type_sub: result[0].event_type_sub
+      }
+    })
+  })
 });
 
 module.exports = router;

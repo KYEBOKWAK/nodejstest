@@ -49,8 +49,8 @@ const axios = require('axios');
 
 const util = require('./lib/util.js');
 
-const moment = require('moment-timezone');
-moment.tz.setDefault("Asia/Seoul");
+const moment_timezone = require('moment-timezone');
+moment_timezone.tz.setDefault("Asia/Seoul");
 
 var mysql = require('mysql');
 
@@ -62,6 +62,7 @@ var Types = use('lib/types.js');
 const res_state = use('lib/res_state.js');
 
 const Global_Func = use("lib/global_func.js");
+var types = use('lib/types.js');
 
 process.setMaxListeners(15);
 /////상단 새로운 코드 START////
@@ -136,7 +137,7 @@ function makeRefreshToken(id, data, before_refresh_token, res){
         }else{
           console.log('리프래시 and 액세스 재발급 성공!!');
           //db update 해야함.
-          var date = moment().format('YYYY-MM-DD HH:mm:ss');
+          var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
           db.UPDATE("UPDATE devices SET refresh_token=?, updated_at=? WHERE refresh_token=? AND user_id=?", 
           [_refresh_token, date, before_refresh_token, id],
           function(result){
@@ -1901,8 +1902,39 @@ app.get("/any/sns/callback/apple", function(req, res){
   })
 })
 
+function payWaitTimeExpireCheck(){
+  // console.log(moment_timezone().format('YYYY-MM-DD HH:mm:ss'));
+  const querySelect = mysql.format("SELECT id, created_at, state FROM orders WHERE state=?", [types.order.ORDER_STATE_APP_PAY_WAIT]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    for(let i = 0 ; i < result.length ; i++){
+      const orderData = result[i];
+
+      const waitSec = util.getWaitTimeSec(orderData.created_at);
+      if(waitSec <= 0){
+        //0보다 작으면 값을 바꿔줘야함.
+        //이거 주석 풀어줘야 함. 일단 테스트로 8 고정
+        
+        db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_CANCEL_WAIT_PAY, orderData.id], (result_order_update) => {
+          console.log(orderData.id + ' changed' + ' ORDER_STATE_CANCEL_WAIT_PAY');
+          // return res.json({
+          //   state: res_state.none,
+          //   result: {
+          //   }
+          // });
+        }, (error) => {
+            
+        });
+      }
+    }
+  });
+  
+}
+
 cron.schedule('* * * * *', function(){
   console.log('node-cron 실행 테스트');
+  payWaitTimeExpireCheck();
+  //
 });
 
 // cron.schedule('1,2,4,5 * * * *', () => {

@@ -8,6 +8,9 @@ var mysql = require('mysql');
 const res_state = use('lib/res_state.js');
 const Util = use('lib/util.js');
 
+const moment_timezone = require('moment-timezone');
+moment_timezone.tz.setDefault("Asia/Seoul");
+
 router.post('/wait/order', function(req, res){
   const user_id = req.body.data.user_id;
   
@@ -86,7 +89,7 @@ router.post('/wait/order', function(req, res){
       if(waitSec <= 0){
         //0보다 작으면 값을 바꿔줘야함.
         //이거 주석 풀어줘야 함. 일단 테스트로 8 고정
-        /*
+        
         db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_CANCEL_WAIT_PAY, orderData.id], (result_order_update) => {
           return res.json({
             state: res_state.none,
@@ -96,8 +99,8 @@ router.post('/wait/order', function(req, res){
         }, (error) => {
             
         });
-        */
-        // return;
+        
+        return;
       }
       // console.log(Util.getWaitTimeSec(orderData.created_at));
 
@@ -157,21 +160,25 @@ router.post('/ticketing/list', function(req, res) {
 
 //SELECT title, poster_renew_url, id FROM projects WHERE event_type_sub != 2 ORDER BY id DESC
 router.post('/all/project', function(req, res) {
-  //console.log(req.body.data.abc);
 
-  db.SELECT("SELECT title, poster_renew_url, poster_url, id FROM projects" +
-            " WHERE state = ?"+
-            " AND event_type_sub != ?"+
-            " ORDER BY id DESC LIMIT 13", [types.project.STATE_APPROVED, types.project.EVENT_TYPE_SUB_SECRET_PROJECT], function(result){
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  let querySelect = mysql.format("SELECT title, poster_renew_url, poster_url, id FROM projects WHERE state=? AND event_type_sub!=? ORDER BY funding_closing_at DESC", [types.project.STATE_APPROVED, types.project.EVENT_TYPE_SUB_SECRET_PROJECT]);
+
+  // let querySelect = mysql.format("SELECT title, poster_renew_url, poster_url, id FROM projects WHERE state=? AND event_type_sub<>? AND funding_closing_at>? ORDER BY funding_closing_at DESC", [types.project.STATE_APPROVED, types.project.EVENT_TYPE_SUB_SECRET_PROJECT, date]);
+
+  db.SELECT(querySelect, {}, function(result){
               res.json({
                 result
               });
-                // res.json({
-                //   result: {
-                //     state: 'success',
-                //     result
-                //   }
-                // });
+
+  // db.SELECT("SELECT title, poster_renew_url, poster_url, id FROM projects" +
+  //           " WHERE state = ?"+
+  //           " AND event_type_sub <> ?"+
+  //           " ORDER BY id DESC LIMIT 13", [types.project.STATE_APPROVED, types.project.EVENT_TYPE_SUB_SECRET_PROJECT], function(result){
+  //             res.json({
+  //               result
+  //             });
   });
 
   /*
@@ -184,6 +191,20 @@ router.post('/all/project', function(req, res) {
     });
   });
   */
+});
+
+router.post('/event/feed', function(req, res){
+  return res.json({
+    result:{
+      event_image_bg_url: 'https://crowdticket0.s3-ap-northeast-1.amazonaws.com/banner/200806_banner_bg_color.png',
+      event_image_url: 'https://crowdticket0.s3-ap-northeast-1.amazonaws.com/banner/200806_banner_m.png',
+      event_link: 'https://docs.google.com/forms/u/1/d/e/1FAIpQLSdTjkJne_8uf0UtRgPPjq7jeGe7Hi09O2vgPWpIQM6w2xpmmA/viewform',
+      info: {
+        bg_height: 80,
+        img_height: 62
+      }
+    }
+  })
 });
 
 module.exports = router;

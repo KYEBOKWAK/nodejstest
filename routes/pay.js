@@ -214,7 +214,7 @@ payComplite = (req, res, serializer_uid) => {
     const customer_uid = Util.getPayNewCustom_uid(user_id);
     const pay_method = req.body.data.pay_method;
 
-    console.log(order_id+"/"+merchant_uid+"/"+imp_uid);
+    // console.log(order_id+"/"+merchant_uid+"/"+imp_uid);
     let orderQuery = "SELECT state, id, total_price FROM orders AS _order WHERE _order.id=? AND _order.merchant_uid=?";
     orderQuery = mysql.format(orderQuery, [order_id, merchant_uid]);
     // console.log(orderQuery);
@@ -501,6 +501,7 @@ router.post('/onetime', function(req, res){
                     //결제 성공
                     req.body.data.merchant_uid = result.merchant_uid;
                     req.body.data.imp_uid = result.imp_uid;
+                    req.body.data.pay_method = result.pay_method;
                     this.payComplite(req, res, PAY_SERIALIZER_ONETIME);
                 }else{
                     // console.log("success");
@@ -606,13 +607,13 @@ router.post('/schedule', function(req, res){
                     ]
                 }).then((result) => {
                     // To do
-                    console.log(result);
                     const _result = result[0];
                     //status: 'paid',
                     if(_result.schedule_status === 'scheduled'){
                         //결제 성공
                         req.body.data.merchant_uid = _result.merchant_uid;
                         req.body.data.imp_uid = _result.imp_uid;
+                        req.body.data.pay_method = 'card'
                         this.payComplite(req, res, PAY_SERIALIZER_SCHEDULE);
                     }else{
                         // console.log("success");
@@ -821,6 +822,28 @@ router.post("/cancel", function(req, res){
     // db.SELECT(orderQuery, [], (result) => {
 
     // })
+})
+
+router.post("/get/vbank/info", function(req, res){
+    const imp_uid = req.body.data.imp_uid;
+
+    iamport.payment.getByImpUid({
+        imp_uid: imp_uid  
+      }).then(function(result_import){
+        // To do
+        return res.json({
+            ...result_import
+        })
+      }).catch(function(error){
+        // handle error
+        return  res.json({
+            state: res_state.error,
+            message: error.message,
+            result:{
+                ...error
+            }
+        });
+      });
 })
 /*
 //ios 전용?? 어케할까
