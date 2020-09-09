@@ -14,7 +14,7 @@ moment_timezone.tz.setDefault("Asia/Seoul");
 router.post('/wait/order', function(req, res){
   const user_id = req.body.data.user_id;
   
-  let orderQuery = mysql.format("SELECT ticket.price AS ticket_price, ticket.show_date, _order.id, _order.state AS order_state, _order.project_id AS project_id, _order.created_at, project.title, project.poster_renew_url, project.isDelivery, project.type AS pay_type, merchant_uid, total_price, _order.count, _order.ticket_id FROM orders AS _order LEFT JOIN projects AS project ON project.id=_order.project_id LEFT JOIN tickets AS ticket ON _order.ticket_id=ticket.id WHERE _order.user_id=? AND _order.state=? ORDER BY id DESC", [user_id, types.order.ORDER_STATE_APP_PAY_WAIT]);
+  let orderQuery = mysql.format("SELECT ticket.category, categories_ticket.title AS categories_ticket_title, ticket.price AS ticket_price, ticket.show_date, _order.id, _order.state AS order_state, _order.project_id AS project_id, _order.created_at, project.title, project.poster_renew_url, project.isDelivery, project.type AS pay_type, merchant_uid, total_price, _order.count, _order.ticket_id FROM orders AS _order LEFT JOIN projects AS project ON project.id=_order.project_id LEFT JOIN tickets AS ticket ON _order.ticket_id=ticket.id LEFT JOIN categories_tickets AS categories_ticket ON categories_ticket.id=ticket.category WHERE _order.user_id=? AND _order.state=? ORDER BY id DESC", [user_id, types.order.ORDER_STATE_APP_PAY_WAIT]);
   db.SELECT(orderQuery, [], (result_order) => {
     // console.log(result_order);
     if(result_order === undefined || result_order.length === 0){
@@ -52,6 +52,8 @@ router.post('/wait/order', function(req, res){
           count: orderData.count,
           show_date: orderData.show_date,
           price: orderData.ticket_price,
+          category: orderData.category,
+          categories_ticket_title: orderData.categories_ticket_title
         }
 
         select_tickets.push(ticketObject);

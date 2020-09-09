@@ -724,6 +724,7 @@ router.post('/tickets', function(req, res) {
   let project_id = req.body.data.project_id;
 
   let querySelect = mysql.format("SELECT is_quantity_show, categories_ticket.title AS categories_ticket_title, ticket.id, audiences_limit, buy_limit, ticket.price, show_date, category, sum(`order`.count) AS order_count FROM tickets AS ticket LEFT JOIN `orders` AS `order` ON `order`.ticket_id=ticket.id AND `order`.state<? LEFT JOIN categories_tickets AS categories_ticket ON categories_ticket.id=ticket.category WHERE ticket.project_id=? GROUP BY ticket.id ORDER BY ticket.show_date DESC", [types.order.ORDER_STATE_PAY_END, project_id]);
+
   db.SELECT(querySelect, {}, function(result){
               res.json({
                 result
@@ -1861,6 +1862,34 @@ router.post("/get/eventtypesub", function(req, res){
       }
     })
   })
+});
+
+router.post("/ticket/showdate", function(req, res){
+  //showdate가 0000이면 카테고리로 셋팅
+  const ticket_id = req.body.data.ticket_id;
+  const querySelect = mysql.format("SELECT category, show_date, categories_ticket.title AS categories_ticket_title FROM tickets AS ticket LEFT JOIN categories_tickets AS categories_ticket ON categories_ticket.id=ticket.category WHERE ticket.id=?", [ticket_id]);
+  
+  console.log(querySelect);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '티켓 정보가 없습니다.',
+        result: {}
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result:{
+        state: res_state.success,
+        category: data.category,
+        show_date: data.show_date,
+        categories_ticket_title: data.categories_ticket_title
+      }
+    })
+  });
 });
 
 module.exports = router;
