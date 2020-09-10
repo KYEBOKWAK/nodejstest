@@ -495,7 +495,9 @@ router.post('/detail/explain', function(req, res){
       // _explain_title_custom = '오픈 대기중이에요!',
       _explain_detail_first = "오픈 예정";
 
+      console.log(data.sale_start_at);
       _saleStartTime = moment_timezone(data.sale_start_at).format('YYYY-MM-DD HH:mm');
+      console.log(_saleStartTime);
       _saleStartMilliSec = Util.getDiffSaleTime(data.sale_start_at);
     }
 
