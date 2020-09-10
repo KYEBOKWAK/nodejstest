@@ -332,7 +332,6 @@ app.use(function (req, res, next) {
           })
         }
         
-        // var dec = moment(result.error.expiredAt);
         // //console.log(dec.format('YYYY-MM-DD HH:mm:ss'));
       });
     }else if(req.body.data.access_token && req.body.data.access_token !== ''){
@@ -355,8 +354,6 @@ app.use(function (req, res, next) {
           })
         }
         
-        // var dec = moment(result.error.expiredAt);
-        // //console.log(dec.format('YYYY-MM-DD HH:mm:ss'));
       });
     }
     // //console.log(req.body.data);
@@ -1419,7 +1416,7 @@ app.post('/any/login', function(req, res){
               data.refresh_token = token;
 
               //insert db start
-              var date = moment().format('YYYY-MM-DD HH:mm:ss');
+              var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
               var refreshTokenObject = {
                 user_id : user.id,
@@ -1862,7 +1859,7 @@ app.post('/any/login/sns', function(req, res){
               data.refresh_token = token;
 
               //insert db start
-              var date = moment().format('YYYY-MM-DD HH:mm:ss');
+              var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
               var refreshTokenObject = {
                 user_id : user.id,

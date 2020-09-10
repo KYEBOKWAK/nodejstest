@@ -21,7 +21,7 @@ var urlencode = require('urlencode');
 router.post("/ticketing", function(req, res){
   const findWord = "%"+req.body.data.findWord+"%";
 
-  var nowDate = moment().format('YYYY-MM-DD HH:mm:ss');
+  var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let queryFind = mysql.format("SELECT poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id WHERE project.funding_closing_at > ? AND project.state=? AND (project.title LIKE ? OR hash_tag1 LIKE ? OR hash_tag2 LIKE ? OR categorie.title LIKE ? OR detailed_address LIKE ?) ORDER BY project.id DESC", [nowDate, types.project.STATE_APPROVED, findWord, findWord, findWord, findWord, findWord]);
 

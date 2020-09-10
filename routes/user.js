@@ -197,7 +197,7 @@ router.post("/any/login", function(req, res){
         data.refresh_token = token;
   
         //insert db start
-        var date = moment().format('YYYY-MM-DD HH:mm:ss');
+        var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
   
         var refreshTokenObject = {
           user_id : user.id,
@@ -290,7 +290,7 @@ router.post("/any/login", function(req, res){
         data.refresh_token = token;
   
         //insert db start
-        var date = moment().format('YYYY-MM-DD HH:mm:ss');
+        var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
   
         var refreshTokenObject = {
           user_id : user.id,
@@ -422,7 +422,7 @@ router.post("/any/register", function(req, res){
     ...req.body.data
   }
 
-  var date = moment().format('YYYY-MM-DD HH:mm:ss');
+  var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let setUserData = {
     email: userData.email,
@@ -546,7 +546,7 @@ router.post("/any/register", function(req, res){
     ...req.body.data
   }
 
-  var date = moment().format('YYYY-MM-DD HH:mm:ss');
+  var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let setUserData = {
     email: userData.email,
@@ -727,9 +727,6 @@ router.post("/save/profile", function(req, res){
 
 router.post("/order/count", function(req, res){
   const user_id = req.body.data.user_id;
-  // var nowDate = moment().format('YYYY-MM-DD HH:mm:ss');
-  // var nowDate = moment().add(1, 'days').format('YYYY-MM-DD HH:mm:ss');
-  // let nextDate = moment(nowDate).add(1, 'days');
   // console.log(nowDate);
   // return res.json({});
 
@@ -745,7 +742,7 @@ router.post("/order/count", function(req, res){
     // console.log(result_select_order);
     for(let i = 0 ; i < result_select_order.length ; i++){
       const _data = result_select_order[i];
-      let lostShowDate = moment(_data.show_date).format('YYYY-MM-DD 23:59:59');
+      let lostShowDate = moment_timezone(_data.show_date).format('YYYY-MM-DD 23:59:59');
       // console.log(_data);
       // console.log(lostShowDate);
       if(!Util.isTicketShowFinished(lostShowDate)){
@@ -1196,7 +1193,7 @@ router.post("/out", function(req, res){
     }
 
     const user = result_select_user[0];
-    var date = moment().format('YYYY-MM-DD HH:mm:ss');
+    var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
     db.DELETE("DELETE FROM devices WHERE user_id=?", [user_id], 
     (result_delete_devices) => {
@@ -1505,7 +1502,7 @@ router.post("/push/update", function(req, res){
         advertising = req.body.data.advertising;
       }
 
-      let date = moment().format('YYYY-MM-DD HH:mm:ss');
+      let date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
       //insert
       const insertData = {
@@ -1529,7 +1526,7 @@ router.post("/push/update", function(req, res){
       })
     }else{
       //update
-      let date = moment().format('YYYY-MM-DD HH:mm:ss');
+      let date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
       const resultSelectPushData = result_select_push[0];
 

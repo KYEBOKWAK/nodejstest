@@ -12,6 +12,8 @@ var mysql = require('mysql');
 const types = use('lib/types.js');
 
 const moment = require('moment');
+const moment_timezone = require('moment-timezone');
+moment_timezone.tz.setDefault("Asia/Seoul");
 
 var Iamport = require('iamport');
 var iamport = new Iamport({
@@ -566,9 +568,9 @@ router.post('/schedule', function(req, res){
             endDate = orderData.picking_closing_at;
         }       
 
-        let payingDate = moment(endDate).add(1, 'days');
-        payingDate = moment(payingDate).format("YYYY-MM-DD 13:00:00");
-        payingDate = moment(payingDate).format("X");
+        let payingDate = moment_timezone(endDate).add(1, 'days');
+        payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
+        payingDate = moment_timezone(payingDate).format("X");
 
         // const orderData = result_order[0];
         const paymentData = {

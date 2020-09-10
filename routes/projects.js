@@ -18,7 +18,7 @@ const global = use('lib/global_const.js');
 
 router.post("/ticketing/list", function(req, res){
   // const user_id = req.body.data.user_id;
-  var nowDate = moment().format('YYYY-MM-DD HH:mm:ss');
+  var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let queryLikeTicketing = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND project.funding_closing_at > ?", [types.project.STATE_APPROVED, nowDate]);
 
@@ -87,7 +87,7 @@ router.post("/get", function(req, res){
   }else if(listType === types.project_list_type.PROJECT_LIST_TICKETING){
 
     //현재시간
-    var nowDate = moment().format('YYYY-MM-DD HH:mm:ss');
+    var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
     // console.log(nowDate.toString());
 
     mannayoQuery = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND funding_closing_at > ? ORDER BY project.id DESC LIMIT ? OFFSET ?", [types.project.STATE_APPROVED, nowDate, TAKE, skip]);
@@ -242,12 +242,12 @@ getMainExplain = (project_target, pledged_amount, type, ticket_limit_count, fund
     textEnd = '이 모여야 진행되는 이벤트입니다.';
   }
 
-  let fundingEndTime = moment(funding_closing_at).format('YYYY년 MM월 DD일');
+  let fundingEndTime = moment_timezone(funding_closing_at).format('YYYY년 MM월 DD일');
 
   //if($this->type == "pick")
   if(event_type === types.project.EVENT_TYPE_PICK_EVENT){
 
-    let pickingEndTime = moment(picking_closing_at).format('YYYY년 MM월 DD일');
+    let pickingEndTime = moment_timezone(picking_closing_at).format('YYYY년 MM월 DD일');
     let mainExplain = '';
     const isPickingFinish = Util.isExpireTime(picking_closing_at);
     const isClosing = Util.isExpireTime(funding_closing_at);
@@ -495,7 +495,7 @@ router.post('/detail/explain', function(req, res){
       // _explain_title_custom = '오픈 대기중이에요!',
       _explain_detail_first = "오픈 예정";
 
-      _saleStartTime = moment(data.sale_start_at).format('YYYY-MM-DD HH:mm');
+      _saleStartTime = moment_timezone(data.sale_start_at).format('YYYY-MM-DD HH:mm');
       _saleStartMilliSec = Util.getDiffSaleTime(data.sale_start_at);
     }
 
@@ -508,7 +508,7 @@ router.post('/detail/explain', function(req, res){
 
 
     //별도의 데이터들//
-    const _expireDate = moment(data.funding_closing_at).format('YYYY년 MM월 DD일');
+    const _expireDate = moment_timezone(data.funding_closing_at).format('YYYY년 MM월 DD일');
 
     let pledgedTarget = "원";
     //인원, 금액 결정
@@ -527,7 +527,7 @@ router.post('/detail/explain', function(req, res){
 
     let _picking_closing_at = null;
     if(data.picking_closing_at){
-      _picking_closing_at = moment(data.picking_closing_at).format('YYYY년 MM월 DD일');
+      _picking_closing_at = moment_timezone(data.picking_closing_at).format('YYYY년 MM월 DD일');
     }
 
     //////////////
@@ -560,7 +560,7 @@ router.post('/detail/explain', function(req, res){
         pledged_amount: data.pledged_amount,
         type: data.type,
         ticket_limit_count: ticket_limit_count, 
-        funding_closing_at: moment(data.funding_closing_at).format('YYYY년 MM월 DD일'), 
+        funding_closing_at: moment_timezone(data.funding_closing_at).format('YYYY년 MM월 DD일'), 
         picking_closing_at: _picking_closing_at, 
         event_type: data.event_type,
         isPickingFinish: Util.isExpireTime(data.picking_closing_at),
@@ -1868,8 +1868,6 @@ router.post("/ticket/showdate", function(req, res){
   //showdate가 0000이면 카테고리로 셋팅
   const ticket_id = req.body.data.ticket_id;
   const querySelect = mysql.format("SELECT category, show_date, categories_ticket.title AS categories_ticket_title FROM tickets AS ticket LEFT JOIN categories_tickets AS categories_ticket ON categories_ticket.id=ticket.category WHERE ticket.id=?", [ticket_id]);
-  
-  console.log(querySelect);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
