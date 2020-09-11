@@ -95,6 +95,11 @@ router.post("/get", function(req, res){
     const findWord = "%"+req.body.data.findWord+"%";
 
     mannayoQuery = mysql.format("SELECT poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id WHERE project.state=? AND (project.title LIKE ? OR hash_tag1 LIKE ? OR hash_tag2 LIKE ? OR categorie.title LIKE ? OR detailed_address LIKE ?) ORDER BY project.id DESC LIMIT ? OFFSET ?", [types.project.STATE_APPROVED, findWord, findWord, findWord, findWord, findWord, TAKE, skip]);
+  }else if(listType === types.project_list_type.PROJECT_LIST_ALL){
+    var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+    // console.log(nowDate.toString());
+
+    mannayoQuery = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND event_type_sub<>? ORDER BY project.funding_closing_at DESC LIMIT ? OFFSET ?", [types.project.STATE_APPROVED, types.project.EVENT_TYPE_SUB_SECRET_PROJECT, TAKE, skip]);
   }
 
   db.SELECT(mannayoQuery, [], (result_mannayo) => {
@@ -187,8 +192,8 @@ router.post('/survey/save', function(req, res){
   let surveyDataArray = req.body.data.survey_data_array;
   surveyDataArray = JSON.stringify(surveyDataArray);
   
-  db.SELECT("UPDATE orders AS _order SET answer=? WHERE _order.id=?;", [surveyDataArray, order_id], function(result_order){
-    console.log(result_order);
+  db.UPDATE("UPDATE orders AS _order SET answer=? WHERE _order.id=?;", [surveyDataArray, order_id], function(result_order){
+    // console.log(result_order);
     if(!result_order){
       return res.json({
         result:{
@@ -971,12 +976,21 @@ router.post("/order/support", function(req, res){
         updated_at: date
       }
       db.INSERT("INSERT INTO supporters SET ?;", insertSupportObject, function(result_insert_support){
-        console.log(result_insert_support);
+        // console.log(result_insert_support);
         return res.json({
           result:{
             state: 'success'
           }
         });
+        /*
+        db.UPDATE("UPDATE orders AS _order SET supporter_id=? WHERE id=?", [result_insert_support.insertId, _data.order_id], (result) => {
+          return res.json({
+            result:{
+              state: 'success'
+            }
+          });
+        });
+        */
       }, (error) => {
         return res.json({
           state: res_state.error,
@@ -1012,7 +1026,7 @@ router.post("/order/edit", function(req, res){
   if(_data.discount_id !== null){
     // orderQuery = "SELECT _order.id AS _order_id, discount.id AS discount_id, _order.merchant_uid, _order.discount_id AS order_discount_id, _order.total_price, _order.user_id, _order.project_id, _order.ticket_id, percent_value, _order.count, _order.price, _order.goods_meta, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN discounts AS discount ON discount.id=? LEFT JOIN supporters AS supporter ON supporter.order_id=_order.id WHERE _order.id=?;";
 
-    orderQuery = "SELECT _order.id AS _order_id, discount.id AS discount_id, _order.merchant_uid, _order.discount_id AS order_discount_id, _order.total_price, _order.user_id, _order.project_id, _order.ticket_id, percent_value, _order.count, _order.price, _order.goods_meta, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN discounts AS discount ON discount.id=? LEFT JOIN supporters AS supporter ON supporter.id=_order.supporter_id WHERE _order.id=?;";
+    orderQuery = "SELECT _order.id AS _order_id, discount.id AS discount_id, _order.merchant_uid, _order.discount_id AS order_discount_id, _order.total_price, _order.user_id, _order.project_id, _order.ticket_id, percent_value, _order.count, _order.price, _order.goods_meta, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN discounts AS discount ON discount.id=? LEFT JOIN supporters AS supporter ON supporter.order_id=_order.id WHERE _order.id=?;";
 
     order_goods_query = "SELECT _goods.ticket_discount, count, price, order_goods.id AS order_goods_id FROM orders_goods AS order_goods LEFT JOIN goods AS _goods ON order_goods.goods_id=_goods.id WHERE order_goods.order_id=?;"
     
@@ -1021,8 +1035,10 @@ router.post("/order/edit", function(req, res){
 
     orderQuery = orderQuery + order_goods_query;
   }else{
-    // orderQuery = "SELECT _order.id AS _order_id, total_price, _order.user_id, _order.project_id, _order.merchant_uid, _order.ticket_id, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN supporters AS supporter ON supporter.order_id=_order.id WHERE _order.id=?";
-    orderQuery = "SELECT _order.id AS _order_id, total_price, _order.user_id, _order.project_id, _order.merchant_uid, _order.ticket_id, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN supporters AS supporter ON supporter.id=_order.supporter_id WHERE _order.id=?";
+    
+    // orderQuery = "SELECT _order.id AS _order_id, total_price, _order.user_id, _order.project_id, _order.merchant_uid, _order.ticket_id, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN supporters AS supporter ON supporter.id=_order.supporter_id WHERE _order.id=?";
+
+    orderQuery = "SELECT _order.id AS _order_id, total_price, _order.user_id, _order.project_id, _order.merchant_uid, _order.ticket_id, supporter.id AS supporter_id, supporter.price AS supporter_price FROM orders AS _order LEFT JOIN supporters AS supporter ON supporter.order_id=_order.id WHERE _order.id=?";
 
     orderQuery = mysql.format(orderQuery, _data.order_id);
   }
@@ -1522,7 +1538,7 @@ router.post("/buy/temporary/ticket", function(req, res){
                       user_id: _user_id,
                       goods_id: goodsObject.id,
                       count: goodsObject.count,
-                      pay_method: '',
+                      // pay_method: '',
                       created_at: date
                     };
       

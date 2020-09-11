@@ -210,9 +210,9 @@ router.post("/receipt/detail", function(req, res){
     // let discountsQuery = mysql.format("SELECT id AS discount_id, percent_value AS discount_value, content AS discount_content, submit_check AS discount_submit_check FROM discounts WHERE project_id=?;", orderData.project_id);
     let discountsQuery = "";
     if(orderData.discount_id !== null){
-      discountsQuery = mysql.format("SELECT id AS discount_id, percent_value AS discount_value, content AS discount_content, submit_check AS discount_submit_check FROM discounts WHERE discount_id=?;", orderData.discount_id);
+      // discountsQuery = mysql.format("SELECT id AS discount_id, percent_value AS discount_value, content AS discount_content, submit_check AS discount_submit_check FROM discounts WHERE discount_id=?;", orderData.discount_id);
+      discountsQuery = mysql.format("SELECT id AS discount_id, percent_value AS discount_value, content AS discount_content, submit_check AS discount_submit_check FROM discounts WHERE id=?;", orderData.discount_id);
     }
-    // let discountsQuery = mysql.format("SELECT id AS discount_id, percent_value AS discount_value, content AS discount_content, submit_check AS discount_submit_check FROM discounts WHERE project_id=?;", orderData.discount_id);
 
     let goods_discounts_query = goodsQuery+discountsQuery;
     db.SELECT_MULITPLEX(goods_discounts_query, (result_goods_discounts) => {
@@ -221,7 +221,6 @@ router.post("/receipt/detail", function(req, res){
       const DISCOUNT_INDEX = 1;
       let goodsDatas = [];
       let discountsDatas = [];
-      console.log(result_goods_discounts);
 
       // return;
       if(orderData.goods_meta !== "{}" && orderData.discount_id === null){
@@ -580,7 +579,7 @@ router.post("/cancel", function(req, res){
   const order_id = req.body.data.order_id;
   const user_id = req.body.data.user_id;
   
-  const querySelect = mysql.format("SELECT merchant_uid, _order.user_id, project.event_type_sub, project.pick_state, ticket.show_date, _order.total_price, _order.state, _order.deleted_at, event_type, project.funding_closing_at, project.type, project.poster_url, _order.ticket_id FROM orders AS _order LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN tickets AS ticket ON ticket.id=_order.ticket_id WHERE _order.id=?", [order_id]);
+  const querySelect = mysql.format("SELECT serializer_uid, merchant_uid, _order.user_id, project.event_type_sub, project.pick_state, ticket.show_date, _order.total_price, _order.state, _order.deleted_at, event_type, project.funding_closing_at, project.type, project.poster_url, _order.ticket_id FROM orders AS _order LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN tickets AS ticket ON ticket.id=_order.ticket_id WHERE _order.id=?", [order_id]);
 
   // const querySelect = mysql.format("SELECT merchant_uid, user_id, total_price FROM orders AS _order WHERE _order.id=?", [order_id]);
   db.SELECT(querySelect, {}, (result_select_order) => {
@@ -603,32 +602,64 @@ router.post("/cancel", function(req, res){
 
     if(orderData.total_price > 0){
       const amount = getRefundAmount(orderData.type, orderData.show_date, orderData.funding_closing_at, orderData.ticket_id, orderData.total_price);
-      iamport.payment.cancel({
-        merchant_uid: orderData.merchant_uid,
-        amount: amount
-      }).then(function(result_iamport){
-        db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_CANCEL, order_id], 
-        (result_order_update) => {
-          return res.json({
-            result:{
-              state: res_state.success,
-              order_state: types.order.ORDER_STATE_CANCEL
-            }
+
+      if(orderData.serializer_uid && orderData.serializer_uid === 'scheduled'){
+        const customer_uid = Util.getPayNewCustom_uid(user_id);
+        iamport.subscribe.unschedule({
+          merchant_uid: orderData.merchant_uid,
+          customer_uid: customer_uid
+          // amount: amount
+        }).then(function(result_iamport){
+          db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_CANCEL, order_id], 
+          (result_order_update) => {
+            return res.json({
+              result:{
+                state: res_state.success,
+                order_state: types.order.ORDER_STATE_CANCEL
+              }
+            })
+          }, (error) => {
+            return res.json({
+              state: res_state.error,
+              message: '취소 실패. 계속 실패할 경우 크티에 문의 바랍니다.',
+              result:{}
+            })
           })
-        }, (error) => {
+        }).catch(function(error){
           return res.json({
             state: res_state.error,
-            message: '취소 실패. 계속 실패할 경우 크티에 문의 바랍니다.',
+            message: error.message,
             result:{}
           })
         })
-      }).catch(function(error){
-        return res.json({
-          state: res_state.error,
-          message: error.message,
-          result:{}
+      }else{
+        iamport.payment.cancel({
+          merchant_uid: orderData.merchant_uid,
+          amount: amount
+        }).then(function(result_iamport){
+          db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_CANCEL, order_id], 
+          (result_order_update) => {
+            return res.json({
+              result:{
+                state: res_state.success,
+                order_state: types.order.ORDER_STATE_CANCEL
+              }
+            })
+          }, (error) => {
+            return res.json({
+              state: res_state.error,
+              message: '취소 실패. 계속 실패할 경우 크티에 문의 바랍니다.',
+              result:{}
+            })
+          })
+        }).catch(function(error){
+          return res.json({
+            state: res_state.error,
+            message: error.message,
+            result:{}
+          })
         })
-      })
+      }
     }else{
       db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_CANCEL, order_id], 
       (result_order_update) => {
@@ -1322,5 +1353,27 @@ router.post("/wait/cancel", function(req, res){
     // })
   });
 })
+
+router.post("/discount/info", function(req, res){
+  const order_id = req.body.data.order_id;
+  const queryOrder = mysql.format("SELECT percent_value FROM orders AS _order LEFT JOIN discounts AS discount ON discount.id=_order.discount_id WHERE _order.id=?", [order_id]);
+
+  db.SELECT(queryOrder, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '할인 정보를 가져올 수 없음.',
+        result:{}
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result:{
+        total_discount_price: data.percent_value
+      }
+    })    
+  })
+});
 
 module.exports = router;

@@ -319,7 +319,7 @@ payComplite = (req, res, serializer_uid) => {
         
                         db.UPDATE("UPDATE orders AS _order SET state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
                         (result_order_update) => {
-                            console.log(result_order_update);
+                            // console.log(result_order_update);
                             if(!result_order_update){
                                 return  res.json({
                                     result:{
@@ -459,7 +459,7 @@ router.post('/onetime', function(req, res){
     const total_price = _data.total_price;
 
    let orderQuery = mysql.format("SELECT merchant_uid FROM orders AS _order WHERE _order.id = ?", order_id);
-   console.log(orderQuery);
+//    console.log(orderQuery);
     db.SELECT(orderQuery, [], function(result_order){
         if(!result_order || result_order.length === 0){
             return  res.json({
@@ -497,7 +497,7 @@ router.post('/onetime', function(req, res){
                 ...paymentData
             }).then((result) => {
                 // To do
-                console.log(result);
+                // console.log(result);
                 //status: 'paid',
                 if(result.status === 'paid'){
                     //결제 성공
