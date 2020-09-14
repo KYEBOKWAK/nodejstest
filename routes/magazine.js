@@ -34,7 +34,7 @@ router.post("/feed/list", function(req, res){
 router.post("/detail", function(req, res){
   const magazine_id = req.body.data.magazine_id;
 
-  let queryMagazine = mysql.format("SELECT story FROM magazines WHERE id=?", magazine_id);
+  let queryMagazine = mysql.format("SELECT title FROM magazines WHERE id=?", magazine_id);
   db.SELECT(queryMagazine, {}, (result) => {
     if(result.length === 0){
       return res.json({
@@ -49,7 +49,7 @@ router.post("/detail", function(req, res){
     return res.json({
       result:{
         state: res_state.success,
-        story: data.story
+        title: data.title
       }
     })
   })
