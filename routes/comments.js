@@ -88,7 +88,10 @@ router.post("/allcount", function(req, res){
       }
     }
     commentIDs = "("+commentIDs+")";
-    const commentsCommentQuery = "SELECT count(commentsComment.id) AS commentsComment_count FROM comments AS commentsComment WHERE commentable_id IN "+commentIDs;
+    
+    const commentType = this.getCommentableType('comment');
+    const commentsCommentQuery = mysql.format("SELECT count(commentsComment.id) AS commentsComment_count FROM comments AS commentsComment WHERE commentable_type=? AND commentable_id IN "+commentIDs, [commentType])
+    // const commentsCommentQuery = "SELECT count(commentsComment.id) AS commentsComment_count FROM comments AS commentsComment WHERE commentable_id IN "+commentIDs;
     db.SELECT(commentsCommentQuery, [], function(result_commentsComment){
       return res.json({
         result: {
