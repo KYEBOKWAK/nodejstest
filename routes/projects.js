@@ -16,11 +16,32 @@ const Util = use('lib/util.js');
 const global = use('lib/global_const.js');
 // const util = require('./lib/util.js');
 
+router.post("/mainthumb/list", function(req, res){
+  let queryTicketing = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM main_thumbnails AS main_thumbnail LEFT JOIN projects AS project ON project.id=main_thumbnail.project_id WHERE main_thumbnail.magazine_id IS NULL ORDER BY RAND()", []);
+
+  db.SELECT(queryTicketing, {}, (result_select_ticketing) => {
+
+    for(let i = 0 ; i < result_select_ticketing.length ; i++){
+      let resultTicketingData = result_select_ticketing[i];
+
+      let isFinished = Util.isPrjectFinished(resultTicketingData.funding_closing_at);
+      resultTicketingData.isFinished = isFinished;
+    }
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result_select_ticketing
+      }
+    })
+  })
+})
+
 router.post("/ticketing/list", function(req, res){
   // const user_id = req.body.data.user_id;
   var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
-  let queryLikeTicketing = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND project.funding_closing_at > ?", [types.project.STATE_APPROVED, nowDate]);
+  let queryLikeTicketing = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND project.funding_closing_at > ? AND project.event_type_sub<?", [types.project.STATE_APPROVED, nowDate, types.project.EVENT_TYPE_SUB_SECRET_PROJECT]);
 
   db.SELECT(queryLikeTicketing, {}, (result_select_ticketing) => {
 
@@ -90,7 +111,7 @@ router.post("/get", function(req, res){
     var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
     // console.log(nowDate.toString());
 
-    mannayoQuery = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND funding_closing_at > ? ORDER BY project.id DESC LIMIT ? OFFSET ?", [types.project.STATE_APPROVED, nowDate, TAKE, skip]);
+    mannayoQuery = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND funding_closing_at > ? AND project.event_type_sub < ? ORDER BY project.id DESC LIMIT ? OFFSET ?", [types.project.STATE_APPROVED, nowDate, types.project.EVENT_TYPE_SUB_SECRET_PROJECT, TAKE, skip]);
   }else if(listType === types.project_list_type.PROJECT_LIST_FIND){
     const findWord = "%"+req.body.data.findWord+"%";
 
