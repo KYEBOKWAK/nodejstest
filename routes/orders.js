@@ -1089,10 +1089,22 @@ function getRefundPolicyContent(event_type, type, funding_closing_at, event_type
   }
 }
 
+function receiptDeliveryTitleText(event_type_sub, isDelivery){
+  if(isDelivery === 'FALSE'){
+    return ''
+  }
+
+  if(isEventSubTypeSandBox(event_type_sub)){
+    return '상품 배송지'
+  }else{
+    return '굿즈 배송지'
+  }
+}
+
 router.post("/receipt/info", function(req, res){
   // const isSaleType = req.body.data.isSaleType;
   const order_id = req.body.data.order_id;
-  const querySelect = mysql.format("SELECT project.event_type_sub, project.pick_state, ticket.show_date, _order.total_price, _order.state, _order.deleted_at, event_type, project.funding_closing_at, project.type, project.poster_url, _order.ticket_id FROM orders AS _order LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN tickets AS ticket ON ticket.id=_order.ticket_id WHERE _order.id=?", [order_id]);
+  const querySelect = mysql.format("SELECT isDelivery, postcode, address_main, address_detail, requirement, project.event_type_sub, project.pick_state, ticket.show_date, _order.total_price, _order.state, _order.deleted_at, event_type, project.funding_closing_at, project.type, project.poster_url, _order.ticket_id FROM orders AS _order LEFT JOIN projects AS project ON _order.project_id=project.id LEFT JOIN tickets AS ticket ON ticket.id=_order.ticket_id WHERE _order.id=?", [order_id]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1108,6 +1120,9 @@ router.post("/receipt/info", function(req, res){
     let isRefundButtonDisable = false;
     const data = result[0];
 
+    // let receiptDeliveryTitleText = receiptDeliveryTitleText(data.event_type_sub, data.isDelivery);
+
+    let _receiptDeliveryTitleText = receiptDeliveryTitleText(data.event_type_sub, data.isDelivery)
     if(data.state === types.order.ORDER_STATE_CANCEL_WAIT_PAY){
       refundButtonText = '자동취소됨';
       refundExplainText = '결제 대기 시간 초과로 자동 취소됨.';
@@ -1118,6 +1133,11 @@ router.post("/receipt/info", function(req, res){
           refundButtonText: refundButtonText,
           isRefundButtonDisable: isRefundButtonDisable,
           refundExplainText: refundExplainText,
+          receiptDeliveryTitleText: _receiptDeliveryTitleText,
+          postcode: data.postcode,
+          address_main: data.address_main,
+          address_detail: data.address_detail,
+          requirement: data.requirement
           // refund_policy_title: refund_policy_title,
           // refund_policy_content: refund_policy_content
         }
@@ -1243,8 +1263,11 @@ router.post("/receipt/info", function(req, res){
         refundButtonText: refundButtonText,
         isRefundButtonDisable: isRefundButtonDisable,
         refundExplainText: refundExplainText,
-        // refund_policy_title: refund_policy_title,
-        // refund_policy_content: refund_policy_content
+        receiptDeliveryTitleText: _receiptDeliveryTitleText,
+        postcode: data.postcode,
+        address_main: data.address_main,
+        address_detail: data.address_detail,
+        requirement: data.requirement
       }
     })
   })
@@ -1373,6 +1396,31 @@ router.post("/discount/info", function(req, res){
         total_discount_price: data.percent_value
       }
     })    
+  })
+});
+
+router.post("/address/set", function(req, res){
+  const order_id = req.body.data.order_id;
+  const postcode = req.body.data.postcode;
+  const address_main = req.body.data.address_main;
+  const address_detail = req.body.data.address_detail;
+  const requirement = req.body.data.requirement;
+
+
+  db.UPDATE("UPDATE orders AS _order SET postcode=?, address_main=?, address_detail=?, requirement=? WHERE _order.id=?", [postcode, address_main, address_detail, requirement, order_id], 
+  (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: 'error',
+      message: '배송지 셋팅 실패',
+      result: {
+      }
+    });
   })
 });
 
