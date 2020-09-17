@@ -3,13 +3,13 @@ const exprieTimeMS = 60000;
 const phoneRandNumExpire = 180;
 
 
-const EXPIRE_REFRESH_TOKEN = '7d';
+const EXPIRE_REFRESH_TOKEN = '365d';
 const EXPIRE_ACCESS_TOKEN = '1h';
 // const EXPIRE_REFRESH_TOKEN = '5m';
 // const EXPIRE_ACCESS_TOKEN = 10;
 // const REFRESH_TOKEN_RENEW_LAST_DAT_MIL_SEC = 180000; //밀리초 단위 refresh 재갱신 기준값.
 const REFRESH_TOKEN_RENEW_LAST_DAT_MIL_SEC = 0; //밀리초 단위 refresh 재갱신 기준값.
-const REFRESH_TOKEN_RENEW_LAST_DAT_DAY = 4; //일단위 //refresh 재갱신 기준값. 사용시 밀리초를 0으로 해야함. 예: 4 = 기간이 4일 남았을때 재갱신. refresh expire 시간보다 짧아야한다.
+const REFRESH_TOKEN_RENEW_LAST_DAT_DAY = 30; //일단위 //refresh 재갱신 기준값. 사용시 밀리초를 0으로 해야함. 예: 4 = 기간이 4일 남았을때 재갱신. refresh expire 시간보다 짧아야한다.
 
 var express = require('express');
 var app = express();
@@ -597,7 +597,6 @@ app.post("/any/call/certify/number", function(req, res){
 
   const contact = req.body.data.contact;
   
-
   // return res.json({});
   //6자리수 생성
   let randVal = '';
@@ -605,8 +604,12 @@ app.post("/any/call/certify/number", function(req, res){
     randVal += String(util.getRandomNumber(0, 9));
   }
 
-  // console.log("SAVE!");
-  // console.log(contact);
+  
+  //심의용 코드 START
+  if(contact === '00000000000'){
+    randVal = '123456'
+  }
+  //심의용 코드 END
 
   
 
@@ -628,25 +631,34 @@ app.post("/any/call/certify/number", function(req, res){
         //   result:{}
         // })
       }else{
-        let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
-        Global_Func.sendSMS(contact, content, (result) => {
-            // console.log(result);
-            if(result.status === '200'){
-                return res.json({
-                    result:{
-                        state: res_state.success,
-                        waitSec: _result.expire
-                    }
-                })
-            }else{
-                return res.json({
-                    state: 'error',
-                    message: '인증번호 전송 오류',
-                    result:{
-                    }
-                })
+        if(contact === '00000000000'){
+          return res.json({
+            result:{
+                state: res_state.success,
+                waitSec: _result.expire
             }
-        })
+          })
+        }else{
+          let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
+          Global_Func.sendSMS(contact, content, (result) => {
+              // console.log(result);
+              if(result.status === '200'){
+                  return res.json({
+                      result:{
+                          state: res_state.success,
+                          waitSec: _result.expire
+                      }
+                  })
+              }else{
+                  return res.json({
+                      state: 'error',
+                      message: '인증번호 전송 오류',
+                      result:{
+                      }
+                  })
+              }
+          })
+        }
       }
     }
     else{
