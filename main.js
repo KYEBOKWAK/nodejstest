@@ -462,7 +462,7 @@ app.post('/any/init', function(req, res){
   let accessToken = req.body.data.access_token;
 
   let _findPlaceHolder = "그날의 이슈!";
-  let _recommendWord = ["아프리카", "유튜브", "인스타그램", "페이스북", "페이스북1", "페이스북2"];
+  let _recommendWord = ["아프리카", "유튜브", "인스타그램", "페이스북"];
 
   if(accessToken === ''){
     return res.json({
