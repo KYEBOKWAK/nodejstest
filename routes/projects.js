@@ -245,6 +245,11 @@ router.post('/survey/save', function(req, res){
 
 getMainExplain = (project_target, pledged_amount, type, ticket_limit_count, funding_closing_at, picking_closing_at, event_type) => {
 
+  //클라에서 조합해서 쓰기때문에 해당 문구는 이슈 있을때만 수정한다. 공구 이벤트에 문구 이슈가 있어서 공구 이벤트 강제 셋팅
+  if(event_type !== types.project.EVENT_TYPE_GROUP_BUY){
+    return '';
+  }
+
   let pledgedTarget = "원";
   //인원, 금액 결정
   if(project_target == "people")
@@ -292,6 +297,11 @@ getMainExplain = (project_target, pledged_amount, type, ticket_limit_count, fund
     }
 
     return mainExplain;
+  }
+
+  if(event_type === types.project.EVENT_TYPE_GROUP_BUY)
+  {
+    return fundingEndTime + '까지 구매 가능합니다.';
   }
 
   //2018년 8월 31일 까지 최소 100명이 모여야 진행되는 이벤트입니다.(최대 200명) //참여할 수 있는 이벤트 입니다.
@@ -348,6 +358,10 @@ function getTotalFundingAmount(orders, project_target){
   return totalFundingAmount;
 }
 
+function isEventTypeGroupBuy(event_type){
+  return event_type === types.project.EVENT_TYPE_GROUP_BUY;
+}
+
 getNowAmount = (type, funded_amount, funding_closing_at, event_type, project_target, poster_url, sale_start_at, orders, picking_closing_at) => {
   //구매 인원 수
   //현재 91명 신청 완료
@@ -375,12 +389,26 @@ getNowAmount = (type, funded_amount, funding_closing_at, event_type, project_tar
     {
       if(type == 'sale')
       {
-        /*$nowAmount = "현재 ". number_format($this->getAmountTicketCount()) ."명 참여 가능";*/
-        nowAmount = "현재 참여 가능";
-        if(Util.isExpireTime(funding_closing_at))
+        if(isEventTypeGroupBuy(event_type))
         {
-          nowAmount = "티켓팅이 마감되었습니다.";
+          nowAmount = "현재 구매 가능";
+          if(Util.isExpireTime(funding_closing_at))
+          {
+            nowAmount = "판매가 종료되었습니다.";
+          }
+        }else{
+          nowAmount = "현재 참여 가능";
+          if(Util.isExpireTime(funding_closing_at))
+          {
+            nowAmount = "티켓팅이 마감되었습니다.";
+          }
         }
+
+        // nowAmount = "현재 참여 가능";
+        // if(Util.isExpireTime(funding_closing_at))
+        // {
+        //   nowAmount = "티켓팅이 마감되었습니다.";
+        // }
       }
       else if(event_type === types.project.EVENT_TYPE_PICK_EVENT)
       {
@@ -503,10 +531,19 @@ router.post('/detail/explain', function(req, res){
         _explain_detail_first = "신청가능"
       }
     }else{
-      _explain_detail_first = "진행중"
 
-      if(isClosing){
-        _explain_detail_first = "종료됨"
+      if(data.event_type === types.project.EVENT_TYPE_GROUP_BUY){
+        _explain_detail_first = "공동구매 진행중"
+
+        if(isClosing){
+          _explain_detail_first = "종료됨"
+        }
+      }else{
+        _explain_detail_first = "진행중"
+
+        if(isClosing){
+          _explain_detail_first = "종료됨"
+        }
       }
     }
 
@@ -572,7 +609,7 @@ router.post('/detail/explain', function(req, res){
 
 
         explain_detail_first: _explain_detail_first,
-        explain_detail_second: '',  //이건 당장은 안쓴다.
+        explain_detail_second: _explain_detail_second,  //이건 당장은 안쓴다.
         explain_detail_third: _explain_detail_third,
 
         // explain_detail_first: _explain_detail_first,
