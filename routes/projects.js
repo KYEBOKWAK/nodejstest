@@ -120,7 +120,7 @@ router.post("/get", function(req, res){
     var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
     // console.log(nowDate.toString());
 
-    mannayoQuery = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND event_type_sub<>? ORDER BY project.funding_closing_at DESC LIMIT ? OFFSET ?", [types.project.STATE_APPROVED, types.project.EVENT_TYPE_SUB_SECRET_PROJECT, TAKE, skip]);
+    mannayoQuery = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND event_type_sub<>? AND project.is_secret=? ORDER BY project.funding_closing_at DESC LIMIT ? OFFSET ?", [types.project.STATE_APPROVED, types.project.EVENT_TYPE_SUB_SECRET_PROJECT, false,TAKE, skip]);
   }
 
   db.SELECT(mannayoQuery, [], (result_mannayo) => {

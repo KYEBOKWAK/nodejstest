@@ -1941,7 +1941,6 @@ function payWaitTimeExpireCheck(){
 }
 
 cron.schedule('* * * * *', function(){
-  console.log('node-cron 실행 테스트');
   payWaitTimeExpireCheck();
   //
 });
