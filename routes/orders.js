@@ -601,7 +601,7 @@ router.post("/cancel", function(req, res){
     }
 
     if(orderData.total_price > 0){
-      const amount = getRefundAmount(orderData.type, orderData.show_date, orderData.funding_closing_at, orderData.ticket_id, orderData.total_price);
+      const amount = getRefundAmount(orderData.type, orderData.show_date, orderData.funding_closing_at, orderData.ticket_id, orderData.total_price, orderData.event_type);
 
       if(orderData.serializer_uid && orderData.serializer_uid === 'scheduled'){
         const customer_uid = Util.getPayNewCustom_uid(user_id);
@@ -1013,8 +1013,16 @@ function isSaleType(type){
     return type === 'sale';
 }
 
-function hasCancellationFees(type, show_date, funding_closing_at, ticket_id){
-    
+function isEventTypeGroupBuy(event_type){
+  return event_type === types.project.EVENT_TYPE_GROUP_BUY;
+}
+
+function hasCancellationFees(type, show_date, funding_closing_at, ticket_id, event_type){
+  
+  if(isEventTypeGroupBuy(event_type)){
+    return false;
+  }
+
   if (isSaleType(type)) {
     if(ticket_id)
     {
@@ -1034,15 +1042,15 @@ function hasCancellationFees(type, show_date, funding_closing_at, ticket_id){
   return false;
 }
 
-function getCancellationFees(type, show_date, funding_closing_at, ticket_id, total_price){
-    if (hasCancellationFees(type, show_date, funding_closing_at, ticket_id)) {
+function getCancellationFees(type, show_date, funding_closing_at, ticket_id, total_price, event_type){
+    if (hasCancellationFees(type, show_date, funding_closing_at, ticket_id, event_type)) {
         return total_price * CANCELLATION_FEES_RATE;
     }
     return 0;
 }
 
-function getRefundAmount(type, show_date, funding_closing_at, ticket_id, total_price){
-    return total_price - getCancellationFees(type, show_date, funding_closing_at, ticket_id, total_price);
+function getRefundAmount(type, show_date, funding_closing_at, ticket_id, total_price, event_type){
+    return total_price - getCancellationFees(type, show_date, funding_closing_at, ticket_id, total_price, event_type);
 }
 
 function getRefundPolicyTitle(event_type){
@@ -1075,6 +1083,11 @@ function getRefundPolicyContent(event_type, type, funding_closing_at, event_type
     }
   }else if(isEventTypeInvitationEvent(event_type)){
     return `1. 초대권 신청은 티켓 예매가 아닙니다. <b>신청 후 당첨이 되어야만 티켓을 받으실 수 있습니다.\n2. 초대권 신청 내역 확인 및 취소는 오른쪽 상단 '결제확인' 탭에서 하실 수 있습니다.\n3. 초대권의 판매, 양도, 및 교환은 금지되어 있으며 이를 위반하여 발생하는 불이익에 대하여 크라우드티켓에서는 책임을 지지 않습니다.`
+
+  }else if(isEventTypeGroupBuy(event_type)){
+    // @if($project->isEventSubTypeWoongjinPlayCity())
+    return `1. 본 상품은 한정 특가 공동구매 상품으로, 판매 기간 이후 취소 및 환불이 불가합니다.\n2. 판매 기간(2020-09-24 ~ 2020-09-29)에 한하여, 우측 상단 [결제 확인] 탭에서 취소 및 환불을 진행하실 수 있습니다.\n3. 판매 기간 내 고객센터 접수 시 100% 취소 및 환불 가능합니다.\n4. 카드사에 따라 취소 및 환불이 완료될 때까지 영업일 기준 약 2~3일이 소요될 수 있습니다.`
+    // @endif()
   }else if(isEventCustomType(event_type)){
     return `1. 제출해주시는 정보는 이벤트 주관사 측으로 전달되며 추후 이벤트 진행을 위해 연락을 드릴 수 있습니다.\n2. 제출해주시는 정보는 이벤트 진행 목적 외의 용도로 사용되지 않습니다.\n3. 잘못된 정보를 기재하실 경우, 선정 대상에서 제외될 수 있으니 해당 부분 참고 부탁드립니다.`
   }else if(isPickType(event_type)){
@@ -1213,8 +1226,8 @@ router.post("/receipt/info", function(req, res){
                 refundButtonText = '환불하기';
               }
 
-              if (hasCancellationFees(data.type, data.show_date, data.funding_closing_at, data.ticket_id)){
-                  refundExplainText = `환불 정책에 따라 취소 수수료 ${Util.getNumberWithCommas(getCancellationFees(data.type, data.show_date, data.funding_closing_at, data.ticket_id, data.total_price))}원이 차감된 ${Util.getNumberWithCommas(getRefundAmount(data.type, data.show_date, data.funding_closing_at, data.ticket_id, data.total_price))}원이 환불됩니다. \n 환불은 2~3일 정도 소요될 수 있습니다.`
+              if (hasCancellationFees(data.type, data.show_date, data.funding_closing_at, data.ticket_id, data.event_type)){
+                  refundExplainText = `환불 정책에 따라 취소 수수료 ${Util.getNumberWithCommas(getCancellationFees(data.type, data.show_date, data.funding_closing_at, data.ticket_id, data.total_price))}원이 차감된 ${Util.getNumberWithCommas(getRefundAmount(data.type, data.show_date, data.funding_closing_at, data.ticket_id, data.total_price, data.event_type))}원이 환불됩니다. \n 환불은 2~3일 정도 소요될 수 있습니다.`
               }
               
               // if($order->isAccountOrder()){
