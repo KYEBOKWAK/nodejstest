@@ -41,7 +41,7 @@ router.post("/ticketing/list", function(req, res){
   // const user_id = req.body.data.user_id;
   var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
-  let queryLikeTicketing = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND project.funding_closing_at > ? AND project.event_type_sub<?", [types.project.STATE_APPROVED, nowDate, types.project.EVENT_TYPE_SUB_SECRET_PROJECT]);
+  let queryLikeTicketing = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND project.funding_closing_at > ? AND project.event_type_sub<? AND project.is_secret=?", [types.project.STATE_APPROVED, nowDate, types.project.EVENT_TYPE_SUB_SECRET_PROJECT, false]);
 
   db.SELECT(queryLikeTicketing, {}, (result_select_ticketing) => {
 
