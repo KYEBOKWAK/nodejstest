@@ -111,7 +111,8 @@ router.post("/get", function(req, res){
     var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
     // console.log(nowDate.toString());
 
-    mannayoQuery = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND funding_closing_at > ? AND project.event_type_sub < ? ORDER BY project.id DESC LIMIT ? OFFSET ?", [types.project.STATE_APPROVED, nowDate, types.project.EVENT_TYPE_SUB_SECRET_PROJECT, TAKE, skip]);
+    mannayoQuery = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM projects AS project WHERE project.state=? AND funding_closing_at > ? AND project.event_type_sub < ? AND project.is_secret=? ORDER BY project.id DESC LIMIT ? OFFSET ?", [types.project.STATE_APPROVED, nowDate, types.project.EVENT_TYPE_SUB_SECRET_PROJECT, false, TAKE, skip]);
+
   }else if(listType === types.project_list_type.PROJECT_LIST_FIND){
     const findWord = "%"+req.body.data.findWord+"%";
 
