@@ -1237,9 +1237,11 @@ router.post("/receipt/info", function(req, res){
               // }
             }
           }else if(isEventTypeInvitationEvent(data.event_type)){
-            refundButtonText = '취소하기'
+            refundButtonText = '취소하기';
           }else if(isEventCustomType(data.event_type)){
-            refundButtonText = '취소하기'
+            refundButtonText = '취소하기';
+          }else{
+            refundButtonText = '취소하기';
           }
         }else{
           if(isEventTypeDefault(data.event_type) || isPickType(data.event_type)){
@@ -1257,6 +1259,10 @@ router.post("/receipt/info", function(req, res){
             isRefundButtonDisable = true;
             refundExplainText = '취소 가능 일자가 지났습니다.';
           }else if(isEventCustomType(data.event_type)){
+            refundButtonText = '취소불가';
+            isRefundButtonDisable = true;
+            refundExplainText = '취소 가능 일자가 지났습니다.';
+          }else{
             refundButtonText = '취소불가';
             isRefundButtonDisable = true;
             refundExplainText = '취소 가능 일자가 지났습니다.';
