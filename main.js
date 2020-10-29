@@ -199,12 +199,27 @@ function makeAccessToken(id, data, res){
 app.use(function (req, res, next) {
   // console.log(req.headers.origin);
   // console.log(process.env.CROWDTICKET_WEB_REFERER);
-  if(req.headers.origin && process.env.CROWDTICKET_WEB_REFERER !== req.headers.origin){
-    return res.json({
-      state: 'error',
-      message: '정상접근이 아닙니다.'
-    });
+
+  if(req.headers.origin){
+    if(process.env.CROWDTICKET_WEB_REFERER === req.headers.origin ||
+      process.env.CROWDTICKET_WEB_REFERER_WEB === req.headers.origin ||
+      process.env.CROWDTICKET_WEB_REFERER_WEB_QA_R === req.headers.origin ||
+      process.env.CROWDTICKET_WEB_REFERER_WEB_QA === req.headers.origin
+      ){
+        //통과
+      }else{
+        return res.json({
+          state: 'error',
+          message: '정상접근이 아닙니다.'
+        });      
+      }
   }
+  // if((req.headers.origin && process.env.CROWDTICKET_WEB_REFERER !== req.headers.origin)){
+  //   return res.json({
+  //     state: 'error',
+  //     message: '정상접근이 아닙니다.'
+  //   });
+  // }
   
   let url = req.url;
   let indexAnyString = url.indexOf('/any/');
