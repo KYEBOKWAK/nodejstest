@@ -197,7 +197,7 @@ function makeAccessToken(id, data, res){
 }
 
 app.use(function (req, res, next) {
-  console.log(req.headers.origin);
+  // console.log(req.headers.origin);
   // console.log(process.env.CROWDTICKET_WEB_REFERER);
 
   if(req.headers.origin){
