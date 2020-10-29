@@ -106,7 +106,7 @@ router.post('/any/info/alias', function(req, res){
 
 router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
-  const querySelect = mysql.format("SELECT item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result:{
