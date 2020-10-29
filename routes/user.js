@@ -669,7 +669,7 @@ router.post("/any/register", function(req, res){
 
 router.post("/info", function(req, res){
   const user_id = req.body.data.user_id;
-  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url FROM users WHERE id=?", user_id);
+  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, contact FROM users WHERE id=?", user_id);
   db.SELECT(queryMyInfo, {}, (result) => {
     return res.json({
       result: {
@@ -1147,6 +1147,33 @@ router.post("/logout", function(req, res){
   })
   
 });
+
+router.post("/any/logout", function(req, res){
+  // const user_id = req.body.data.user_id;
+  const refresh_token = req.body.data.token;
+
+  // console.log("@#$@#$#@$");
+  // console.log(req.body.data);
+  // console.log(refresh_token);
+
+  db.DELETE("DELETE FROM devices WHERE refresh_token=?", [refresh_token], 
+  (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    });
+  })
+})
+
+router.post('/test', function(req, res){
+  return res.json({
+    result: {
+      state: res_state.success,
+      message: '오ㅓ옙'
+    }
+  })
+})
 
 router.post("/device/list", function(req, res){
   const user_id = req.body.data.user_id;

@@ -62,6 +62,25 @@ router.post("/detail", function(req, res){
             });
 });
 
+router.post("/edit", function(req, res){
+  const comment_id = req.body.data.comment_id;
+  const commentValue = req.body.data.comment_value;
+
+  db.UPDATE("UPDATE comments AS comment SET contents=? WHERE comment.id=?", [commentValue, comment_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '코멘트 수정 에러'
+    })
+  })
+});
+
 router.post("/allcount", function(req, res){
   let commentType = req.body.data.commentType;
   let target_id = req.body.data.target_id;
@@ -190,6 +209,71 @@ router.post("/remove", function(req, res){
         result:{}
       })
     });
+  });
+});
+
+router.post('/any/list', function(req, res){
+  
+  // let querySelect = mysql.format("SELECT * FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id ORDER BY item.id DESC LIMIT ? OFFSET ?", [limit, skip]);
+
+  let commentType = req.body.data.commentType;
+  let target_id = req.body.data.target_id;
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip
+
+  let commentable_type = this.getCommentableType(commentType);
+  
+  let querySelect = mysql.format("SELECT comment.user_id, comment.created_at, comment.id AS comment_id, nick_name, name, profile_photo_url, commentscomment.commentable_id, comment.contents FROM comments AS comment LEFT JOIN users AS user ON comment.user_id=user.id LEFT JOIN comments AS commentscomment ON comment.id=commentscomment.commentable_id WHERE comment.commentable_id=? AND comment.commentable_type=? GROUP BY comment.id ORDER BY comment.id DESC LIMIT ? OFFSET ?", [target_id, commentable_type, limit, skip]);
+
+  
+  db.SELECT(querySelect, [], function(result){
+    res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    });
+  });    
+})
+
+router.post("/any/allcount", function(req, res){
+  let commentType = req.body.data.commentType;
+  let target_id = req.body.data.target_id;
+  let commentable_type = this.getCommentableType(commentType);
+
+  let commentsQuery = mysql.format("SELECT _comment.created_at, _comment.id FROM comments AS _comment WHERE _comment.commentable_id=? AND _comment.commentable_type=?", [target_id, commentable_type]);
+  db.SELECT(commentsQuery, [], function(result_comments){
+    let commentIDs = "";
+    if(result_comments.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          commentsTotalCount: 0
+        }
+      })
+    }
+    
+    for(let i = 0 ; i < result_comments.length ; i++){
+      const commentData = result_comments[i];
+      if(i === result_comments.length - 1){
+        commentIDs+=commentData.id.toString();
+      }else{
+        commentIDs+=commentData.id.toString()+", ";
+      }
+    }
+    commentIDs = "("+commentIDs+")";
+    
+    const commentType = this.getCommentableType('comment');
+    const commentsCommentQuery = mysql.format("SELECT count(commentsComment.id) AS commentsComment_count FROM comments AS commentsComment WHERE commentable_type=? AND commentable_id IN "+commentIDs, [commentType])
+    // const commentsCommentQuery = "SELECT count(commentsComment.id) AS commentsComment_count FROM comments AS commentsComment WHERE commentable_id IN "+commentIDs;
+    db.SELECT(commentsCommentQuery, [], function(result_commentsComment){
+      return res.json({
+        result: {
+          state: res_state.success,
+          commentsTotalCount: result_commentsComment[0].commentsComment_count + result_comments.length
+        }
+      })
+    })
   });
 });
 

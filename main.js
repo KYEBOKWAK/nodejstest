@@ -197,13 +197,20 @@ function makeAccessToken(id, data, res){
 }
 
 app.use(function (req, res, next) {
-  //console.log(req.url);
+  // console.log(req.headers.origin);
+  // console.log(process.env.CROWDTICKET_WEB_REFERER);
+  if(req.headers.origin && process.env.CROWDTICKET_WEB_REFERER !== req.headers.origin){
+    return res.json({
+      state: 'error',
+      message: '정상접근이 아닙니다.'
+    });
+  }
+  
   let url = req.url;
   let indexAnyString = url.indexOf('/any/');
   if(indexAnyString < 0){
     //any가 없으면 무조건 token 체크를 한다.
     if(req.body.data === undefined){
-      console.log("@@@@@@");
       return res.json({
         result: {
           state: 'error',
@@ -416,6 +423,9 @@ app.use('/chatusers', chstUsers);
 
 let routerMagazine = require('./routes/magazine');
 app.use('/magazine', routerMagazine);
+
+let routerStore = require('./routes/stores');
+app.use('/store', routerStore);
 
 app.post("/init/user", function(req, res){
   let userInfoQuery = "SELECT age, gender, email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";

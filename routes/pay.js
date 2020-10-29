@@ -55,6 +55,50 @@ function getOrderStateCheckIamportState(iamport_state){
     }
 }
 
+function getStoreOrderStateCheckIamportState(iamport_state){
+    // 결제가 승인되었을 때(모든 결제 수단) - (status : paid)
+    // 가상계좌가 발급되었을 때 - (status : ready)
+    // 가상계좌에 결제 금액이 입금되었을 때 - (status : paid)
+    // 예약결제가 시도되었을 때 - (status : paid or failed)
+    // 대시보드에서 환불되었을 때 - (status : cancelled)
+    if(iamport_state === 'paid'){
+        // return types.order.ORDER_STATE_APP_PAY_COMPLITE;
+        return types.order.ORDER_STATE_APP_STORE_PAYMENT;
+    }
+    else if(iamport_state === 'scheduled'){
+        // return types.order.ORDER_STATE_PAY_SCHEDULE;
+        return types.order.ORDER_STATE_APP_STORE_PAYMENT;
+    }
+    else if(iamport_state === 'failed'){
+        return types.order.ORDER_STATE_PAY_SCHEDULE_RESULT_FAIL;
+    }
+    else if(iamport_state === 'cancelled'){
+        return types.order.ORDER_STATE_CANCEL;
+    }
+    else{
+        return types.order.ORDER_STATE_APP_STORE_PAYMENT;
+    }
+
+    /*
+        if(iamport_state === 'paid'){
+            // return types.order.ORDER_STATE_APP_PAY_COMPLITE;
+            return types.order.ORDER_STATE_APP_PAY_COMPLITE;
+        }else if(iamport_state === 'ready'){
+            return types.order.ORDER_STATE_APP_PAY_WAIT_VBANK;
+        }else if(iamport_state === 'failed'){
+            return types.order.ORDER_STATE_PAY_SCHEDULE_RESULT_FAIL;
+        }else if(iamport_state === 'cancelled'){
+            return types.order.ORDER_STATE_CANCEL;
+        }else if(iamport_state === 'scheduled'){
+            // return types.order.ORDER_STATE_PAY_SCHEDULE;
+            return types.order.ORDER_STATE_APP_STORE_READY;
+        }
+        else{
+            return types.order.ORDER_STATE_ERROR_IAMPORT_WEBHOOK_NONE;
+        }
+        */
+    }
+
 // app.set('view engine', 'ejs');
 // app.engine('html', require('ejs').renderFile);
 
@@ -318,6 +362,165 @@ payComplite = (req, res, serializer_uid) => {
                         _imp_meta = JSON.stringify(_imp_meta);
         
                         db.UPDATE("UPDATE orders AS _order SET state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
+                        (result_order_update) => {
+                            // console.log(result_order_update);
+                            if(!result_order_update){
+                                return  res.json({
+                                    result:{
+                                        state: res_state.error,
+                                        message: '주문정보 업데이트 실패'
+                                    }
+                                })
+                            }
+        
+                            return  res.json({
+                                result:{
+                                    state: res_state.success,
+                                    order_id: orderData.id
+                                }
+                            })            
+                        }, (error) => {
+                            return  res.json({
+                                result:{
+                                    state: res_state.error,
+                                    message: '주문정보 업데이트 실패'
+                                }
+                            })
+                        });
+                    }else{
+                        return  res.json({
+                            result:{
+                                state: res_state.error,
+                                message: '결제 금액이 다릅니다.'
+                            }
+                        });
+                    }
+                  }).catch(function(error){
+                    // handle error
+                    return  res.json({
+                        state: res_state.error,
+                        message: '결제정보가 없습니다.',
+                        result:{
+                        }
+                    });
+                  });
+            }
+        }
+
+        
+    })
+}
+
+payStoreComplite = (req, res, serializer_uid) => {
+    const order_id = req.body.data.order_id;
+    const merchant_uid = req.body.data.merchant_uid;
+    const imp_uid = req.body.data.imp_uid;
+    const user_id = req.body.data.user_id;
+    const customer_uid = Util.getPayNewCustom_uid(user_id);
+    const pay_method = req.body.data.pay_method;
+
+    // console.log(order_id+"/"+merchant_uid+"/"+imp_uid);
+    let orderQuery = "SELECT state, id, total_price FROM orders_items AS _order WHERE _order.id=? AND _order.merchant_uid=?";
+    orderQuery = mysql.format(orderQuery, [order_id, merchant_uid]);
+    // console.log(orderQuery);
+    db.SELECT(orderQuery, [], (result_order) => {
+        if(result_order.length === 0){
+            return  res.json({
+                result:{
+                    state: res_state.error,
+                    message: '주문 결과가 없습니다.'
+                }
+            })
+        }
+
+        const orderData = result_order[0];
+
+        if(orderData.total_price === 0){
+            //결제금액 0원
+            const orderState = getStoreOrderStateCheckIamportState('paid');
+
+            db.UPDATE("UPDATE orders_items AS _order SET state=? WHERE id=?", [orderState, orderData.id], 
+            (result_order_update) => {
+                console.log(result_order_update);
+                if(!result_order_update){
+                    return  res.json({
+                        result:{
+                            state: res_state.error,
+                            message: '주문정보 업데이트 실패'
+                        }
+                    })
+                }
+
+                return  res.json({
+                    result:{
+                        state: res_state.success,
+                        order_id: orderData.id
+                    }
+                })            
+            }, (error) => {
+                return  res.json({
+                    result:{
+                        state: res_state.error,
+                        message: '주문정보 업데이트 실패'
+                    }
+                })
+            });
+        }else{
+            if(serializer_uid === PAY_SERIALIZER_SCHEDULE){
+                const orderState = getStoreOrderStateCheckIamportState('scheduled');
+                let _imp_meta = {
+                    serializer_uid: serializer_uid,
+                    merchant_uid: merchant_uid,
+                    customer_uid: customer_uid
+                };
+
+                _imp_meta = JSON.stringify(_imp_meta);
+
+                db.UPDATE("UPDATE orders_items AS _order SET state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
+                (result_order_update) => {
+                    console.log(result_order_update);
+                    if(!result_order_update){
+                        return  res.json({
+                            result:{
+                                state: res_state.error,
+                                message: '주문정보 업데이트 실패'
+                            }
+                        })
+                    }
+
+                    return  res.json({
+                        result:{
+                            state: res_state.success,
+                            order_id: orderData.id
+                        }
+                    })            
+                }, (error) => {
+                    return  res.json({
+                        result:{
+                            state: res_state.error,
+                            message: '주문정보 업데이트 실패'
+                        }
+                    })
+                });
+            }else{
+                iamport.payment.getByImpUid({
+                    imp_uid: imp_uid  
+                  }).then(function(result_import){
+                    // To do
+                    const status = result_import.status;
+                    if(result_import.amount === orderData.total_price){
+                        const orderState = getStoreOrderStateCheckIamportState(status);
+        
+                        let _imp_meta = {
+                            serializer_uid: serializer_uid,
+                            imp_uid: imp_uid,
+                            merchant_uid: merchant_uid,
+                            customer_uid: customer_uid
+                        };
+    
+                        _imp_meta = JSON.stringify(_imp_meta);
+        
+                        db.UPDATE("UPDATE orders_items AS _order SET state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
                         (result_order_update) => {
                             // console.log(result_order_update);
                             if(!result_order_update){
@@ -642,48 +845,232 @@ router.post('/schedule', function(req, res){
             })
         })
     });
+});
 
-    /*
-    const _data = req.body.data[0];
+router.post('/store/schedule', function(req, res){
+    // amount = req.body.data.amount;
+
+    // amount = req.body.data.amount;
+    const _data = req.body.data;
     const user_id = req.body.data.user_id;
+    const customer_uid = Util.getPayNewCustom_uid(user_id);
+    // const order_id = _data.order_id;
     // console.log(_data);
-    const project_id = _data.project_id;
-    // const total_price = _data.total_price;
-    //schedule(params)
-    const paymentData = {
-        project_id: project_id,
-        card_number: _data.card_number,
-        expiry: Util.getCardExpire(_data.card_yy, _data.card_mm),
-        amount: _data.total_price, //onetime total_price는 order_id의 db 조회해서 total_price와 비교한다.
-        merchant_uid: Util.getPayNewMerchant_uid(project_id, user_id),
-        birth: _data.card_birth,
-        customer_uid: Util.getPayNewCustom_uid(user_id),
-        pwd_2digit: _data.card_pw_2digit,
-        name: _data.title,
-        buyer_name: '김종윤',
-        buyer_email: 'localhost8000@naver.com',
-        buyer_tel: '01095053639'
-    };
+    const store_id = _data.store_id;
+    const item_id = _data.item_id;
+
+    const name = _data.name;
+    const contact = _data.contact;
+    const email = _data.email;
+
+    const requestContent = _data.requestContent;
+
+    const total_price = _data.total_price;
+
+    const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+    const merchant_uid = Util.getPayStoreNewMerchant_uid(store_id, user_id);
+
+    // const item_price = _data.item_price;
+
+    const insertOrderItemData = {
+        store_id: store_id,
+        item_id: item_id,
+        user_id: user_id,
+        state: types.order.ORDER_STATE_STAY,
+        count: 1,
+        price: total_price,
+        name: name,
+        contact: contact,
+        email: email,
+        requestContent: requestContent,
+        merchant_uid: merchant_uid,
+        created_at: date,
+        updated_at: date
+    }
     
-    iamport.subscribe.schedule({
-        ...paymentData
-    }).then(function(result){
-        // To do
-        console.log("success");
-        console.log(result);
-    }).catch(function(error){
-        // handle error
-        console.log("error");
-        console.log(error);
-    });
+    db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
+        const item_order_id = result_insert_orders_items.insertId;
+        req.body.data.order_id = item_order_id;
+
+        let payingDate = moment_timezone(date).add(7, 'days');
+        payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
+        payingDate = moment_timezone(payingDate).format("X");
+
+        // const orderData = result_order[0];
+        const paymentData = {
+            store_id: store_id,
+            card_number: _data.card_number,
+            expiry: Util.getCardExpire(_data.card_yy, _data.card_mm),
+            amount: _data.total_price, //onetime total_price는 order_id의 db 조회해서 total_price와 비교한다.
+            merchant_uid: merchant_uid,
+            birth: _data.card_birth,
+            customer_uid: customer_uid,
+            pwd_2digit: _data.card_pw_2digit,
+            name: _data.title,
+            buyer_name: _data.name,
+            buyer_email: _data.email,
+            buyer_tel: _data.contact
+        };
+
+        // subscribe/customers
+        iamport.subscribe_customer.create({
+            ...paymentData
+        }).then((result_iamport_subscribe_customer) => {
+            if(_data.total_price === 0){
+                //0원이면 iamport 안함.
+                req.body.data.merchant_uid = merchant_uid;
+                req.body.data.imp_uid = 0;
+                this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+            }else{
+                iamport.subscribe.schedule({
+                    ...paymentData,
+                    schedules: [
+                        {
+                            merchant_uid: merchant_uid,
+                            schedule_at: payingDate,
+                            amount: _data.total_price
+                        }
+                    ]
+                }).then((result) => {
+                    // To do
+                    const _result = result[0];
+                    //status: 'paid',
+                    if(_result.schedule_status === 'scheduled'){
+                        //결제 성공
+                        req.body.data.merchant_uid = _result.merchant_uid;
+                        req.body.data.imp_uid = _result.imp_uid;
+                        req.body.data.pay_method = 'card'
+                        this.payStoreComplite(req, res, PAY_SERIALIZER_SCHEDULE);
+                    }else{
+                        // console.log("success");
+                        return res.json({
+                            state: res_state.error,
+                            message: result.fail_reason,
+                        });
+                    }
+                    // console.log(result);
+                }).catch((error) => {
+                    // handle error
+                    // console.log(error);
+                    return res.json({
+                        state: res_state.error,
+                        message: error.message,
+                    })
+                    // console.log(error);
+                });
+            }
+        }).catch((error) => {
+            return res.json({
+                state: res_state.error,
+                message: error.message,
+            })
+        })
+    })
+});
+
+router.post('/store/onetime', function(req, res){
+    const _data = req.body.data;
+    const user_id = req.body.data.user_id;
+    const customer_uid = Util.getPayNewCustom_uid(user_id);
+    // const order_id = _data.order_id;
+    // console.log(_data);
+    const store_id = _data.store_id;
+    const item_id = _data.item_id;
+
+    const name = _data.name;
+    const contact = _data.contact;
+    const email = _data.email;
+
+    const pay_method = _data.pay_method;
+
+    const requestContent = _data.requestContent;
+
+    const total_price = _data.total_price;
+
+    const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+    const merchant_uid = Util.getPayStoreNewMerchant_uid(store_id, user_id);
+
+    // const item_price = _data.item_price;
+
+    const insertOrderItemData = {
+        store_id: store_id,
+        item_id: item_id,
+        user_id: user_id,
+        state: types.order.ORDER_STATE_STAY,
+        count: 1,
+        price: total_price,
+        total_price: total_price,
+        name: name,
+        contact: contact,
+        email: email,
+        requestContent: requestContent,
+        merchant_uid: merchant_uid,
+        pay_method: pay_method,
+        created_at: date,
+        updated_at: date
+    }
     
-    */
-    // return res.json({
-    //     result: {
-    //         state: 'error',
-    //         message: 'aaa'
-    //     }
-    // });
+    db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
+        const item_order_id = result_insert_orders_items.insertId;
+        req.body.data.order_id = item_order_id;
+        // let payingDate = moment_timezone(date).add(7, 'days');
+        // payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
+        // payingDate = moment_timezone(payingDate).format("X");
+
+        // const orderData = result_order[0];
+        const paymentData = {
+            store_id: store_id,
+            card_number: _data.card_number,
+            expiry: Util.getCardExpire(_data.card_yy, _data.card_mm),
+            amount: _data.total_price, //onetime total_price는 order_id의 db 조회해서 total_price와 비교한다.
+            merchant_uid: merchant_uid,
+            birth: _data.card_birth,
+            customer_uid: customer_uid,
+            pwd_2digit: _data.card_pw_2digit,
+            name: _data.title,
+            buyer_name: _data.name,
+            buyer_email: _data.email,
+            buyer_tel: _data.contact
+        };
+
+        // subscribe/customers
+        if(_data.total_price === 0){
+            //0원이면 iamport 안함.
+            req.body.data.merchant_uid = merchant_uid;
+            req.body.data.imp_uid = 0;
+            this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+        }else{
+            iamport.subscribe.onetime({
+                ...paymentData
+            }).then((result) => {
+                // To do
+                // console.log(result);
+                //status: 'paid',
+                if(result.status === 'paid'){
+                    //결제 성공
+                    req.body.data.merchant_uid = result.merchant_uid;
+                    req.body.data.imp_uid = result.imp_uid;
+                    req.body.data.pay_method = result.pay_method;
+                    this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+                }else{
+                    // console.log("success");
+                    return res.json({
+                        state: res_state.error,
+                        message: result.fail_reason,
+                    });
+                }
+                // console.log(result);
+            }).catch((error) => {
+                // handle error
+                // console.log(error);
+                return res.json({
+                    state: res_state.error,
+                    message: error.message,
+                })
+                // console.log(error);
+            });
+        }
+    })
 });
 //rest api Iamport 요청 ENd
 

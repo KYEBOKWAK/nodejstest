@@ -853,6 +853,26 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
   {
     return '결제완료(입금확인)';
   }
+  else if(state === types.order.ORDER_STATE_APP_STORE_PAYMENT)
+  {
+    return '승인대기'
+  }
+  else if(state === types.order.ORDER_STATE_APP_STORE_READY)
+  {
+    return '승인완료(컨텐츠 제작중)'
+  }
+  else if(state === types.order.ORDER_STATE_APP_STORE_SUCCESS)
+  {
+    return '전달완료'
+  }
+  else if(state === types.order.ORDER_STATE_CANCEL_STORE_RETURN)
+  {
+    return '반려'
+  }
+  else if(state === types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER)
+  {
+    return '승인 만료(취소됨)'
+  }
 
 
   //Lazy Eager 로딩 관련해서
@@ -1442,5 +1462,220 @@ router.post("/address/set", function(req, res){
     });
   })
 });
+
+/*
+function getOrderStateStringAttribute(state){
+  let string = '';
+  if(state === types.order.ORDER_STATE_APP_STORE_PAYMENT){
+     string = ''
+  }else if(state === types.order.ORDER_STATE_APP_STORE_PAYMENT){
+
+  }else if(state === types.order)
+}
+*/
+
+function getStorePayState(state){
+  if(state >= types.order.ORDER_STATE_ERROR_START){
+    return '결제에러';
+  }else if(state >= types.order.ORDER_STATE_CANCEL_START){
+    return '결제취소';
+  }else {
+    return '결제완료';
+  }
+}
+
+function getRefundPolicyStoreContent(){
+  return `1. 본 이벤트의 티켓 구매, 후원 및 결제 취소 마감일은 ddd.\n2. 마감일 이후에는 티켓의 판매가 이루어지지 않으며 이에 따라 dddd 이후에는 환불이 불가능합니다.\n3. 이벤트의 관람일 9일전부터는 티켓금액의 10%가 취소 수수료로 부과됩니다.\n4. 관람일을 기준으로 10일 이상 남은 경우에는 취소 수수료가 없습니다.\n5. 구매하신 티켓의 관람 당일 환불은 불가능합니다.\n6. 티켓을 구매하지 않은 후원 및 굿즈 구매의 경우 결제 취소 시 환불 수수료가 붙지 않습니다.\n7. 티켓 환불은 사이트 오른쪽 상단 '결제확인' 탭에서 진행하시면 됩니다.`
+}
+
+router.post("/store/info", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  const querySelect = mysql.format('SELECT orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?', store_order_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '주문 정보 조회 오류',
+        result: {}
+      })
+    }
+
+    let data = result[0];
+
+    const _state_string = getStateStringAttribute(data.state, null, null, null, null, null);
+    let refundButtonText = '';
+    let isRefund = false;
+    let refundPolicyText = getRefundPolicyStoreContent();
+    
+    let _card_state_text = '';
+    if(data.total_price === 0){
+      _card_state_text = '';
+    }else{
+      _card_state_text = getStorePayState(data.state);
+    }
+
+    if(data.state === types.order.ORDER_STATE_APP_STORE_PAYMENT){
+      refundButtonText = "주문 취소";
+      isRefund = true;
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_READY){
+      refundButtonText = "컨텐츠 준비중";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_SUCCESS){
+      refundButtonText = "컨텐츠 제공 완료";
+    }else if(data.state === types.order.ORDER_STATE_CANCEL_STORE_RETURN){
+      refundButtonText = "반려됨";
+    }else if(data.state === types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER){
+      refundButtonText = "승인기간 만료(주문취소)";
+    }else if(data.state === types.order.ORDER_STATE_CANCEL){
+      refundButtonText = "취소됨";
+    }
+    else{
+      refundButtonText = '주문정보에러(크티에문의주세요!)';
+    }
+
+
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data,
+          state_string: _state_string,
+          card_state_text: _card_state_text,
+          refundButtonText: refundButtonText,
+          isRefund: isRefund,
+          refundPolicyText: refundPolicyText
+        }
+      }
+    })
+  })
+});
+
+router.post('/store/item/list', function(req, res){
+  const user_id = req.body.data.user_id;
+  
+  const querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE user_id=? ORDER BY id DESC", user_id);
+  
+  db.SELECT(querySelect, {}, (result) => {
+    // if(result.length === 0){
+    //   return res.json({
+    //     state: res_state.error,
+    //     message: '주문 정보 조회 오류',
+    //     result:{}
+    //   })
+    // }
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post("/store/cancel", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const user_id = req.body.data.user_id;
+  
+  const querySelect = mysql.format("SELECT serializer_uid, merchant_uid, orders_item.user_id, orders_item.total_price, orders_item.state FROM orders_items AS orders_item WHERE orders_item.id=?", [store_order_id]);
+
+  // const querySelect = mysql.format("SELECT merchant_uid, user_id, total_price FROM orders AS _order WHERE _order.id=?", [order_id]);
+  db.SELECT(querySelect, {}, (result_select_order) => {
+    if(result_select_order.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '주문 정보가 없습니다.',
+        result:{}
+      })
+    }
+
+    const orderData = result_select_order[0];
+    if(orderData.user_id !== user_id){
+      return res.json({
+        state: res_state.error,
+        message: '주문자 정보가 일치하지 않습니다.',
+        result:{}
+      })
+    }
+
+    if(orderData.total_price > 0){
+      if(orderData.serializer_uid && orderData.serializer_uid === 'scheduled'){
+        // const customer_uid = Util.getPayNewCustom_uid(user_id);
+        // iamport.subscribe.unschedule({
+        //   merchant_uid: orderData.merchant_uid,
+        //   customer_uid: customer_uid
+        // }).then(function(result_iamport){
+        //   db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_CANCEL, order_id], 
+        //   (result_order_update) => {
+        //     return res.json({
+        //       result:{
+        //         state: res_state.success,
+        //         order_state: types.order.ORDER_STATE_CANCEL
+        //       }
+        //     })
+        //   }, (error) => {
+        //     return res.json({
+        //       state: res_state.error,
+        //       message: '취소 실패. 계속 실패할 경우 크티에 문의 바랍니다.',
+        //       result:{}
+        //     })
+        //   })
+        // }).catch(function(error){
+        //   return res.json({
+        //     state: res_state.error,
+        //     message: error.message,
+        //     result:{}
+        //   })
+        // })
+      }else{
+        iamport.payment.cancel({
+          merchant_uid: orderData.merchant_uid,
+          amount: orderData.total_price
+        }).then(function(result_iamport){
+          db.UPDATE("UPDATE orders_items AS orders_item SET orders_item.state=? WHERE orders_item.id=?", [types.order.ORDER_STATE_CANCEL, store_order_id], 
+          (result_order_update) => {
+            return res.json({
+              result:{
+                state: res_state.success,
+                order_state: types.order.ORDER_STATE_CANCEL
+              }
+            })
+          }, (error) => {
+            return res.json({
+              state: res_state.error,
+              message: '취소 실패. 계속 실패할 경우 크티에 문의 바랍니다.',
+              result:{}
+            })
+          })
+        }).catch(function(error){
+          return res.json({
+            state: res_state.error,
+            message: error.message,
+            result:{}
+          })
+        })
+      }
+    }else{
+      db.UPDATE("UPDATE orders_items AS orders_item SET orders_item.state=? WHERE orders_item.id=?", [types.order.ORDER_STATE_CANCEL, store_order_id], 
+      (result_order_update) => {
+        return res.json({
+          result:{
+            state: res_state.success,
+            order_state: types.order.ORDER_STATE_CANCEL
+          }
+        })
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: '취소 실패. 계속 실패할 경우 크티에 문의 바랍니다.',
+          result:{}
+        })
+      })
+    }
+  })
+  
+})
 
 module.exports = router;
