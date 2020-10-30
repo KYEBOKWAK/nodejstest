@@ -1113,10 +1113,20 @@ router.post('/store/onetime', function(req, res){
             }).catch((error) => {
                 // handle error
                 // console.log(error);
-                return res.json({
-                    state: res_state.error,
-                    message: error.message,
+                //ORDER_STATE_ERROR_PAY
+                
+                db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_ERROR_PAY, req.body.data.order_id], (result) => {
+                    return res.json({
+                        state: res_state.error,
+                        message: error.message,
+                    })
+                }, (error) => {
+                    return res.json({
+                        state: res_state.error,
+                        message: error.message,
+                    })
                 })
+                
                 // console.log(error);
             });
         }
