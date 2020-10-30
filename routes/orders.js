@@ -1496,7 +1496,7 @@ function getRefundPolicyStoreContent(){
 router.post("/store/info", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
-  const querySelect = mysql.format('SELECT refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?', store_order_id);
+  const querySelect = mysql.format('SELECT orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?', store_order_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1583,6 +1583,7 @@ router.post('/store/item/list', function(req, res){
 router.post("/store/cancel", function(req, res){
   const store_order_id = req.body.data.store_order_id;
   const user_id = req.body.data.user_id;
+  const order_user_id = req.body.data.order_user_id;
   
   const querySelect = mysql.format("SELECT serializer_uid, merchant_uid, orders_item.user_id, orders_item.total_price, orders_item.state FROM orders_items AS orders_item WHERE orders_item.id=?", [store_order_id]);
 
@@ -1597,13 +1598,24 @@ router.post("/store/cancel", function(req, res){
     }
 
     const orderData = result_select_order[0];
-    if(orderData.user_id !== user_id){
-      return res.json({
-        state: res_state.error,
-        message: '주문자 정보가 일치하지 않습니다.',
-        result:{}
-      })
+    if(order_user_id){
+      if(orderData.user_id !== order_user_id){
+        return res.json({
+          state: res_state.error,
+          message: '주문자 정보가 일치하지 않습니다.',
+          result:{}
+        })
+      }
+    }else{
+      if(orderData.user_id !== user_id){
+        return res.json({
+          state: res_state.error,
+          message: '주문자 정보가 일치하지 않습니다.',
+          result:{}
+        })
+      }
     }
+    
 
     if(orderData.total_price > 0){
       if(orderData.serializer_uid && orderData.serializer_uid === 'scheduled'){
