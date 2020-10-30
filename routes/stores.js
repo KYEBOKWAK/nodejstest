@@ -37,7 +37,7 @@ router.post('/any/list', function(req, res){
 router.post('/any/item/list', function(req, res){
   let limit = req.body.data.limit;
   let skip = req.body.data.skip
-  let querySelect = mysql.format("SELECT item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id ORDER BY item.id DESC LIMIT ? OFFSET ?", [limit, skip]);
+  let querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id ORDER BY item.id DESC LIMIT ? OFFSET ?", [limit, skip]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
