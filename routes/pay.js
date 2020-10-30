@@ -15,6 +15,9 @@ const moment = require('moment');
 const moment_timezone = require('moment-timezone');
 moment_timezone.tz.setDefault("Asia/Seoul");
 
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
 var Iamport = require('iamport');
 var iamport = new Iamport({
   impKey: process.env.IAMPORT_API_KEY,
@@ -987,6 +990,8 @@ router.post('/store/onetime', function(req, res){
 
     const total_price = _data.total_price;
 
+    const item_title = _data.title;
+
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
     const merchant_uid = Util.getPayStoreNewMerchant_uid(store_id, user_id);
 
@@ -1034,11 +1039,50 @@ router.post('/store/onetime', function(req, res){
         };
 
         // subscribe/customers
+        let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
+
+        let _html = `
+                    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+                      <head>
+                        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+                        <title>컨텐츠 상점 주문서</title>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+                      </head>
+                      <body style="margin:0%">
+                        상품명 : ${item_title} <br><br>
+                        주문자 정보 
+                        이름 : ${name} <br>
+                        연락처 : ${contact} <br>
+                        이메일 : ${email} <br><br>
+                        요청사항:<br>
+                        ${_requestContents}
+                      </body>
+                    </html>
+                    `
+
+        const msg = {
+            // to: 'cyan@crowdticket.kr',
+            to: '크라우드티켓<event@crowdticket.kr>',
+            from: 'contact@crowdticket.kr',
+            subject: `컨텐츠 상점 주문 [${item_title}]`,
+            html: _html,
+        };
+
         if(_data.total_price === 0){
             //0원이면 iamport 안함.
+            sgMail.send(msg).then((result) => {
+                      
+            }).catch((error) => {
+              
+            });
+
             req.body.data.merchant_uid = merchant_uid;
             req.body.data.imp_uid = 0;
             this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+
+            
+
         }else{
             iamport.subscribe.onetime({
                 ...paymentData
@@ -1048,6 +1092,12 @@ router.post('/store/onetime', function(req, res){
                 //status: 'paid',
                 if(result.status === 'paid'){
                     //결제 성공
+                    sgMail.send(msg).then((result) => {
+                      
+                    }).catch((error) => {
+                      
+                    });
+
                     req.body.data.merchant_uid = result.merchant_uid;
                     req.body.data.imp_uid = result.imp_uid;
                     req.body.data.pay_method = result.pay_method;
