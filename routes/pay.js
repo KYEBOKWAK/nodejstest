@@ -1046,7 +1046,7 @@ router.post('/store/onetime', function(req, res){
                     <html xmlns="http://www.w3.org/1999/xhtml">
                       <head>
                         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-                        <title>컨텐츠 상점 주문서</title>
+                        <title>콘텐츠 상점 주문서</title>
                         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
                       </head>
                       <body style="margin:0%">
@@ -1065,7 +1065,7 @@ router.post('/store/onetime', function(req, res){
             // to: 'cyan@crowdticket.kr',
             to: '크라우드티켓<event@crowdticket.kr>',
             from: 'contact@crowdticket.kr',
-            subject: `컨텐츠 상점 주문 [${item_title}]`,
+            subject: `콘텐츠 상점 주문 [${item_title}]`,
             html: _html,
         };
 
