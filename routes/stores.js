@@ -149,7 +149,7 @@ router.post('/orders/ask/list', function(req, res){
   const store_id = req.body.data.store_id;
   const user_id = req.body.data.user_id;
 
-  const querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE store_id=? ORDER BY id DESC", [store_id]);
+  const querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE store_id=? AND state < ? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_CANCEL]);
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result: {
