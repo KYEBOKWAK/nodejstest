@@ -863,7 +863,11 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_SUCCESS)
   {
-    return '전달완료'
+    return '크티 전달완료'
+  }
+  else if(state === types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER)
+  {
+    return '고객 전달완료'
   }
   else if(state === types.order.ORDER_STATE_CANCEL_STORE_RETURN)
   {
@@ -1485,13 +1489,14 @@ function getStorePayState(state){
 }
 
 function getRefundPolicyStoreContent(){
-  return `1. 본 이벤트의 티켓 구매, 후원 및 결제 취소 마감일은 ddd.\n2. 마감일 이후에는 티켓의 판매가 이루어지지 않으며 이에 따라 dddd 이후에는 환불이 불가능합니다.\n3. 이벤트의 관람일 9일전부터는 티켓금액의 10%가 취소 수수료로 부과됩니다.\n4. 관람일을 기준으로 10일 이상 남은 경우에는 취소 수수료가 없습니다.\n5. 구매하신 티켓의 관람 당일 환불은 불가능합니다.\n6. 티켓을 구매하지 않은 후원 및 굿즈 구매의 경우 결제 취소 시 환불 수수료가 붙지 않습니다.\n7. 티켓 환불은 사이트 오른쪽 상단 '결제확인' 탭에서 진행하시면 됩니다.`
+  return `1. 모든 콘텐츠 주문은 크리에이터의 승인이 필요합니다.\n2. 크리에이터의 의사에 따라 콘텐츠 주문이 반려될 수 있습니다.\n3. 주문 날짜로부터 7일 안에 승인이 안되거나 반려될 경우 결제 금액은 전액 환불됩니다.\n4. 주문이 승인되기 전 구매자에 의한 주문 취소 및 환불이 가능합니다.\n5. 크리에이터가 주문을 승인한 이후에는 취소 및 환불이 불가능합니다. 단, 주문 날짜로부터 최대 14일 이내에 콘텐츠를 제공받지 못한 경우에는 결제 금액을 전액 환불해드립니다.\n6. 콘텐츠를 제공 받은 이후에는 단순 불만족 또는 변심으로 인한 환불이 불가능하니 유의해주세요.`;
+  // return `1. 콘텐츠 주문 이후 크리에이터가 승인을 하기 전까지는 구매자에 의한 주문 취소 및 환불이 가능합니다.\n2. 콘텐츠 주문 날짜로부터 7일 이내에 주문 승인이 이루어지지 않거나 크리에이터에 의해 요청이 반려되는 경우 결제 금액은 전액 환불됩니다..\n3. 크리에이터가 주문을 승인한 이후에는 취소 및 환불이 불가능합니다. 단, 주문 날짜로부터 최대 14일 이내에 콘텐츠를 제공받지 못한 경우에만 결제 금액을 전액 환불해드립니다.\n4. 콘텐츠를 제공 받은 이후에는 콘텐츠에 대한 불만족 또는 단순 변심으로 인한 환불이 불가능한 점 유의해주세요.`
 }
 
 router.post("/store/info", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
-  const querySelect = mysql.format('SELECT orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?', store_order_id);
+  const querySelect = mysql.format('SELECT refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?', store_order_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1677,5 +1682,75 @@ router.post("/store/cancel", function(req, res){
   })
   
 })
+
+router.post("/store/state/refund", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const refund_reason = req.body.data.refund_reason;
+
+  db.UPDATE("UPDATE orders_items SET state=?, refund_reason=? WHERE id=?", [types.order.ORDER_STATE_CANCEL_STORE_RETURN, refund_reason, store_order_id], 
+  (result) => {
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          state: types.order.ORDER_STATE_CANCEL_STORE_RETURN
+        }
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '주문 업데이트 실패',
+      result: {}
+    })
+  });
+});
+
+router.post("/store/state/ok", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_READY, store_order_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          state: types.order.ORDER_STATE_APP_STORE_READY
+        }
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '주문 업데이트 실패',
+      result: {}
+    })
+  });
+});
+
+router.post("/store/state/relay/ct", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_SUCCESS, store_order_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          state: types.order.ORDER_STATE_APP_STORE_SUCCESS
+        }
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '주문 업데이트 실패',
+      result: {}
+    })
+  });
+
+});
+
 
 module.exports = router;

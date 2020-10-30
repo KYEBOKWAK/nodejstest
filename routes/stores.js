@@ -119,4 +119,45 @@ router.post('/any/item/info', function(req, res){
   })
 })
 
+router.post('/info/userid', function(req, res){
+  const user_id = req.body.data.user_id;
+  const querySelect = mysql.format("SELECT store.id AS store_id, user.nick_name FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", user_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '상점 주인만 접근 가능합니다.',
+        result:{}
+      })
+    }
+
+    const data = result[0];
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+})
+
+router.post('/orders/ask/list', function(req, res){
+  const store_id = req.body.data.store_id;
+  const user_id = req.body.data.user_id;
+
+  const querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE store_id=? AND user_id=? ORDER BY id DESC", [store_id, user_id]);
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
 module.exports = router;
