@@ -537,10 +537,15 @@ router.post("/order/total/price", function(req, res){
     }
 
     const data = result[0];
+
+    let _total_price = data.total_price;
+    if(data.total_price === null){
+      _total_price = 0;
+    }
     return res.json({
       result: {
         state: res_state.success,
-        total_price: data.total_price
+        total_price: _total_price
       }
     })
   })
