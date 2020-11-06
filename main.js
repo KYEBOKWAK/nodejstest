@@ -201,10 +201,12 @@ app.use(function (req, res, next) {
   // console.log(process.env.CROWDTICKET_WEB_REFERER);
 
   if(req.headers.origin){
-    if(process.env.CROWDTICKET_WEB_REFERER === req.headers.origin ||
-      process.env.CROWDTICKET_WEB_REFERER_WEB === req.headers.origin ||
-      process.env.CROWDTICKET_WEB_REFERER_WEB_QA_R === req.headers.origin ||
-      process.env.CROWDTICKET_WEB_REFERER_WEB_QA === req.headers.origin
+    if(
+        process.env.APP_TYPE === 'local' ||
+        process.env.CROWDTICKET_WEB_REFERER === req.headers.origin ||
+        process.env.CROWDTICKET_WEB_REFERER_WEB === req.headers.origin ||
+        process.env.CROWDTICKET_WEB_REFERER_WEB_QA_R === req.headers.origin ||
+        process.env.CROWDTICKET_WEB_REFERER_WEB_QA === req.headers.origin
       ){
         //통과
       }else{
@@ -214,12 +216,6 @@ app.use(function (req, res, next) {
         });      
       }
   }
-  // if((req.headers.origin && process.env.CROWDTICKET_WEB_REFERER !== req.headers.origin)){
-  //   return res.json({
-  //     state: 'error',
-  //     message: '정상접근이 아닙니다.'
-  //   });
-  // }
   
   let url = req.url;
   let indexAnyString = url.indexOf('/any/');

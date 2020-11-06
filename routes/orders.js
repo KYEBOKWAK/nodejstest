@@ -859,7 +859,7 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_READY)
   {
-    return '승인완료(컨텐츠 제작중)'
+    return '승인완료(콘텐츠 제작중)'
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_SUCCESS)
   {
@@ -1525,9 +1525,9 @@ router.post("/store/info", function(req, res){
       refundButtonText = "주문 취소";
       isRefund = true;
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_READY){
-      refundButtonText = "컨텐츠 준비중";
+      refundButtonText = "콘텐츠 준비중";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_SUCCESS){
-      refundButtonText = "컨텐츠 제공 완료";
+      refundButtonText = "콘텐츠 제공 완료";
     }else if(data.state === types.order.ORDER_STATE_CANCEL_STORE_RETURN){
       refundButtonText = "반려됨";
     }else if(data.state === types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER){

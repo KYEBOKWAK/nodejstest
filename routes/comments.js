@@ -140,6 +140,7 @@ router.post('/comment', function(req, res) {
 });
 
 router.post("/add", function(req, res){
+  
   let commentType = req.body.data.commentType;
   let target_id = req.body.data.target_id;
   let commentable_type = this.getCommentableType(commentType);
