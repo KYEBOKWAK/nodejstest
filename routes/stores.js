@@ -128,7 +128,7 @@ router.post('/any/item/info', function(req, res){
 
 router.post('/info/userid', function(req, res){
   const user_id = req.body.data.user_id;
-  const querySelect = mysql.format("SELECT store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", user_id);
+  const querySelect = mysql.format("SELECT store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", user_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -170,11 +170,11 @@ router.post('/orders/ask/list', function(req, res){
 router.post('/save/info', function(req, res){
   const store_id = req.body.data.store_id;
   const title = req.body.data.title;
-  const contact = req.body.data.contact;
-  const email = req.body.data.email;
+  // const contact = req.body.data.contact;
+  // const email = req.body.data.email;
   const content = req.body.data.content;
 
-  db.UPDATE("UPDATE stores AS store SET title=?, contact=?, email=?, content=? WHERE id=?", [title, contact, email, content, store_id], 
+  db.UPDATE("UPDATE stores AS store SET title=?, content=? WHERE id=?", [title, content, store_id], 
   (result) => {
     return res.json({
       result: {
@@ -601,7 +601,10 @@ router.post("/manager/account/info/set", function(req, res){
   const account_number = req.body.data.account_number;
   const account_bank = req.body.data.account_bank;
 
-  db.UPDATE("UPDATE stores SET account_name=?, account_number=?, account_bank=? WHERE id=?", [account_name, account_number, account_bank, store_id], 
+  const email = req.body.data.email;
+  const contact = req.body.data.contact;
+
+  db.UPDATE("UPDATE stores SET account_name=?, account_number=?, account_bank=?, email=?, contact=? WHERE id=?", [account_name, account_number, account_bank, email, contact, store_id], 
   (result) => {
     return res.json({
       result: {
