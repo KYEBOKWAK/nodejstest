@@ -499,7 +499,7 @@ router.post("/order/ready/count", function(req, res){
 router.post("/order/readysuccess/count", function(req, res){
   const store_id = req.body.data.store_id;
 
-  const querySelect = mysql.format("SELECT COUNT(id) AS ready_success_total_count FROM orders_items WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_STORE_SUCCESS]);
+  const querySelect = mysql.format("SELECT COUNT(id) AS ready_success_total_count FROM orders_items WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
