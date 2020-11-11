@@ -234,7 +234,6 @@ router.post("/item/list/order/set", function(req, res){
   }
 
   db.UPDATE_MULITPLEX(_itemUpdateQueryArray, _itemUpdateOptionArray, (result) => {
-    console.log(result);
     return res.json({
       result: {
         state: res_state.success,
@@ -624,5 +623,237 @@ router.post("/manager/account/info/set", function(req, res){
     })
   })
 });
+
+router.post("/any/info/storeid", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const querySelect = mysql.format("SELECT user_id AS store_user_id FROM stores WHERE id=?", store_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '상점 정보가 없습니다.',
+        result:{}
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...result[0]
+        }
+      }
+    })
+  })
+});
+
+router.post("/any/info/itemid", function(req, res){
+  const store_item_id = req.body.data.store_item_id;
+
+  // const querySelect = mysql.format("SELECT store.title, store.content, store.id AS store_id, user.profile_photo_url FROM stores AS store LEFT JOIN items AS item ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+
+  const querySelect = mysql.format("SELECT store.title, store.content, store.id AS store_id, user.profile_photo_url FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+
+  // const querySelect = mysql.format("SELECT * FROM items WHERE id=?", store_item_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: {}
+        }
+      })
+    }
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: result[0]
+      }
+    })
+  })
+})
+
+router.post("/any/sns/list", function(req, res){
+  const store_user_id = req.body.data.store_user_id;
+  
+  const querySelect = mysql.format("SELECT img_store_url, channel.url AS link_url, channel.id FROM channels AS channel LEFT JOIN categories_channels AS categories_channel ON channel.categories_channel_id=categories_channel.id WHERE user_id=?", store_user_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post("/sns/channel/list", function(req, res){
+  const store_user_id = req.body.data.store_user_id;
+
+  const querySelect = mysql.format("SELECT id AS channel_id, categories_channel_id, channel.url AS channel_link_url FROM channels AS channel WHERE channel.user_id=?", store_user_id);
+
+  db.SELECT(querySelect, {}, 
+    (result) => {
+      return res.json({
+        result: {
+          state: res_state.success,
+          list: result
+        }
+      })
+    })
+})
+
+router.post("/sns/channel/category/list", function(req, res){
+  const querySelect = mysql.format("SELECT id, title FROM categories_channels ORDER BY order_number ASC");
+
+  db.SELECT(querySelect, {}, 
+    (result) => {
+      return res.json({
+        result: {
+          state: res_state.success,
+          list: result
+        }
+      })
+    })
+})
+
+router.post("/channels/remove", function(req, res){
+  const store_user_id = req.body.data.store_user_id;
+  const channels = req.body.data.channels;
+
+  let _channelDeleteQueryArray = [];
+  let _channelDeleteOptionArray = [];
+
+  for(let i = 0 ; i < channels.length ; i++){
+    const data = channels[i];
+    let queryObject = {
+      key: i,
+      value: "DELETE FROM channels WHERE id=?;"
+    }
+
+    let deleteItemObject = {
+      key: i,
+      value: data.channel_id
+    }
+
+    _channelDeleteQueryArray.push(queryObject);
+    _channelDeleteOptionArray.push(deleteItemObject);
+  }
+
+  db.DELETE_MULITPLEX(_channelDeleteQueryArray, _channelDeleteOptionArray, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '채널 제거 실패',
+      result:{}
+    })
+  })
+})
+
+router.post("/channels/add", function(req, res){
+  const store_user_id = req.body.data.store_user_id;
+  const channels = req.body.data.channels;
+
+  let _channelInsertQueryArray = [];
+  let _channelInsertOptionArray = [];
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  for(let i = 0 ; i < channels.length ; i++){
+    const data = channels[i];
+    let queryObject = {
+      key: i,
+      value: "INSERT INTO channels SET ?;"
+    }
+
+    let channel_object = {
+      user_id: store_user_id,
+      categories_channel_id: data.categories_channel_id,
+      url: data.channel_link_url,
+      created_at: date,
+      updated_at: date
+    };
+
+    let insertChannelObject = {
+      key: i,
+      value: channel_object
+    }
+
+    _channelInsertQueryArray.push(queryObject);
+    _channelInsertOptionArray.push(insertChannelObject);
+  }
+
+  db.INSERT_MULITPLEX(_channelInsertQueryArray, _channelInsertOptionArray, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '채널 추가 실패',
+      result:{}
+    })
+  })
+})
+
+router.post("/channels/update", function(req, res){
+  const store_user_id = req.body.data.store_user_id;
+  const channels = req.body.data.channels;
+
+  let _channelUpdateQueryArray = [];
+  let _channelUpdateOptionArray = [];
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  for(let i = 0 ; i < channels.length ; i++){
+    const data = channels[i];
+    let object = [{
+      categories_channel_id: data.categories_channel_id,
+      url: data.channel_link_url,
+      updated_at: date
+    }, 
+    data.channel_id];
+
+    let queryObject = {
+      key: i,
+      value: "UPDATE channels SET ? WHERE id=?;"
+    }
+
+    let updateChannelObject = {
+      key: i,
+      value: object
+    }
+
+    _channelUpdateQueryArray.push(queryObject);
+    _channelUpdateOptionArray.push(updateChannelObject);
+  }
+
+  db.UPDATE_MULITPLEX(_channelUpdateQueryArray, _channelUpdateOptionArray, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '업데이트 실패',
+      result:{}
+    })
+  })
+})
 
 module.exports = router;
