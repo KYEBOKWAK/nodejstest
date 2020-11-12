@@ -1669,4 +1669,35 @@ router.post("/push/chatting/room/update", function(req, res){
   });
 });
 
+router.post("/isadmin", function(req, res){
+  const user_id = req.body.data.user_id;
+  if(!user_id){
+    return res.json({
+      result: {
+        state: res_state.success,
+        isAdmin: false
+      }
+    })
+  }
+
+  const querySelect = mysql.format("SELECT id FROM admins WHERE user_id=?", user_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    let isAdmin = false;
+    if(!result || result.length === 0){
+      isAdmin = false;
+    }else{
+      isAdmin = true;
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        isAdmin: isAdmin
+      }
+    })
+
+  })
+})
+
 module.exports = router;

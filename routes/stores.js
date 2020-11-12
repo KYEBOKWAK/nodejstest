@@ -127,8 +127,9 @@ router.post('/any/item/info', function(req, res){
 })
 
 router.post('/info/userid', function(req, res){
-  const user_id = req.body.data.user_id;
-  const querySelect = mysql.format("SELECT store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", user_id);
+  // const user_id = req.body.data.user_id;
+  const store_user_id = req.body.data.store_user_id;
+  const querySelect = mysql.format("SELECT store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", store_user_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -154,7 +155,6 @@ router.post('/info/userid', function(req, res){
 
 router.post('/orders/ask/list', function(req, res){
   const store_id = req.body.data.store_id;
-  const user_id = req.body.data.user_id;
 
   const querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE store_id=? AND state < ? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_CANCEL]);
   db.SELECT(querySelect, {}, (result) => {
@@ -360,7 +360,6 @@ router.post("/item/add", function(req, res){
 router.post("/item/update", function(req, res){
   const store_id = req.body.data.store_id;
   const item_id = req.body.data.item_id;
-  const user_id = req.body.data.user_id;
   const price = req.body.data.price;
   const state = req.body.data.state;
   const title = req.body.data.title;
