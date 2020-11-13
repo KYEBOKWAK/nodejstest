@@ -29,7 +29,7 @@ router.post('/order', function(req, res){
 });
 
 router.post('/any/list', function(req, res){
-  let querySelect = mysql.format("SELECT store.id AS id, store.id AS store_id, alias, thumb_img_url, title, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE state=?", Types.store.STATE_APPROVED);
+  let querySelect = mysql.format("SELECT store.id AS id, store.id AS store_id, alias, thumb_img_url, title, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE state=? ORDER BY RAND()", Types.store.STATE_APPROVED);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
