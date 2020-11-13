@@ -653,7 +653,7 @@ router.post("/any/info/itemid", function(req, res){
 
   // const querySelect = mysql.format("SELECT store.title, store.content, store.id AS store_id, user.profile_photo_url FROM stores AS store LEFT JOIN items AS item ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
 
-  const querySelect = mysql.format("SELECT store.title, store.content, store.id AS store_id, user.profile_photo_url FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT store.alias, store.title, store.content, store.id AS store_id, user.profile_photo_url FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
 
   // const querySelect = mysql.format("SELECT * FROM items WHERE id=?", store_item_id);
 
