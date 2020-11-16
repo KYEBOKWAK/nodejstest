@@ -86,7 +86,7 @@ router.post('/any/detail/item/list', function(req, res){
   let skip = req.body.data.skip;
   let store_id = req.body.data.store_id;
 
-  let querySelect = mysql.format("SELECT item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state=? AND item.order_number IS NOT NULL ORDER BY item.order_number LIMIT ? OFFSET ?", [store_id, Types.item_state.SALE, limit, skip]);
+  let querySelect = mysql.format("SELECT item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL ORDER BY item.order_number LIMIT ? OFFSET ?", [store_id, Types.item_state.SALE_STOP, limit, skip]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -854,5 +854,27 @@ router.post("/channels/update", function(req, res){
     })
   })
 })
+
+router.post("/item/state/check", function(req, res){
+  const store_item_id = req.body.data.store_item_id;
+
+  const querySelect = mysql.format("SELECT state FROM items WHERE id=?", store_item_id);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '아이템 조회 오류',
+        result: {}
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        item_state: result[0].state
+      }
+    })
+  })
+});
 
 module.exports = router;
