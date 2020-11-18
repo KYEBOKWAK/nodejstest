@@ -941,6 +941,46 @@ router.post("/item/soldout/check", function(req, res){
   })
 });
 
+router.post("/item/order/quantity", function(req, res){
+  const item_id = req.body.data.item_id;
+  const querySelect = mysql.format("SELECT order_limit_count, state FROM items WHERE id=?", item_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    const data = result[0];
+    const order_limit_count = data.order_limit_count;
+    const state = data.state;
+
+    if(state === Types.item_state.SALE_LIMIT){
+      this.isSoldOutAllItemCheck(item_id, order_limit_count, 
+      (isSoldOut) => {
+        if(isSoldOut){
+          //취소를 했는데 여전히 솔드아웃??
+          console.log("#### soldout??" + item_id);
+          return res.json({
+            result: {
+              state: res_state.success
+            }
+          })
+        }
+
+        db.UPDATE("UPDATE items SET state=? WHERE id=?", [Types.item_state.SALE, item_id], (result_update) => {
+          return res.json({
+            result: {
+              state: res_state.success
+            }
+          })
+        })
+      })
+    }else{
+      return res.json({
+        result: {
+          state: res_state.success
+        }
+      })
+    }
+  })
+});
+
 router.post("/item/order/islast", function(req, res){
   const item_id = req.body.data.item_id;
   const store_item_order_id = req.body.data.store_item_order_id;
