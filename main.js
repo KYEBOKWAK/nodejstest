@@ -1958,11 +1958,73 @@ function payWaitTimeExpireCheck(){
       }
     }
   });
-  
 }
+
+function resetStoreLimitItem(){
+
+  let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
+  // const itemQuerySelect = mysql.format("SELECT id, re_set_at FROM items AS item WHERE item.state=? AND re_set_at<=?", [types.item_state.SALE_LIMIT, nowDate]);
+
+  const itemQuerySelect = mysql.format("SELECT id, state, re_set_at FROM items AS item WHERE re_set_at IS NOT NULL AND re_set_at<=?", [nowDate]);
+
+  
+  db.SELECT(itemQuerySelect, {}, (result) => {
+
+    if(result.length === 0){
+      return;
+    }
+
+    let _updateQueryArray = [];
+    let _updateOptionArray = [];
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+      const nextWeekDate = moment_timezone(data.re_set_at).add(1, 'weeks').format("YYYY-MM-DD HH:mm:ss");
+
+      let _state = data.state;
+
+      if(data.state === types.item_state.SALE_LIMIT){
+        _state = types.item_state.SALE
+      }
+
+      let dbUpdateData = [{
+        state: _state,
+        re_set_at: nextWeekDate
+      }, 
+      data.id];
+
+      let queryObject = {
+        key: i,
+        value: "UPDATE items AS item SET ? WHERE id=?;"
+      }
+
+      let updateItemObject = {
+        key: i,
+        value: dbUpdateData
+      }
+
+      _updateQueryArray.push(queryObject);
+      _updateOptionArray.push(updateItemObject);
+    }
+
+    if(_updateQueryArray.length === 0){
+      return;
+    }
+
+    db.UPDATE_MULITPLEX(_updateQueryArray, _updateOptionArray, 
+    (result) => {
+      // console.log("change!!");
+    }, (error) => {
+      console.log("#### UPDATE FAIL" + error);
+    })
+  })
+  // console.log("adfadsf");
+};
 
 cron.schedule('* * * * *', function(){
   payWaitTimeExpireCheck();
+
+  resetStoreLimitItem();
   //
 });
 

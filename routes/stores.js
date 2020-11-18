@@ -113,7 +113,7 @@ router.post('/any/info/alias', function(req, res){
 
 router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
-  const querySelect = mysql.format("SELECT item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result:{
@@ -305,6 +305,8 @@ router.post("/item/add", function(req, res){
   const ask = req.body.data.ask;
   const img_s3_key = '';
 
+  const order_limit_count = req.body.data.order_limit_count;
+
   let querySelect = mysql.format("SELECT order_number FROM items WHERE store_id=? ORDER BY order_number DESC", store_id);
 
   db.SELECT(querySelect, {}, (result_select) => {
@@ -325,6 +327,12 @@ router.post("/item/add", function(req, res){
 
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
+    let re_set_at = null;
+    if(order_limit_count > 0){
+      //제한이 있음.
+      re_set_at = moment_timezone().add(1, 'weeks').startOf('isoWeek').format("YYYY-MM-DD HH:mm:ss");
+    }
+
     const itemData = {
       store_id: store_id,
       price: price,
@@ -335,6 +343,8 @@ router.post("/item/add", function(req, res){
       ask: ask,
       order_number: _order_number,
       img_s3_key: img_s3_key,
+      order_limit_count: order_limit_count,
+      re_set_at: re_set_at,
       created_at: date,
       updated_at: date
     }
@@ -368,20 +378,61 @@ router.post("/item/update", function(req, res){
   const ask = req.body.data.ask;
   // const img_s3_key = '';
 
-  db.UPDATE("UPDATE items SET state=?, title=?, price=?, content=?, ask=? WHERE id=?", [state, title, price, content, ask, item_id], 
-  (result_update) => {
-    return res.json({
-      result: {
-        state: res_state.success
+  const order_limit_count = req.body.data.order_limit_count;
+
+  const isChangeLimitCount = req.body.data.isChangeLimitCount;
+
+  let re_set_at = null;
+  if(order_limit_count > 0){
+    //제한이 있음.
+    re_set_at = moment_timezone().add(1, 'weeks').startOf('isoWeek').format("YYYY-MM-DD HH:mm:ss");
+  }
+
+  if(isChangeLimitCount){
+    this.isSoldOutAllItemCheck(item_id, order_limit_count, (isSoldOut) => {
+      if(isSoldOut){
+        return res.json({
+          state: res_state.error,
+          message: '주문 수 보다 커야합니다.',
+          result: {}
+        })
       }
+
+      db.UPDATE("UPDATE items SET re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+      (result_update) => {
+        return res.json({
+          result: {
+            state: res_state.success,
+            data: {
+              state: state
+            }
+          }
+        })
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: '아이템 정보 업데이트 실패',
+          result: {}
+        })
+      })
     })
-  }, (error) => {
-    return res.json({
-      state: res_state.error,
-      message: '아이템 정보 업데이트 실패',
-      result: {}
+  }else{
+    db.UPDATE("UPDATE items SET re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    (result_update) => {
+      return res.json({
+        result: {
+          state: res_state.success
+        }
+      })
+    }, (error) => {
+      return res.json({
+        state: res_state.error,
+        message: '아이템 정보 업데이트 실패',
+        result: {}
+      })
     })
-  })
+  }
+  
 });
 
 router.post("/manager/order/list", function(req, res){
@@ -651,8 +702,6 @@ router.post("/any/info/storeid", function(req, res){
 router.post("/any/info/itemid", function(req, res){
   const store_item_id = req.body.data.store_item_id;
 
-  // const querySelect = mysql.format("SELECT store.title, store.content, store.id AS store_id, user.profile_photo_url FROM stores AS store LEFT JOIN items AS item ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
-
   const querySelect = mysql.format("SELECT store.alias, store.title, store.content, store.id AS store_id, user.profile_photo_url FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
 
   // const querySelect = mysql.format("SELECT * FROM items WHERE id=?", store_item_id);
@@ -876,5 +925,130 @@ router.post("/item/state/check", function(req, res){
     })
   })
 });
+
+router.post("/item/soldout/check", function(req, res){
+  const item_id = req.body.data.item_id;
+  const order_limit_count = req.body.data.order_limit_count;
+
+  this.isSoldOutAllItemCheck(item_id, order_limit_count, 
+  (isSoldOut) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        isSoldOut: isSoldOut
+      }
+    })
+  })
+});
+
+router.post("/item/order/islast", function(req, res){
+  const item_id = req.body.data.item_id;
+  const store_item_order_id = req.body.data.store_item_order_id;
+
+  this.isLastOrderCheck(item_id, store_item_order_id, (isLastOrder) => {
+    
+    if(isLastOrder){
+      db.UPDATE("UPDATE items SET state=? WHERE id=?", [Types.item_state.SALE_LIMIT, item_id], 
+      (result) => {
+        return res.json({
+          result: {
+            state: res_state.success
+          }
+        })
+      }, (error) => {
+        return res.json({
+          result: {
+            state: res_state.success
+          }
+        })
+      })
+    }
+    else{
+      return res.json({
+        result: {
+          state: res_state.success
+        }
+      })
+    }
+  })
+})
+
+isLastOrderCheck = (item_id, store_item_order_id, callback) => {
+  // let thisWeekStart_at = moment_timezone().startOf('isoWeek').format("YYYY-MM-DD HH:mm:ss");
+
+  const queryItemSelect = mysql.format("SELECT re_set_at FROM items WHERE id=?", item_id);
+  db.SELECT(queryItemSelect, {}, (result_select_items) => {
+    const data = result_select_items[0];
+    let thisWeekStart_at = moment_timezone(data.re_set_at).subtract(1, 'weeks').format("YYYY-MM-DD HH:mm:ss");
+
+    const storeOrderSelect = mysql.format("SELECT orders_item.id, item.order_limit_count FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.item_id=? AND orders_item.state<? AND orders_item.created_at>?", [item_id, Types.order.ORDER_STATE_PAY_END, thisWeekStart_at]);
+    db.SELECT(storeOrderSelect, {}, (item_orders_select) => {
+        let order_limit_count = 0;
+        let orderCounter = 0;
+        let isLastOrder = false;
+        for(let i = 0 ; i < item_orders_select.length ; i++){
+            orderCounter++;
+
+            const data = item_orders_select[i];
+            order_limit_count = data.order_limit_count;
+            if(order_limit_count === 0){
+                // console.log("무제한 구매");
+                break;
+            }
+
+            if(data.id === store_item_order_id){
+                if(orderCounter === order_limit_count){
+                    isLastOrder = true;
+                }else{
+                }
+                break;
+            }
+        }
+
+        callback(isLastOrder);
+        // return isSoldOut;
+    });
+  });
+}
+
+isSoldOutAllItemCheck = (item_id, order_limit_count, callback) => {
+  // let thisWeekStart_at = moment_timezone().startOf('isoWeek').format("YYYY-MM-DD HH:mm:ss");
+
+  const queryItemSelect = mysql.format("SELECT re_set_at FROM items WHERE id=?", item_id);
+  db.SELECT(queryItemSelect, {}, (result_select_items) => {
+    const data = result_select_items[0];
+    let thisWeekStart_at = moment_timezone(data.re_set_at).subtract(1, 'weeks').format("YYYY-MM-DD HH:mm:ss");
+
+    const storeOrderSelect = mysql.format("SELECT orders_item.id FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.item_id=? AND orders_item.state<? AND orders_item.created_at>?", [item_id, Types.order.ORDER_STATE_PAY_END, thisWeekStart_at]);
+    db.SELECT(storeOrderSelect, {}, (item_orders_select) => {
+        let orderCounter = 0;
+        let isSoldOut = false;
+        for(let i = 0 ; i < item_orders_select.length ; i++){
+            orderCounter++;
+
+            const data = item_orders_select[i];
+            if(order_limit_count === 0){
+                // console.log("무제한 구매");
+                break;
+            }
+
+            
+            if(orderCounter >= order_limit_count){
+                // console.log("품절됨");
+                isSoldOut = true;
+                break;
+            }else{
+                // console.log("통과");
+            }          
+        }
+
+        callback(isSoldOut);
+        // return isSoldOut;
+    });
+  })
+
+  // console.log(thisWeekStart_at);
+  
+}
 
 module.exports = router;
