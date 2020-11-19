@@ -14,7 +14,11 @@ var mysql = require('mysql');
 const Util = use('lib/util.js');
 
 const global = use('lib/global_const.js');
-// const util = require('./lib/util.js');
+
+const sgMail = require('@sendgrid/mail');
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+const Templite_email = use('lib/templite_email');
 
 var Iamport = require('iamport');
 var iamport = new Iamport({
@@ -1695,6 +1699,37 @@ router.post("/store/cancel", function(req, res){
   
 })
 
+sendStoreRefundEmail = (store_order_id, refund_reason) => {
+  const querySelect = mysql.format("SELECT orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
+  db.SELECT(querySelect, {}, (result) => {
+      const data = result[0];
+
+      // console.log(data);
+      
+      let toEmail = data.email;
+      // if(!data.store_user_email || data.store_user_email === ''){
+      //     toEmail = data.user_email;
+      // }
+
+      let store_manager_name = data.nick_name;
+      if(!data.nick_name || data.nick_name === ''){
+          store_manager_name = data.name;
+      }
+      
+      const mailMSG = {
+          to: toEmail,
+          from: '크티<contact@crowdticket.kr>',
+          subject: Templite_email.email_store_order_rejected.subject,
+          html: Templite_email.email_store_order_rejected.html(store_manager_name, data.order_name, data.item_title, refund_reason)
+      }
+      sgMail.send(mailMSG).then((result) => {
+          // console.log(result);
+      }).catch((error) => {
+          // console.log(error);
+      })
+  })
+}
+
 router.post("/store/state/refund", function(req, res){
   const store_order_id = req.body.data.store_order_id;
   const refund_reason = req.body.data.refund_reason;
@@ -1702,6 +1737,7 @@ router.post("/store/state/refund", function(req, res){
   db.UPDATE("UPDATE orders_items SET state=?, refund_reason=? WHERE id=?", [types.order.ORDER_STATE_CANCEL_STORE_RETURN, refund_reason, store_order_id], 
   (result) => {
 
+    this.sendStoreRefundEmail(store_order_id, refund_reason);
     return res.json({
       result: {
         state: res_state.success,
@@ -1719,11 +1755,45 @@ router.post("/store/state/refund", function(req, res){
   });
 });
 
+sendStoreApproveEmail = (store_order_id) => {
+  const querySelect = mysql.format("SELECT orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
+  db.SELECT(querySelect, {}, (result) => {
+      const data = result[0];
+
+      // console.log(data);
+      
+      let toEmail = data.email;
+      // if(!data.store_user_email || data.store_user_email === ''){
+      //     toEmail = data.user_email;
+      // }
+
+      let store_manager_name = data.nick_name;
+      if(!data.nick_name || data.nick_name === ''){
+          store_manager_name = data.name;
+      }
+      
+      const mailMSG = {
+          to: toEmail,
+          from: '크티<contact@crowdticket.kr>',
+          subject: Templite_email.email_store_order_approved.subject,
+          html: Templite_email.email_store_order_approved.html(store_manager_name, data.order_name, data.item_title, data.order_user_id)
+      }
+      sgMail.send(mailMSG).then((result) => {
+          // console.log(result);
+      }).catch((error) => {
+          // console.log(error);
+      })
+  })
+}
+
 router.post("/store/state/ok", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
   db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_READY, store_order_id], 
   (result) => {
+
+    this.sendStoreApproveEmail(store_order_id);
+
     return res.json({
       result: {
         state: res_state.success,
