@@ -18,6 +18,8 @@ moment_timezone.tz.setDefault("Asia/Seoul");
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
+const Templite_email = use('lib/templite_email');
+
 var Iamport = require('iamport');
 var iamport = new Iamport({
   impKey: process.env.IAMPORT_API_KEY,
@@ -1015,6 +1017,57 @@ isSoldOutCheck = (item_id, store_item_order_id, callback) => {
     })
 }
 
+sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, created_at, requestContent) => {
+
+    const querySelect = mysql.format("SELECT user.nick_name, user.name, user.email AS user_email, store.email AS store_user_email FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=?", store_id);
+    db.SELECT(querySelect, {}, (result) => {
+        const data = result[0];
+
+        let toEmail = data.store_user_email
+        if(!data.store_user_email || data.store_user_email === ''){
+            toEmail = data.user_email;
+        }
+
+        let store_manager_name = data.nick_name;
+        if(!data.nick_name || data.nick_name === ''){
+            store_manager_name = data.name;
+        }
+
+        // //test
+        // toEmail = 'bogame@naver.com';
+        // //////
+        let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
+        
+        const mailMSG = {
+            to: toEmail,
+            from: '크티<contact@crowdticket.kr>',
+            subject: Templite_email.email_store_creator_order.subject,
+            html: Templite_email.email_store_creator_order.html(store_manager_name, order_name, item_title, item_price, created_at, _requestContents)
+        }
+        sgMail.send(mailMSG).then((result) => {
+            // console.log(result);
+        }).catch((error) => {
+            // console.log(error);
+        })
+    })
+}
+
+sendStoreOrderCompliteEmail = (user_id, to_email, item_title, item_price, order_name, created_at, requestContent) => {
+    let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
+
+    const mailMSG = {
+        to: to_email,
+        from: '크티<contact@crowdticket.kr>',
+        subject: Templite_email.email_store_order_requested.subject,
+        html: Templite_email.email_store_order_requested.html(user_id, order_name, item_title, item_price, created_at, _requestContents)
+    }
+    sgMail.send(mailMSG).then((result) => {
+        // console.log(result);
+    }).catch((error) => {
+        // console.log(error);
+    })
+}
+
 router.post('/store/onetime', function(req, res){
     const _data = req.body.data;
     const user_id = req.body.data.user_id;
@@ -1184,6 +1237,10 @@ router.post('/store/onetime', function(req, res){
                       
                     });
                 }
+
+                this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+                this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
     
                 req.body.data.merchant_uid = merchant_uid;
                 req.body.data.imp_uid = 0;
@@ -1206,6 +1263,9 @@ router.post('/store/onetime', function(req, res){
                             });
                         }
                         
+                        this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+                        this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
     
                         req.body.data.merchant_uid = result.merchant_uid;
                         req.body.data.imp_uid = result.imp_uid;
