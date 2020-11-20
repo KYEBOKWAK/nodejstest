@@ -917,6 +917,9 @@ router.post("/item/state/check", function(req, res){
       })
     }
 
+    console.log(store_item_id);
+    console.log(result);
+
     return res.json({
       result: {
         state: res_state.success,
