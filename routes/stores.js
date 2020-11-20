@@ -917,8 +917,9 @@ router.post("/item/state/check", function(req, res){
       })
     }
 
-    console.log(store_item_id);
-    console.log(result);
+    // console.log(req.body.data.user_id);
+    // console.log(store_item_id);
+    // console.log(result);
 
     return res.json({
       result: {
