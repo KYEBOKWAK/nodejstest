@@ -19,6 +19,7 @@ const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const Templite_email = use('lib/templite_email');
+const Global_Func = use("lib/global_func.js");
 
 var Iamport = require('iamport');
 var iamport = new Iamport({
@@ -1730,6 +1731,26 @@ sendStoreRefundEmail = (store_order_id, refund_reason) => {
   })
 }
 
+sendStoreRefundSMSOrderUser = (store_order_id) => {
+  const querySelect = mysql.format("SELECT contact FROM orders_items WHERE id=?", store_order_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return;
+    }
+    
+    const data = result[0];
+    if(!data.contact || data.contact === ''){
+        return;
+    }
+
+    const content = '[크티] 크리에이터에게 요청하신 콘텐츠가 반려됐습니다. 상세내용은 웹사이트에서 확인하세요.'
+    Global_Func.sendSMS(data.contact, content, (result) => {
+
+    })
+  })
+}
+
 router.post("/store/state/refund", function(req, res){
   const store_order_id = req.body.data.store_order_id;
   const refund_reason = req.body.data.refund_reason;
@@ -1738,6 +1759,7 @@ router.post("/store/state/refund", function(req, res){
   (result) => {
 
     this.sendStoreRefundEmail(store_order_id, refund_reason);
+    this.sendStoreRefundSMSOrderUser(store_order_id);
     return res.json({
       result: {
         state: res_state.success,
@@ -1786,6 +1808,26 @@ sendStoreApproveEmail = (store_order_id) => {
   })
 }
 
+sendStoreApproveSMSOrderUser = (store_order_id) => {
+  const querySelect = mysql.format("SELECT contact FROM orders_items WHERE id=?", store_order_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return;
+    }
+    
+    const data = result[0];
+    if(!data.contact || data.contact === ''){
+        return;
+    }
+
+    const content = '[크티] 크리에이터가 요청한 콘텐츠 준비를 시작했습니다! 상세내용은 웹사이트에서 확인하세요.'
+    Global_Func.sendSMS(data.contact, content, (result) => {
+
+    })
+  })
+}
+
 router.post("/store/state/ok", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
@@ -1793,6 +1835,7 @@ router.post("/store/state/ok", function(req, res){
   (result) => {
 
     this.sendStoreApproveEmail(store_order_id);
+    this.sendStoreApproveSMSOrderUser(store_order_id);
 
     return res.json({
       result: {

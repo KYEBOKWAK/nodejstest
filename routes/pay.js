@@ -19,6 +19,7 @@ const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const Templite_email = use('lib/templite_email');
+const Global_Func = use("lib/global_func.js");
 
 var Iamport = require('iamport');
 var iamport = new Iamport({
@@ -1017,6 +1018,27 @@ isSoldOutCheck = (item_id, store_item_order_id, callback) => {
     })
 }
 
+sendStoreMasterSMSOrder = (store_id) => {
+    const querySelect = mysql.format("SELECT contact FROM stores AS store WHERE store.id=?", store_id);
+
+    db.SELECT(querySelect, {}, (result) => {
+        if(result.length === 0){
+            return;
+        }
+
+        const data = result[0];
+
+        if(!data.contact || data.contact === ''){
+            return;
+        }
+
+        const content = '[크티] 콘텐츠 요청이 들어왔습니다. 크티 웹사이트에서 요청을 승인해주세요.'
+        Global_Func.sendSMS(data.contact, content, (result) => {
+
+        })
+    })    
+}
+
 sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, created_at, requestContent) => {
 
     const querySelect = mysql.format("SELECT user.nick_name, user.name, user.email AS user_email, store.email AS store_user_email FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=?", store_id);
@@ -1240,6 +1262,8 @@ router.post('/store/onetime', function(req, res){
 
                 this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
 
+                this.sendStoreMasterSMSOrder(store_id);
+
                 this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
     
                 req.body.data.merchant_uid = merchant_uid;
@@ -1264,6 +1288,8 @@ router.post('/store/onetime', function(req, res){
                         }
                         
                         this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+                        this.sendStoreMasterSMSOrder(store_id);
 
                         this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
     
