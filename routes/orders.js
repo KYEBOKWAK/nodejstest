@@ -1821,7 +1821,7 @@ sendStoreApproveSMSOrderUser = (store_order_id) => {
         return;
     }
 
-    const content = '[크티] 크리에이터가 요청한 콘텐츠 준비를 시작했습니다! 상세내용은 웹사이트에서 확인하세요.'
+    const content = '[크티] 크리에이터가 요청된 콘텐츠 준비를 시작했습니다! 상세내용은 웹사이트에서 확인하세요.';
     Global_Func.sendSMS(data.contact, content, (result) => {
 
     })
