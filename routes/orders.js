@@ -1834,8 +1834,10 @@ router.post("/store/state/ok", function(req, res){
   db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_READY, store_order_id], 
   (result) => {
 
-    this.sendStoreApproveEmail(store_order_id);
-    this.sendStoreApproveSMSOrderUser(store_order_id);
+    if(process.env.APP_TYPE !== 'local'){
+      this.sendStoreApproveEmail(store_order_id);
+      this.sendStoreApproveSMSOrderUser(store_order_id);
+    }
 
     return res.json({
       result: {

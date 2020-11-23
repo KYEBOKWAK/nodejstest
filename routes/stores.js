@@ -24,6 +24,9 @@ const { Config } = require('aws-sdk');
 //   region: process.env.AWS_S3_REGION,
 // });
 
+const STORE_HOME_ITEM_LIST_TAKE = 4;
+const STORE_HOME_ITEM_LIST_IN_ITEM_TAKE = 3;
+
 router.post('/order', function(req, res){
 
 });
@@ -42,6 +45,37 @@ router.post('/any/list', function(req, res){
 })
 
 router.post('/any/item/list', function(req, res){
+  // let limit = req.body.data.limit;
+  // let skip = req.body.data.skip
+
+  let type = req.body.data.type;
+
+  let querySelect = '';
+  if(type === Types.store_home_item_list.POPUALER){
+    //최근 구매된 아이템
+    // querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? ORDER BY item.id DESC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
+
+    querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND item.state=? AND store.state=? ORDER BY item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
+
+  }
+  else if(type === Types.store_home_item_list.NEW_UPDATE){
+    querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? ORDER BY item.updated_at DESC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
+  }
+  else if(type === Types.store_home_item_list.IN_ITEM){
+    const store_id = req.body.data.store_id;
+    querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? AND item.store_id=? ORDER BY item.order_number ASC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, store_id, STORE_HOME_ITEM_LIST_IN_ITEM_TAKE]);
+  }
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+
+  /*
   let limit = req.body.data.limit;
   let skip = req.body.data.skip
   let querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? ORDER BY item.id DESC LIMIT ? OFFSET ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, limit, skip]);
@@ -54,7 +88,32 @@ router.post('/any/item/list', function(req, res){
       }
     })
   })
+  */
 })
+
+router.post('/any/home/store/list', function(req, res){
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+
+  let show_ids = req.body.data.show_ids;
+
+  let querySelect = '';
+  if(show_ids.length === 0){
+    querySelect = mysql.format("SELECT id AS store_id, alias FROM stores AS store WHERE store.state=? ORDER BY RAND() LIMIT ?", [Types.project.STATE_APPROVED,limit]);
+  }else{
+    querySelect = mysql.format("SELECT id AS store_id, alias FROM stores AS store WHERE store.state=? AND store.id NOT IN (?) ORDER BY RAND() LIMIT ?", [Types.project.STATE_APPROVED, show_ids, limit]);
+  }
+  
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
 
 router.post('/any/detail/info', function(req, res){
   const store_id = req.body.data.store_id;
@@ -382,6 +441,8 @@ router.post("/item/update", function(req, res){
 
   const isChangeLimitCount = req.body.data.isChangeLimitCount;
 
+  const updated_at = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
   let re_set_at = null;
   if(order_limit_count > 0){
     //제한이 있음.
@@ -398,7 +459,7 @@ router.post("/item/update", function(req, res){
         })
       }
 
-      db.UPDATE("UPDATE items SET re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+      db.UPDATE("UPDATE items SET updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
       (result_update) => {
         return res.json({
           result: {
@@ -417,7 +478,7 @@ router.post("/item/update", function(req, res){
       })
     })
   }else{
-    db.UPDATE("UPDATE items SET re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
     (result_update) => {
       return res.json({
         result: {

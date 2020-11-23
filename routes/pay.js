@@ -1258,13 +1258,15 @@ router.post('/store/onetime', function(req, res){
                     }).catch((error) => {
                       
                     });
+
+                    this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+                    this.sendStoreMasterSMSOrder(store_id);
+
+                    this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
                 }
 
-                this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
-
-                this.sendStoreMasterSMSOrder(store_id);
-
-                this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+                
     
                 req.body.data.merchant_uid = merchant_uid;
                 req.body.data.imp_uid = 0;
@@ -1285,13 +1287,13 @@ router.post('/store/onetime', function(req, res){
                             }).catch((error) => {
                             
                             });
+
+                            this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+                            this.sendStoreMasterSMSOrder(store_id);
+
+                            this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
                         }
-                        
-                        this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
-
-                        this.sendStoreMasterSMSOrder(store_id);
-
-                        this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
     
                         req.body.data.merchant_uid = result.merchant_uid;
                         req.body.data.imp_uid = result.imp_uid;
