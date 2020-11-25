@@ -17,6 +17,8 @@ const global = use('lib/global_const.js');
 const axios = require('axios');
 const { Config } = require('aws-sdk');
 
+// const Global_Func = use("lib/global_func.js");
+
 // var aws = require('aws-sdk');
 // var s3 = new aws.S3({ 
 //   accessKeyId: process.env.AWS_S3_KEY,
@@ -55,7 +57,7 @@ router.post('/any/item/list', function(req, res){
     //최근 구매된 아이템
     // querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? ORDER BY item.id DESC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
 
-    querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND item.state=? AND store.state=? ORDER BY item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
+    querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND item.state=? AND store.state=? ORDER BY orders_item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
 
   }
   else if(type === Types.store_home_item_list.NEW_UPDATE){
@@ -1152,8 +1154,29 @@ isSoldOutAllItemCheck = (item_id, order_limit_count, callback) => {
     });
   })
 
-  // console.log(thisWeekStart_at);
-  
+  // console.log(thisWeekStart_at);  
 }
+
+/*
+router.post('/any/test', function(req, res){
+
+
+
+  Global_Func.sendKakaoAlimTalk({
+    templateCode: 'CTSTORE02',
+    to: '01096849880',
+    creator_name: '이름',
+    item_title: '아이템 타이틀',
+    approved_at: '2020-11-11',
+    customer_name: '구매자이름',
+  });
+
+  return res.json({
+    result: {
+      state: res_state.success
+    }
+  })
+});
+*/
 
 module.exports = router;
