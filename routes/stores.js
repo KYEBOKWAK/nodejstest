@@ -55,15 +55,15 @@ router.post('/any/item/list', function(req, res){
     //최근 구매된 아이템
     // querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? ORDER BY item.id DESC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
 
-    querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND item.state=? AND store.state=? ORDER BY orders_item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
+    querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND item.state=? AND store.state=? ORDER BY orders_item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
 
   }
   else if(type === Types.store_home_item_list.NEW_UPDATE){
-    querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? ORDER BY item.updated_at DESC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
+    querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? ORDER BY item.updated_at DESC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
   }
   else if(type === Types.store_home_item_list.IN_ITEM){
     const store_id = req.body.data.store_id;
-    querySelect = mysql.format("SELECT item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? AND item.store_id=? ORDER BY item.order_number ASC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, store_id, STORE_HOME_ITEM_LIST_IN_ITEM_TAKE]);
+    querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? AND item.store_id=? ORDER BY item.order_number ASC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, store_id, STORE_HOME_ITEM_LIST_IN_ITEM_TAKE]);
   }
 
   db.SELECT(querySelect, {}, (result) => {
@@ -145,7 +145,7 @@ router.post('/any/detail/item/list', function(req, res){
   let skip = req.body.data.skip;
   let store_id = req.body.data.store_id;
 
-  let querySelect = mysql.format("SELECT item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL ORDER BY item.order_number LIMIT ? OFFSET ?", [store_id, Types.item_state.SALE_STOP, limit, skip]);
+  let querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL ORDER BY item.order_number LIMIT ? OFFSET ?", [store_id, Types.item_state.SALE_STOP, limit, skip]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -172,7 +172,7 @@ router.post('/any/info/alias', function(req, res){
 
 router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
-  const querySelect = mysql.format("SELECT item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result:{
@@ -252,7 +252,7 @@ router.post('/save/info', function(req, res){
 router.post("/item/list/all", function(req, res){
   const store_id = req.body.data.store_id;
 
-  let querySelect = mysql.format("SELECT item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id]);
+  let querySelect = mysql.format("SELECT store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
