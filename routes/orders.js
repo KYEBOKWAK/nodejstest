@@ -1732,6 +1732,47 @@ sendStoreRefundEmail = (store_order_id, refund_reason) => {
 }
 
 sendStoreRefundSMSOrderUser = (store_order_id) => {
+
+  const querySelect = mysql.format("SELECT refund_reason, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+  
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return;
+    }
+    
+    const data = result[0];
+    if(!data.contact || data.contact === ''){
+        return;
+    }
+
+    // let _requested_at = moment_timezone(data.requested_at).format('YYYY-MM-DD HH:mm');
+
+    
+
+
+    let _order_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _order_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _order_url = 'qa.crowdticket.kr';
+    }
+
+    _order_url = _order_url + `/users/store/${data.user_id}/orders`;
+    
+    
+    Global_Func.sendKakaoAlimTalk({
+      templateCode: 'CTSTORE03',
+      to: data.contact,
+      order_url: _order_url,
+      customer_name: data.customer_name,
+      creator_name: data.creator_name,
+      item_title: data.item_title,
+      refund_reason: data.refund_reason,
+      refund_price: data.item_price
+    })
+  })
+
+  /*
   const querySelect = mysql.format("SELECT contact FROM orders_items WHERE id=?", store_order_id);
 
   db.SELECT(querySelect, {}, (result) => {
@@ -1749,6 +1790,7 @@ sendStoreRefundSMSOrderUser = (store_order_id) => {
 
     })
   })
+  */
 }
 
 router.post("/store/state/refund", function(req, res){
@@ -1809,6 +1851,33 @@ sendStoreApproveEmail = (store_order_id) => {
 }
 
 sendStoreApproveSMSOrderUser = (store_order_id) => {
+
+  const querySelect = mysql.format("SELECT item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return;
+    }
+    
+    const data = result[0];
+    if(!data.contact || data.contact === ''){
+        return;
+    }
+
+    let date = moment_timezone().format('YYYY-MM-DD HH:mm');
+
+    
+    Global_Func.sendKakaoAlimTalk({
+      templateCode: 'CTSTORE02',
+      to: data.contact,
+      creator_name: data.creator_name,
+      item_title: data.item_title,
+      approved_at: date,
+      customer_name: data.customer_name,
+    })
+  })
+
+  /*
   const querySelect = mysql.format("SELECT contact FROM orders_items WHERE id=?", store_order_id);
 
   db.SELECT(querySelect, {}, (result) => {
@@ -1821,11 +1890,15 @@ sendStoreApproveSMSOrderUser = (store_order_id) => {
         return;
     }
 
+    
     const content = '[크티] 크리에이터가 요청된 콘텐츠 준비를 시작했습니다! 상세내용은 웹사이트에서 확인하세요.';
     Global_Func.sendSMS(data.contact, content, (result) => {
 
     })
+    
+
   })
+  */
 }
 
 router.post("/store/state/ok", function(req, res){

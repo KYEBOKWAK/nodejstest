@@ -1018,7 +1018,45 @@ isSoldOutCheck = (item_id, store_item_order_id, callback) => {
     })
 }
 
-sendStoreMasterSMSOrder = (store_id) => {
+sendStoreMasterSMSOrder = (store_id, item_title, total_price, name) => {
+
+    const querySelect = mysql.format("SELECT contact, store.title AS creator_name FROM stores AS store WHERE store.id=?", store_id);
+  
+    db.SELECT(querySelect, {}, (result) => {
+        if(!result || result.length === 0){
+        return;
+        }
+        
+        const data = result[0];
+        if(!data.contact || data.contact === ''){
+            return;
+        }
+
+        let _requested_at = moment_timezone().format('YYYY-MM-DD HH:mm');        
+
+        let _order_url = 'crowdticket.kr';
+        if(process.env.APP_TYPE === 'local'){
+        _order_url = 'localhost:8000';
+        }else if(process.env.APP_TYPE === 'qa'){
+        _order_url = 'qa.crowdticket.kr';
+        }
+
+        _order_url = _order_url + `/manager/store`;
+        
+        Global_Func.sendKakaoAlimTalk(
+        {
+            templateCode: 'CTSTORE04',
+            to: data.contact,
+            store_manager_url: _order_url,
+            creator_name: data.creator_name,
+            item_title: item_title,
+            item_price: total_price,
+            customer_name: name,
+            requested_at: _requested_at,
+        })
+    })
+
+    /*
     const querySelect = mysql.format("SELECT contact FROM stores AS store WHERE store.id=?", store_id);
 
     db.SELECT(querySelect, {}, (result) => {
@@ -1036,7 +1074,8 @@ sendStoreMasterSMSOrder = (store_id) => {
         Global_Func.sendSMS(data.contact, content, (result) => {
 
         })
-    })    
+    })
+    */
 }
 
 sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, created_at, requestContent) => {
@@ -1087,6 +1126,48 @@ sendStoreOrderCompliteEmail = (user_id, to_email, item_title, item_price, order_
         // console.log(result);
     }).catch((error) => {
         // console.log(error);
+    })
+}
+
+sendStoreOrderCompliteKakaoAlim = (store_order_id) => {
+
+    const querySelect = mysql.format("SELECT orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+  
+    db.SELECT(querySelect, {}, (result) => {
+      if(!result || result.length === 0){
+        return;
+      }
+      
+      const data = result[0];
+      if(!data.contact || data.contact === ''){
+          return;
+      }
+  
+      let _requested_at = moment_timezone(data.requested_at).format('YYYY-MM-DD HH:mm');
+
+      
+  
+
+      let _order_url = 'crowdticket.kr';
+      if(process.env.APP_TYPE === 'local'){
+        _order_url = 'localhost:8000';
+      }else if(process.env.APP_TYPE === 'qa'){
+        _order_url = 'qa.crowdticket.kr';
+      }
+
+      _order_url = _order_url + `/users/store/${data.user_id}/orders`;
+      
+      
+      Global_Func.sendKakaoAlimTalk({
+        templateCode: 'CTSTORE01',
+        to: data.contact,
+        order_url: _order_url,
+        creator_name: data.creator_name,
+        item_title: data.item_title,
+        item_price: data.item_price,
+        requested_at: _requested_at,
+        customer_name: data.customer_name,
+      })
     })
 }
 
@@ -1261,12 +1342,12 @@ router.post('/store/onetime', function(req, res){
 
                     this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
 
-                    this.sendStoreMasterSMSOrder(store_id);
+                    this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
 
                     this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
-                }
 
-                
+                    this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+                }                
     
                 req.body.data.merchant_uid = merchant_uid;
                 req.body.data.imp_uid = 0;
@@ -1290,9 +1371,11 @@ router.post('/store/onetime', function(req, res){
 
                             this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
 
-                            this.sendStoreMasterSMSOrder(store_id);
+                            this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
 
                             this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+
+                            this.sendStoreOrderCompliteKakaoAlim(item_order_id);
                         }
     
                         req.body.data.merchant_uid = result.merchant_uid;

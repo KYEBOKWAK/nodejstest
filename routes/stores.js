@@ -17,8 +17,6 @@ const global = use('lib/global_const.js');
 const axios = require('axios');
 const { Config } = require('aws-sdk');
 
-// const Global_Func = use("lib/global_func.js");
-
 // var aws = require('aws-sdk');
 // var s3 = new aws.S3({ 
 //   accessKeyId: process.env.AWS_S3_KEY,
@@ -1156,27 +1154,5 @@ isSoldOutAllItemCheck = (item_id, order_limit_count, callback) => {
 
   // console.log(thisWeekStart_at);  
 }
-
-/*
-router.post('/any/test', function(req, res){
-
-
-
-  Global_Func.sendKakaoAlimTalk({
-    templateCode: 'CTSTORE02',
-    to: '01096849880',
-    creator_name: '이름',
-    item_title: '아이템 타이틀',
-    approved_at: '2020-11-11',
-    customer_name: '구매자이름',
-  });
-
-  return res.json({
-    result: {
-      state: res_state.success
-    }
-  })
-});
-*/
 
 module.exports = router;
