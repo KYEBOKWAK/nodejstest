@@ -73,11 +73,12 @@ const uploadUserProfileImg = multer({
         }else{
           path = process.env.APP_TYPE+"/";
         }
-        var fullPath = path+'users/'+file.originalname;
+        var fullPath = path+'test/'+file.originalname;
         cb(null, fullPath);
       }
   })
 });
+
 
 getS3URL = () => {
 
@@ -533,6 +534,15 @@ router.post("/delete/img", function(req, res){
     });
 
   });
+});
+
+router.post("/any/test", uploadUserProfileImg.single('file'), function(req, res){
+  console.log("aaaaa");
+  return res.json({
+    result: {
+      state: res_state.success
+    }
+  })
 });
 
 module.exports = router;
