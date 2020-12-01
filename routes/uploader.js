@@ -536,13 +536,4 @@ router.post("/delete/img", function(req, res){
   });
 });
 
-router.post("/any/test", uploadUserProfileImg.single('file'), function(req, res){
-  console.log("aaaaa");
-  return res.json({
-    result: {
-      state: res_state.success
-    }
-  })
-});
-
 module.exports = router;

@@ -172,7 +172,7 @@ router.post('/any/info/alias', function(req, res){
 
 router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
-  const querySelect = mysql.format("SELECT store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result:{
@@ -362,6 +362,7 @@ router.post("/item/add", function(req, res){
   const img_url = req.body.data.img_url;
   const content = req.body.data.content;
   const ask = req.body.data.ask;
+  const file_upload_state = req.body.data.file_upload_state;
   const img_s3_key = '';
 
   const order_limit_count = req.body.data.order_limit_count;
@@ -404,6 +405,7 @@ router.post("/item/add", function(req, res){
       img_s3_key: img_s3_key,
       order_limit_count: order_limit_count,
       re_set_at: re_set_at,
+      file_upload_state: file_upload_state,
       created_at: date,
       updated_at: date
     }
@@ -435,6 +437,8 @@ router.post("/item/update", function(req, res){
   // const img_url = req.body.data.img_url;
   const content = req.body.data.content;
   const ask = req.body.data.ask;
+
+  const file_upload_state = req.body.data.file_upload_state;
   // const img_s3_key = '';
 
   const order_limit_count = req.body.data.order_limit_count;
@@ -459,7 +463,7 @@ router.post("/item/update", function(req, res){
         })
       }
 
-      db.UPDATE("UPDATE items SET updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+      db.UPDATE("UPDATE items SET file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
       (result_update) => {
         return res.json({
           result: {
@@ -478,7 +482,7 @@ router.post("/item/update", function(req, res){
       })
     })
   }else{
-    db.UPDATE("UPDATE items SET updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
     (result_update) => {
       return res.json({
         result: {
@@ -1077,6 +1081,27 @@ router.post("/item/order/islast", function(req, res){
     }
   })
 })
+
+router.post("/file/order/list", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const querySelect = mysql.format("SELECT id, url, mimetype, originalname, expired_at FROM files WHERE target_id=? AND target_type=?", [store_order_id, Types.file_upload_target_type.orders_items]);
+
+  db.SELECT(querySelect, {}, (result) => {
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+      const isExpired = Util.isExpireTime(data.expired_at);
+      result[i].isExpired = isExpired;
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
 
 isLastOrderCheck = (item_id, store_item_order_id, callback) => {
   // let thisWeekStart_at = moment_timezone().startOf('isoWeek').format("YYYY-MM-DD HH:mm:ss");
