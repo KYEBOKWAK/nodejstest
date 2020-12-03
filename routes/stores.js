@@ -362,7 +362,8 @@ router.post("/item/add", function(req, res){
   const img_url = req.body.data.img_url;
   const content = req.body.data.content;
   const ask = req.body.data.ask;
-  const file_upload_state = req.body.data.file_upload_state;
+  let file_upload_state = req.body.data.file_upload_state;
+
   const img_s3_key = '';
 
   const order_limit_count = req.body.data.order_limit_count;
@@ -1102,6 +1103,114 @@ router.post("/file/order/list", function(req, res){
     })
   })
 });
+
+router.post("/file/set/orderid", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const filesInsertID = req.body.data.filesInsertID;
+
+  let _orders_itemsUpdateQueryArray = [];
+  let _orders_itemsUpdateOptionArray = [];
+
+  for(let i = 0 ; i < filesInsertID.length ; i++){
+    const data = filesInsertID[i];
+    let object = [{
+      target_id: store_order_id,
+    }, 
+    data.file_id];
+
+    let queryObject = {
+      key: i,
+      value: "UPDATE files SET ? WHERE id=?;"
+    }
+
+    let updateOrdersItemsObject = {
+      key: i,
+      value: object
+    }
+
+    _orders_itemsUpdateQueryArray.push(queryObject);
+    _orders_itemsUpdateOptionArray.push(updateOrdersItemsObject);
+  }
+
+  db.UPDATE_MULITPLEX(_orders_itemsUpdateQueryArray, _orders_itemsUpdateOptionArray, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '업데이트 실패',
+      result:{}
+    })
+  })
+});
+/*
+router.post("/file/insert", function(req, res){
+  const target_type = req.body.data.target_type;
+  const file_length = req.body.data.file_length;
+
+  // const files = req.body.data.files;
+  if(file_length === 0){
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  }
+
+  let _filesInsertQueryArray = [];
+  let _filesInsertOptionArray = [];
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+  // const expired_date = moment_timezone(date).add(30, 'days').format('YYYY-MM-DD HH:mm:ss');
+
+  for(let i = 0 ; i < file_length ; i++){
+    // const data = files[i];
+    // console.log(data);
+    let queryObject = {
+      key: i,
+      value: "INSERT INTO files SET ?;"
+    }
+
+    let file_object = {
+      target_id: null,
+      target_type: target_type,
+      url: null,
+      file_s3_key: null,
+      originalname: null,
+      mimetype: null,
+      created_at: date,
+      expired_at: null
+    };
+
+    let insertFileObject = {
+      key: i,
+      value: file_object
+    }
+
+    _filesInsertQueryArray.push(queryObject);
+    _filesInsertOptionArray.push(insertFileObject);
+  }
+
+  db.INSERT_MULITPLEX(_filesInsertQueryArray, _filesInsertOptionArray, (result) => {
+    console.log(result);
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '파일 추가 실패',
+      result:{}
+    })
+  })
+});
+*/
 
 isLastOrderCheck = (item_id, store_item_order_id, callback) => {
   // let thisWeekStart_at = moment_timezone().startOf('isoWeek').format("YYYY-MM-DD HH:mm:ss");
