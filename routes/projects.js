@@ -17,7 +17,7 @@ const global = use('lib/global_const.js');
 // const util = require('./lib/util.js');
 
 router.post("/mainthumb/list", function(req, res){
-  let queryTicketing = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM main_thumbnails AS main_thumbnail LEFT JOIN projects AS project ON project.id=main_thumbnail.project_id WHERE main_thumbnail.magazine_id IS NULL ORDER BY RAND()", []);
+  let queryTicketing = mysql.format("SELECT project.poster_url, project.title, project.id AS project_id, poster_renew_url, project.title, funding_closing_at FROM main_thumbnails AS main_thumbnail LEFT JOIN projects AS project ON project.id=main_thumbnail.project_id WHERE main_thumbnail.magazine_id IS NULL AND main_thumbnail.target_id IS NULL ORDER BY RAND()", []);
 
   db.SELECT(queryTicketing, {}, (result_select_ticketing) => {
 
