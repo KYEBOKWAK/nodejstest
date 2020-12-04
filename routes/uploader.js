@@ -59,54 +59,11 @@ var s3 = new aws.S3({
 //   })
 // });
 
-const uploadUserProfileImg = multer({
-  storage: multerS3({
-      s3,
-      acl: 'public-read',
-      // acl: "public-read-write",
-      bucket: process.env.AWS_S3_BUCKET,
-      key: function(req, file, cb) {
-        let path = "";
-        if(process.env.APP_TYPE === undefined){
-          // console.log("없어!!!");
-          path = "newtest/"
-        }else{
-          path = process.env.APP_TYPE+"/";
-        }
-        var fullPath = path+'test/'+file.originalname;
-        cb(null, fullPath);
-      }
-  })
-});
-
 
 getS3URL = () => {
 
   return;
 }
-
-/*
-router.post("/any/img/profile/save", uploadUserProfileImg.single('file'), function(req, res){
-  // console.log(req);
-  // console.log(req.file);
-  // console.log(req.body.nick_name);
-  // console.log(req.body.user_id);
-
-  let _data = {
-    nick_name: req.body.nick_name,
-    user_id: req.body.user_id,
-    profile_photo_url: req.file.location
-  }
-  
-  db.UPDATE("UPDATE users AS user SET nick_name=?, profile_photo_url=? WHERE user.id=?;", [_data.nick_name, _data.profile_photo_url, _data.user_id], function(result_update_user){
-    return res.json({
-      result:{
-        state: res_state.success
-      }
-    })
-  });
-});
-*/
 
 getKeyUrl = (middlePath) => {
   let path = "";
@@ -371,117 +328,6 @@ router.post("/file/delete", function(req, res){
   return res.json({
     result: {
       state: res_state.success,
-    }
-  })
-})
-
-router.post("/save/img", function(req, res){
-  const type = req.body.data.type;
-  const target_id = req.body.data.target_id;
-
-  let querySelect = '';
-  let path_type = '';
-  if(type === types.save_img.item){
-    querySelect = mysql.format("SELECT img_s3_key FROM items WHERE id=?", target_id);
-    path_type = PATH_ITEMS;
-  }
-
-  db.SELECT(querySelect, {}, (result_select) => {
-    if(!result_select || result_select.length === 0){
-      return res.json({
-        state: res_state.error,
-        message: '이미지 저장 실패. 아이템 정보를 찾을 수 없습니다.',
-        result: {}
-      })
-    }
-
-    const result_select_data = result_select[0];
-
-    if(result_select_data.img_s3_key === ''){
-      //null이면 아직 없음. //바로 save
-  
-      saveImageS3New(path_type, target_id, req.body.data.contentType, req.body.data.imageBinary, function(result_s3){
-        // console.log("#########");
-        // console.log(result_s3);
-        if(result_s3.state === 'error'){
-          return res.json({
-            state: res_state.error,
-            message: result.message,
-            result:{
-            }
-          })
-        }
-
-        // let _data = {
-        //   user_id: userData.user_id,
-        //   profile_photo_url: result_s3.Location,
-        //   profile_photo_s3_key: result_s3.key
-        // }
-  
-        let queryUpdate = ''
-        if(type === types.save_img.item){
-          queryUpdate = 'UPDATE items AS item SET img_url=?, img_s3_key=? WHERE id=?;'
-        }
-        
-        db.UPDATE(queryUpdate, [result_s3.Location, result_s3.key, target_id], function(result_update){
-          return res.json({
-            result:{
-              state: res_state.success,
-              img_url: result_s3.Location
-            }
-          })
-        }, (error) => {
-          return res.json({
-            state: res_state.error,
-            message: error,
-            result:{}
-          })
-        });
-      })
-    }else{
-      //delete 후 save
-  
-      removeImageS3(result_select_data.img_s3_key, function(result_removeS3){
-        if(result_removeS3.state === 'error'){
-          return res.json({
-            state: res_state.error,
-            message: result_removeS3.message,
-            result:{
-            }
-          })
-        }
-  
-        saveImageS3New(path_type, target_id, req.body.data.contentType, req.body.data.imageBinary, function(result_s3){
-          if(result_s3.state === 'error'){
-            return res.json({
-              state: res_state.error,
-              message: result.message,
-              result:{
-              }
-            })
-          }
-          
-          let queryUpdate = ''
-          if(type === types.save_img.item){
-            queryUpdate = 'UPDATE items AS item SET img_url=?, img_s3_key=? WHERE id=?;'
-          }
-          
-          db.UPDATE(queryUpdate, [result_s3.Location, result_s3.key, target_id], function(result_update){
-            return res.json({
-              result:{
-                state: res_state.success,
-                img_url: result_s3.Location
-              }
-            })
-          }, (error) => {
-            return res.json({
-              state: res_state.error,
-              message: error,
-              result:{}
-            })
-          });
-        })
-      });
     }
   })
 })
