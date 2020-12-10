@@ -172,7 +172,7 @@ router.post('/any/info/alias', function(req, res){
 
 router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
-  const querySelect = mysql.format("SELECT item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result:{
@@ -364,6 +364,11 @@ router.post("/item/add", function(req, res){
   const ask = req.body.data.ask;
   let file_upload_state = req.body.data.file_upload_state;
 
+  let product_state = req.body.data.product_state;
+  if(!product_state){
+    product_state = 0;
+  }
+
   const img_s3_key = '';
 
   const order_limit_count = req.body.data.order_limit_count;
@@ -407,6 +412,7 @@ router.post("/item/add", function(req, res){
       order_limit_count: order_limit_count,
       re_set_at: re_set_at,
       file_upload_state: file_upload_state,
+      product_state: product_state,
       created_at: date,
       updated_at: date
     }
@@ -446,6 +452,11 @@ router.post("/item/update", function(req, res){
 
   const isChangeLimitCount = req.body.data.isChangeLimitCount;
 
+  let product_state = req.body.data.product_state;
+  if(!product_state){
+    product_state = 0;
+  }
+
   const updated_at = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let re_set_at = null;
@@ -464,7 +475,7 @@ router.post("/item/update", function(req, res){
         })
       }
 
-      db.UPDATE("UPDATE items SET file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+      db.UPDATE("UPDATE items SET product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
       (result_update) => {
         return res.json({
           result: {
@@ -483,7 +494,7 @@ router.post("/item/update", function(req, res){
       })
     })
   }else{
-    db.UPDATE("UPDATE items SET file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
     (result_update) => {
       return res.json({
         result: {
@@ -1085,7 +1096,12 @@ router.post("/item/order/islast", function(req, res){
 
 router.post("/file/order/list", function(req, res){
   const store_order_id = req.body.data.store_order_id;
-  const querySelect = mysql.format("SELECT id, url, mimetype, originalname, expired_at FROM files WHERE target_id=? AND target_type=?", [store_order_id, Types.file_upload_target_type.orders_items]);
+  let file_upload_target_type = req.body.data.file_upload_target_type;
+  if(file_upload_target_type === undefined){
+    file_upload_target_type = Types.file_upload_target_type.orders_items;
+  }
+
+  const querySelect = mysql.format("SELECT id, url, mimetype, originalname, expired_at FROM files WHERE target_id=? AND target_type=?", [store_order_id, file_upload_target_type]);
 
   db.SELECT(querySelect, {}, (result) => {
 
@@ -1143,6 +1159,51 @@ router.post("/file/set/orderid", function(req, res){
       state: res_state.error,
       message: '업데이트 실패',
       result:{}
+    })
+  })
+});
+
+router.post("/product/text/save", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const product_text = req.body.data.product_text;
+  const product_title_text = req.body.data.product_title_text;
+
+  db.UPDATE("UPDATE orders_items SET product_title_text=?, product_text=? WHERE id=?", [product_title_text, product_text, store_order_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '상품 텍스트 저장 오류',
+      result: {}
+    })
+  })
+});
+
+router.post("/product/text/get", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  let querySelect = mysql.format("SELECT product_text, product_title_text FROM orders_items WHERE id=?", store_order_id);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '주문 정보 조회 오류',
+        result: {}
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        product_text: data.product_text,
+        product_title_text: data.product_title_text
+      }
     })
   })
 });

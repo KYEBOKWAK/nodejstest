@@ -680,6 +680,19 @@ router.post("/info", function(req, res){
   })
 });
 
+router.post('/info/userid', function(req, res){
+  const target_user_id = req.body.data.target_user_id;
+  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, contact FROM users WHERE id=?", target_user_id);
+  db.SELECT(queryMyInfo, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        userInfo: result[0]
+      }
+    })
+  })
+})
+
 router.post("/get/nickname", function(req, res){
   const user_id = req.body.data.user_id;
   const query = mysql.format("SELECT nick_name, name FROM users WHERE id=?", user_id);

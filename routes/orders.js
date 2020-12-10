@@ -836,7 +836,7 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
   }
   else if(state === types.order.ORDER_STATE_PAY_SUCCESS_NINETY_EIGHT)
   {
-    return '결제완료';
+    return '결제 완료';
   }
   else if(state === types.order.ORDER_STATE_PROJECT_PICK_CANCEL)
   {
@@ -856,7 +856,7 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
   }
   else if(state === types.order.ORDER_STATE_PAY_ACCOUNT_SUCCESS)
   {
-    return '결제완료(입금확인)';
+    return '결제 완료(입금확인)';
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_PAYMENT)
   {
@@ -864,15 +864,19 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_READY)
   {
-    return '승인완료(콘텐츠 제작중)'
+    return '승인 완료(콘텐츠 제작중)'
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_SUCCESS)
   {
-    return '크티 전달완료'
+    return '크티 전달 완료'
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER)
   {
-    return '고객 전달완료'
+    return '고객 전달 완료'
+  }
+  else if(state === types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE)
+  {
+    return '고객 확인 완료'
   }
   else if(state === types.order.ORDER_STATE_CANCEL_STORE_RETURN)
   {
@@ -1501,7 +1505,9 @@ function getRefundPolicyStoreContent(){
 router.post("/store/info", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
-  const querySelect = mysql.format('SELECT orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?', store_order_id);
+  const querySelect = mysql.format('SELECT store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE orders_item.id=?', store_order_id);
+
+  // const querySelect = mysql.format('SELECT item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?', store_order_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1539,6 +1545,10 @@ router.post("/store/info", function(req, res){
       refundButtonText = "승인기간 만료(주문취소)";
     }else if(data.state === types.order.ORDER_STATE_CANCEL){
       refundButtonText = "취소됨";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER){
+      refundButtonText = "고객 전달 완료";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE){
+      refundButtonText = "고객 확인 완료";
     }
     else{
       refundButtonText = '주문정보에러(크티에문의주세요!)';
@@ -1951,6 +1961,87 @@ router.post("/store/state/relay/ct", function(req, res){
   });
 
 });
+
+router.post("/store/state/relay/customer", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  let product_answer = req.body.data.product_answer;
+  if(product_answer === undefined){
+    product_answer = null;
+  }
+
+  db.UPDATE("UPDATE orders_items SET product_answer=?, state=? WHERE id=?", [product_answer, types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER, store_order_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          state: types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER
+        }
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '주문 업데이트 실패',
+      result: {}
+    })
+  });
+});
+
+router.post("/store/state/confirm/ok", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, store_order_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          state: types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE
+        }
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '주문 업데이트 실패',
+      result: {}
+    })
+  });
+})
+
+router.post("/store/owner/check", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const user_id = req.body.data.user_id;
+
+  const querySelect = mysql.format("SELECT user_id FROM orders_items WHERE id=?", store_order_id);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '주문 ID 조회 오류',
+        result:{}
+      })
+    }
+
+    const data = result[0];
+
+    if(user_id === data.user_id){
+      return res.json({
+        result: {
+          state: res_state.success
+        }
+      })
+    }
+
+    return res.json({
+      state: res_state.error,
+      message: '접근 불가능합니다.',
+      result: {}
+    })
+  })
+})
 
 
 module.exports = router;

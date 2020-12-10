@@ -20,6 +20,11 @@ getCommentableType = (commentType) => {
   return commentData.value;
 }
 
+getCommentableSecondTargetType = (commentSecondTargetType) => {
+  let commentData = types.comment.second_target_type.find((value) => {return value.key === commentSecondTargetType});
+  return commentData.value;
+}
+
 router.post("/", function(req, res){
   let commentType = req.body.data.commentType;
   let target_id = req.body.data.target_id;
@@ -170,6 +175,74 @@ router.post("/add", function(req, res){
       state: res_state.error,
       message: error,
       result:{}
+    })
+  })
+});
+
+router.post("/second/add", function(req, res){
+  let commentType = req.body.data.commentType;
+  let target_id = req.body.data.target_id;
+  let commentable_type = this.getCommentableType(commentType);
+  const user_id = req.body.data.user_id;
+  const commentValue = req.body.data.comment_value;
+
+  const second_target_id = req.body.data.second_target_id;
+  const second_target_type = this.getCommentableSecondTargetType(req.body.data.second_target_type);
+
+  // let commentData = types.comment.commentable_type.find((value) => {return value.key === commentable_type});
+
+  var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  let commentObject = {
+    commentable_id: target_id,
+    commentable_type: commentable_type,
+    user_id: user_id,
+    contents: commentValue,
+
+    second_target_id: second_target_id,
+    second_target_type: second_target_type,
+    created_at: date,
+    updated_at: date
+  }
+  db.INSERT("INSERT INTO comments SET ?", commentObject, function(result_insert_comments){
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: error,
+      result:{}
+    })
+  })
+});
+
+router.post("/second/get", function(req, res){
+  const second_target_id = req.body.data.second_target_id;
+  const second_target_type = this.getCommentableSecondTargetType(req.body.data.second_target_type);
+
+  const querySelect = mysql.format("SELECT id, contents FROM comments WHERE second_target_id=? AND second_target_type=? ORDER BY id DESC", [second_target_id, second_target_type]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          comment_id: null,
+          contents: ''
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        comment_id: data.id,
+        contents: data.contents
+      }
     })
   })
 });
