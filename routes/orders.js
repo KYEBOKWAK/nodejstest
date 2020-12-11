@@ -1911,6 +1911,34 @@ sendStoreApproveSMSOrderUser = (store_order_id) => {
   */
 }
 
+sendStoreRelayCustomerEmailOrderUser = (store_order_id) => {
+  const querySelect = mysql.format("SELECT orders_item.requestContent, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
+  db.SELECT(querySelect, {}, (result) => {
+      const data = result[0];
+
+      // console.log(data);
+      
+      let toEmail = data.email;
+
+      let store_manager_name = data.nick_name;
+      if(!data.nick_name || data.nick_name === ''){
+          store_manager_name = data.name;
+      }
+      
+      const mailMSG = {
+          to: toEmail,
+          from: '크티<contact@crowdticket.kr>',
+          subject: Templite_email.email_store_arrive_product.subject,
+          html: Templite_email.email_store_arrive_product.html(store_manager_name, data.order_name, data.item_title, data.requestContent, store_order_id)
+      }
+      sgMail.send(mailMSG).then((result) => {
+          // console.log(result);
+      }).catch((error) => {
+          // console.log(error);
+      })
+  })
+}
+
 sendStoreRelayCustomerSMSOrderUser = (store_order_id) => {
 
   const querySelect = mysql.format("SELECT item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
@@ -2030,7 +2058,7 @@ router.post("/store/state/relay/customer", function(req, res){
   (result) => {
 
     if(process.env.APP_TYPE !== 'local'){
-      // this.sendStoreApproveEmail(store_order_id);
+      this.sendStoreRelayCustomerEmailOrderUser(store_order_id);
       this.sendStoreRelayCustomerSMSOrderUser(store_order_id);
     }
 
