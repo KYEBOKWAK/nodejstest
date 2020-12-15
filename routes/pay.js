@@ -1380,7 +1380,7 @@ router.post('/store/onetime', function(req, res){
     
                         req.body.data.merchant_uid = result.merchant_uid;
                         req.body.data.imp_uid = result.imp_uid;
-                        req.body.data.pay_method = result.pay_method;
+                        // req.body.data.pay_method = result.pay_method;
                         this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
                     }else{
                         // console.log("success");
@@ -1414,8 +1414,8 @@ router.post('/store/onetime', function(req, res){
         /////////////////////////////////////
     })
 });
-/*
-router.post('/store/onetime', function(req, res){
+
+router.post("/store/iamport", function(req, res){
     const _data = req.body.data;
     const user_id = req.body.data.user_id;
     const customer_uid = Util.getPayNewCustom_uid(user_id);
@@ -1437,7 +1437,9 @@ router.post('/store/onetime', function(req, res){
     const item_title = _data.title;
 
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-    const merchant_uid = Util.getPayStoreNewMerchant_uid(store_id, user_id);
+    const merchant_uid = _data.merchant_uid;
+    const imp_uid = _data.imp_uid;
+
 
     // const item_price = _data.item_price;
 
@@ -1455,124 +1457,169 @@ router.post('/store/onetime', function(req, res){
         requestContent: requestContent,
         merchant_uid: merchant_uid,
         pay_method: pay_method,
+        imp_uid: imp_uid,
         created_at: date,
         updated_at: date
     }
-    
+
     db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
         const item_order_id = result_insert_orders_items.insertId;
         req.body.data.order_id = item_order_id;
         // let payingDate = moment_timezone(date).add(7, 'days');
         // payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
         // payingDate = moment_timezone(payingDate).format("X");
-        const paymentData = {
-            store_id: store_id,
-            card_number: _data.card_number,
-            expiry: Util.getCardExpire(_data.card_yy, _data.card_mm),
-            amount: _data.total_price, //onetime total_price는 order_id의 db 조회해서 total_price와 비교한다.
-            merchant_uid: merchant_uid,
-            birth: _data.card_birth,
-            customer_uid: customer_uid,
-            pwd_2digit: _data.card_pw_2digit,
-            name: _data.title,
-            buyer_name: _data.name,
-            buyer_email: _data.email,
-            buyer_tel: _data.contact
-        };
 
-        // subscribe/customers
-        let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
+        ///////////품절 됐는지 확인한다.//////////
 
-        let _html = `
-                    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-                    <html xmlns="http://www.w3.org/1999/xhtml">
-                      <head>
-                        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-                        <title>콘텐츠 상점 주문서</title>
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-                      </head>
-                      <body style="margin:0%">
-                        상품명 : ${item_title} <br><br>
-                        주문자 정보 
-                        이름 : ${name} <br>
-                        연락처 : ${contact} <br>
-                        이메일 : ${email} <br><br>
-                        요청사항:<br>
-                        ${_requestContents}
-                      </body>
-                    </html>
-                    `
+        this.isSoldOutCheck(item_id, item_order_id, (isSoldOut) => {
+            if(isSoldOut){
+                let _updateQueryArray = [];
+                let _updateOptionArray = [];
 
-        const msg = {
-            // to: 'cyan@crowdticket.kr',
-            to: '크라우드티켓<event@crowdticket.kr>',
-            from: 'contact@crowdticket.kr',
-            subject: `콘텐츠 상점 주문 [${item_title}]`,
-            html: _html,
-        };
+                _updateQueryArray.push({
+                    key: 0,
+                    value: "UPDATE orders_items SET ? WHERE id=?;"
+                })
 
-        if(_data.total_price === 0){
-            //0원이면 iamport 안함.
-            sgMail.send(msg).then((result) => {
-                      
-            }).catch((error) => {
-              
-            });
+                _updateOptionArray.push({
+                    key: 0,
+                    value: [
+                        {state: types.order.ORDER_STATE_ERROR_TICKET_OVER_COUNT},
+                        item_order_id
+                    ]
+                })
 
-            req.body.data.merchant_uid = merchant_uid;
-            req.body.data.imp_uid = 0;
-            this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+                _updateQueryArray.push({
+                    key: 1,
+                    value: "UPDATE items SET ? WHERE id=?;"
+                })
 
-        }else{
-            iamport.subscribe.onetime({
-                ...paymentData
-            }).then((result) => {
-                // To do
-                // console.log(result);
-                //status: 'paid',
-                if(result.status === 'paid'){
-                    //결제 성공
+                _updateOptionArray.push({
+                    key: 1,
+                    value: [
+                        {state: types.item_state.SALE_LIMIT},
+                        item_id
+                    ]
+                })
+
+                db.UPDATE_MULITPLEX(_updateQueryArray, _updateOptionArray, 
+                (result_update) => {
+                    if(total_price === 0){
+                        return res.json({
+                            state: res_state.error,
+                            message: '해당 상품은 품절되었습니다.',
+                        })
+                    }
+
+                    iamport.payment.cancel({
+                        merchant_uid: merchant_uid,
+                        amount: total_price
+                    }).then(function(result_iamport){
+                        return res.json({
+                            state: res_state.error,
+                            message: '해당 상품은 품절되었습니다.',
+                        })
+                    }).catch(function(error){
+                        return res.json({
+                            state: res_state.error,
+                            message: '해당 상품은 품절되었습니다.' + error.message,
+                        })
+                    })
+
+                    
+                }, (error_update) => {
+                    if(total_price === 0){
+                        return res.json({
+                            state: res_state.error,
+                            message: '해당 상품은 품절되었습니다.(상태 업데이트 에러)',
+                        })
+                    }
+                    
+                })
+                return;
+            }
+    
+            // subscribe/customers
+            let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
+    
+            let _html = `
+                        <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+                        <html xmlns="http://www.w3.org/1999/xhtml">
+                          <head>
+                            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+                            <title>콘텐츠 상점 주문서</title>
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+                          </head>
+                          <body style="margin:0%">
+                            상품명 : ${item_title} <br><br>
+                            주문자 정보 
+                            이름 : ${name} <br>
+                            연락처 : ${contact} <br>
+                            이메일 : ${email} <br><br>
+                            요청사항:<br>
+                            ${_requestContents}
+                          </body>
+                        </html>
+                        `
+    
+            const msg = {
+                // to: 'cyan@crowdticket.kr',
+                to: '크라우드티켓<event@crowdticket.kr>',
+                from: 'contact@crowdticket.kr',
+                subject: `콘텐츠 상점 주문 [${item_title}]`,
+                html: _html,
+            };
+    
+            if(_data.total_price === 0){
+                //0원이면 iamport 안함.
+                if(process.env.APP_TYPE !== 'local'){
                     sgMail.send(msg).then((result) => {
-                      
+                          
                     }).catch((error) => {
                       
                     });
 
-                    req.body.data.merchant_uid = result.merchant_uid;
-                    req.body.data.imp_uid = result.imp_uid;
-                    req.body.data.pay_method = result.pay_method;
-                    this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
-                }else{
-                    // console.log("success");
-                    return res.json({
-                        state: res_state.error,
-                        message: result.fail_reason,
-                    });
-                }
+                    this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+                    this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
+
+                    this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+
+                    this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+                }                
+    
+                req.body.data.merchant_uid = merchant_uid;
+                req.body.data.imp_uid = 0;
+                this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+    
+            }else{
+                // To do
                 // console.log(result);
-            }).catch((error) => {
-                // handle error
-                // console.log(error);
-                //ORDER_STATE_ERROR_PAY
+                //status: 'paid',
                 
-                db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_ERROR_PAY, req.body.data.order_id], (result) => {
-                    return res.json({
-                        state: res_state.error,
-                        message: error.message,
-                    })
-                }, (error) => {
-                    return res.json({
-                        state: res_state.error,
-                        message: error.message,
-                    })
-                })
-                
-                // console.log(error);
-            });
-        }
+                //결제 성공
+                if(process.env.APP_TYPE !== 'local'){
+                    sgMail.send(msg).then((result) => {
+                    
+                    }).catch((error) => {
+                    
+                    });
+
+                    this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+                    this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
+
+                    this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+
+                    this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+                }
+
+                this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);                
+            }
+        });
+        /////////////////////////////////////
     })
 });
-*/
 //rest api Iamport 요청 ENd
 
 
@@ -1670,14 +1717,7 @@ router.post('/any/payments/complete', function(req, res){
                 }
             });
           });
-    })      
-
-    //'p_%d_u_%d_%d%s'
-    // is req.body.imp_uid
-    // 52.78.100.19
-    // 52.78.48.223
-    // console.log(yourIP);
-    
+    })    
 });
 
 router.post("/cancel", function(req, res){
