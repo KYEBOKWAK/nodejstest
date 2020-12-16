@@ -1078,6 +1078,65 @@ sendStoreMasterSMSOrder = (store_id, item_title, total_price, name) => {
     */
 }
 
+sendStoreOrderNineAMEvent = (store_order_id) => {
+    const querySelect = mysql.format("SELECT orders_item.email, orders_item.requestContent, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+
+    db.SELECT(querySelect, {}, 
+    (result) => {
+        if(result.length === 0){
+            return;
+        }
+
+        const data = result[0];
+        const requestContent = data.requestContent;
+        const item_title = data.item_title;
+        const name = data.customer_name;
+        const creator_name = data.creator_name;
+        const contact = data.contact;
+        const email = data.email;
+
+        const _requestContents = Util.getReplaceBRTagToEnter(requestContent);
+    
+        let _html = `
+                    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+                        <head>
+                        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+                        <title>콘텐츠 상점 주문서</title>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+                        </head>
+                        <body style="margin:0%">
+                        상품명 : ${item_title} <br>
+                        크리에이터명: ${creator_name} <br><br>
+                        주문자 정보 
+                        이름 : ${name} <br>
+                        연락처 : ${contact} <br>
+                        이메일 : ${email} <br><br>
+                        요청사항:<br>
+                        ${_requestContents}
+                        </body>
+                    </html>
+                    `
+
+        const msg = {
+            to: '크라우드티켓<event@crowdticket.kr>',
+            from: 'contact@crowdticket.kr',
+            subject: `콘텐츠 상점 주문 [${item_title}]`,
+            html: _html,
+        };
+
+        sgMail.send(msg).then((result) => {
+                            
+        }).catch((error) => {
+        
+        });
+    }, (error) => {
+        
+    })
+
+    
+}
+
 sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, created_at, requestContent) => {
 
     const querySelect = mysql.format("SELECT user.nick_name, user.name, user.email AS user_email, store.email AS store_user_email FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=?", store_id);
@@ -1298,47 +1357,13 @@ router.post('/store/onetime', function(req, res){
                 buyer_name: _data.name,
                 buyer_email: _data.email,
                 buyer_tel: _data.contact
-            };
-    
-            // subscribe/customers
-            let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
-    
-            let _html = `
-                        <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-                        <html xmlns="http://www.w3.org/1999/xhtml">
-                          <head>
-                            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-                            <title>콘텐츠 상점 주문서</title>
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-                          </head>
-                          <body style="margin:0%">
-                            상품명 : ${item_title} <br><br>
-                            주문자 정보 
-                            이름 : ${name} <br>
-                            연락처 : ${contact} <br>
-                            이메일 : ${email} <br><br>
-                            요청사항:<br>
-                            ${_requestContents}
-                          </body>
-                        </html>
-                        `
-    
-            const msg = {
-                // to: 'cyan@crowdticket.kr',
-                to: '크라우드티켓<event@crowdticket.kr>',
-                from: 'contact@crowdticket.kr',
-                subject: `콘텐츠 상점 주문 [${item_title}]`,
-                html: _html,
-            };
+            }; 
     
             if(_data.total_price === 0){
                 //0원이면 iamport 안함.
                 if(process.env.APP_TYPE !== 'local'){
-                    sgMail.send(msg).then((result) => {
-                          
-                    }).catch((error) => {
-                      
-                    });
+
+                    this.sendStoreOrderNineAMEvent(item_order_id);
 
                     this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
 
@@ -1363,11 +1388,8 @@ router.post('/store/onetime', function(req, res){
                     if(result.status === 'paid'){
                         //결제 성공
                         if(process.env.APP_TYPE !== 'local'){
-                            sgMail.send(msg).then((result) => {
-                            
-                            }).catch((error) => {
-                            
-                            });
+
+                            this.sendStoreOrderNineAMEvent(item_order_id);
 
                             this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
 
@@ -1542,81 +1564,6 @@ router.post("/store/isp/iamport", function(req, res){
                     order_id: item_order_id
                 }
             })
-    
-            // subscribe/customers
-            // let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
-    
-            // let _html = `
-            //             <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-            //             <html xmlns="http://www.w3.org/1999/xhtml">
-            //               <head>
-            //                 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-            //                 <title>콘텐츠 상점 주문서</title>
-            //                 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-            //               </head>
-            //               <body style="margin:0%">
-            //                 상품명 : ${item_title} <br><br>
-            //                 주문자 정보 
-            //                 이름 : ${name} <br>
-            //                 연락처 : ${contact} <br>
-            //                 이메일 : ${email} <br><br>
-            //                 요청사항:<br>
-            //                 ${_requestContents}
-            //               </body>
-            //             </html>
-            //             `
-    
-            // const msg = {
-            //     // to: 'cyan@crowdticket.kr',
-            //     to: '크라우드티켓<event@crowdticket.kr>',
-            //     from: 'contact@crowdticket.kr',
-            //     subject: `콘텐츠 상점 주문 [${item_title}]`,
-            //     html: _html,
-            // };
-    
-            if(_data.total_price === 0){
-                //0원이면 iamport 안함.
-                // if(process.env.APP_TYPE !== 'local'){
-                //     sgMail.send(msg).then((result) => {
-                          
-                //     }).catch((error) => {
-                      
-                //     });
-
-                //     this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
-
-                //     this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
-
-                //     this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
-
-                //     this.sendStoreOrderCompliteKakaoAlim(item_order_id);
-                // }                
-    
-                // req.body.data.merchant_uid = merchant_uid;
-                // req.body.data.imp_uid = 0;
-                // this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
-    
-            }else{
-                // To do                
-                //결제 성공
-                // if(process.env.APP_TYPE !== 'local'){
-                //     sgMail.send(msg).then((result) => {
-                    
-                //     }).catch((error) => {
-                    
-                //     });
-
-                //     this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
-
-                //     this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
-
-                //     this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
-
-                //     this.sendStoreOrderCompliteKakaoAlim(item_order_id);
-                // }
-
-                // this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
-            }
         });
         /////////////////////////////////////
     })
@@ -1685,41 +1632,7 @@ router.post('/store/send/message', function(req, res){
 
         
 
-        const _requestContents = Util.getReplaceBRTagToEnter(requestContent);
-
-        let _html = `
-                    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-                    <html xmlns="http://www.w3.org/1999/xhtml">
-                        <head>
-                        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-                        <title>콘텐츠 상점 주문서</title>
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-                        </head>
-                        <body style="margin:0%">
-                        상품명 : ${item_title} <br><br>
-                        주문자 정보 
-                        이름 : ${name} <br>
-                        연락처 : ${contact} <br>
-                        이메일 : ${email} <br><br>
-                        요청사항:<br>
-                        ${_requestContents}
-                        </body>
-                    </html>
-                    `
-
-        const msg = {
-            // to: 'cyan@crowdticket.kr',
-            to: '크라우드티켓<event@crowdticket.kr>',
-            from: 'contact@crowdticket.kr',
-            subject: `콘텐츠 상점 주문 [${item_title}]`,
-            html: _html,
-        };
-
-        sgMail.send(msg).then((result) => {
-        
-        }).catch((error) => {
-        
-        });
+        this.sendStoreOrderNineAMEvent(store_order_id);
 
         this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
 
