@@ -1968,22 +1968,31 @@ sendStoreRelayCustomerSMSOrderUser = (store_order_id) => {
         return;
     }
 
-    const content = `[크티] 주문하신 콘텐츠가 도착했습니다!  '나의 콘텐츠' 에서 확인해보세요!`;
-    Global_Func.sendSMS(data.contact, content, (result) => {
+    // const content = `[크티] 주문하신 콘텐츠가 도착했습니다!  '나의 콘텐츠' 에서 확인해보세요!`;
+    // Global_Func.sendSMS(data.contact, content, (result) => {
 
-    })
+    // })
 
-    // let date = moment_timezone().format('YYYY-MM-DD HH:mm');
+    let _order_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+    _order_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+    _order_url = 'qa.crowdticket.kr';
+    }
+
+    _order_url = _order_url + `/store/content/`+store_order_id;
+
+    let date = moment_timezone().format('YYYY-MM-DD HH:mm');
 
     
-    // Global_Func.sendKakaoAlimTalk({
-    //   templateCode: 'CTSTORE02',
-    //   to: data.contact,
-    //   creator_name: data.creator_name,
-    //   item_title: data.item_title,
-    //   approved_at: date,
-    //   customer_name: data.customer_name,
-    // })
+    Global_Func.sendKakaoAlimTalk({
+      templateCode: 'CTSTORE05',
+      to: data.contact,
+      creator_name: data.creator_name,
+      item_title: data.item_title,
+      customer_name: data.customer_name,
+      content_url: _order_url
+    })
   })
 
   /*
