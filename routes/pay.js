@@ -1649,11 +1649,11 @@ router.post('/store/isp/error', function(req, res){
 router.post('/store/send/message', function(req, res){
     //결제 성공
     if(process.env.APP_TYPE === 'local'){
-        // return res.json({
-        //     result: {
-        //         state: res_state.success
-        //     }
-        // })
+        return res.json({
+            result: {
+                state: res_state.success
+            }
+        })
     }
 
     
@@ -1680,7 +1680,7 @@ router.post('/store/send/message', function(req, res){
         const requestContent = data.requestContent;
         const store_id = data.store_id;
         const total_price = data.total_price;
-        const date = data.requested_at;
+        const date = moment_timezone(data.requested_at).format('YYYY-MM-DD HH:mm:ss');
         const user_id = data.user_id;
 
         
