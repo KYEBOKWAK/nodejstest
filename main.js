@@ -2021,8 +2021,38 @@ function resetStoreLimitItem(){
   // console.log("adfadsf");
 };
 
+function storePayWaitTimeExpireCheck(){
+  // console.log(moment_timezone().format('YYYY-MM-DD HH:mm:ss'));
+  const querySelect = mysql.format("SELECT id, created_at, state FROM orders_items WHERE state=?", [types.order.ORDER_STATE_APP_STORE_STANBY]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    for(let i = 0 ; i < result.length ; i++){
+      const orderData = result[i];
+
+      const waitSec = util.getStoreOrderWaitTimeSec(orderData.created_at);
+      if(waitSec <= 0){
+        //0보다 작으면 값을 바꿔줘야함.
+        //이거 주석 풀어줘야 함. 일단 테스트로 8 고정
+        
+        db.UPDATE("UPDATE orders_items AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_APP_STORE_STANBY_FAIL, orderData.id], (result_order_update) => {
+          console.log(orderData.id + ' changed' + ' ORDER_STATE_APP_STORE_STANBY_FAIL');
+          // return res.json({
+          //   state: res_state.none,
+          //   result: {
+          //   }
+          // });
+        }, (error) => {
+            
+        });
+      }
+    }
+  });
+}
+
 cron.schedule('* * * * *', function(){
   payWaitTimeExpireCheck();
+
+  storePayWaitTimeExpireCheck();
 
   resetStoreLimitItem();
   //

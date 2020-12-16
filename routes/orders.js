@@ -878,6 +878,14 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
   {
     return '고객 확인 완료'
   }
+  else if(state === types.order.ORDER_STATE_APP_STORE_STANBY)
+  {
+    return '결제 대기'; 
+  }
+  else if(state === types.order.ORDER_STATE_APP_STORE_STANBY_FAIL)
+  {
+    return '결제 에러';
+  }
   else if(state === types.order.ORDER_STATE_CANCEL_STORE_RETURN)
   {
     return '반려'
@@ -1493,6 +1501,9 @@ function getStorePayState(state){
   }else if(state >= types.order.ORDER_STATE_CANCEL_START){
     return '결제취소';
   }else {
+    if(state === types.order.ORDER_STATE_APP_STORE_STANBY){
+      return '결제 대기중 (결제 실패인 경우 1시간 안으로 취소처리 됩니다)';
+    }
     return '결제완료';
   }
 }
@@ -1549,6 +1560,10 @@ router.post("/store/info", function(req, res){
       refundButtonText = "고객 전달 완료";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE){
       refundButtonText = "고객 확인 완료";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_STANBY){
+      refundButtonText = "결제 대기중(결제 실패인 경우 1시간 안으로 취소처리 됩니다)";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_STANBY_FAIL){
+      refundButtonText = "결제 에러(결제 실패로 인한 결제 에러)";
     }
     else{
       refundButtonText = '주문정보에러(크티에문의주세요!)';
@@ -2131,6 +2146,35 @@ router.post("/store/owner/check", function(req, res){
       result: {}
     })
   })
+})
+
+router.post("/store/complite/check", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const user_id = req.body.data.user_id;
+  // const imp_uid = req.body.data.imp_uid;
+  const merchant_uid = req.body.data.merchant_uid;
+
+  // const querySelect = mysql.format("SELECT state FROM orders_items WHERE id=? AND user_id=? AND imp_uid=? AND merchant_uid=? AND state=?", [store_order_id, user_id, imp_uid, merchant_uid, types.order.ORDER_STATE_APP_STORE_STANBY]);
+
+  const querySelect = mysql.format("SELECT state FROM orders_items WHERE id=? AND user_id=? AND merchant_uid=? AND state=?", [store_order_id, user_id, merchant_uid, types.order.ORDER_STATE_APP_STORE_STANBY]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result === null || result === undefined || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          is_complite: false
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        is_complite: true
+      }
+    })
+  });
 })
 
 

@@ -1415,7 +1415,7 @@ router.post('/store/onetime', function(req, res){
     })
 });
 
-router.post("/store/iamport", function(req, res){
+router.post("/store/isp/iamport", function(req, res){
     const _data = req.body.data;
     const user_id = req.body.data.user_id;
     const customer_uid = Util.getPayNewCustom_uid(user_id);
@@ -1437,17 +1437,14 @@ router.post("/store/iamport", function(req, res){
     const item_title = _data.title;
 
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
     const merchant_uid = _data.merchant_uid;
-    const imp_uid = _data.imp_uid;
-
-
-    // const item_price = _data.item_price;
 
     const insertOrderItemData = {
         store_id: store_id,
         item_id: item_id,
         user_id: user_id,
-        state: types.order.ORDER_STATE_STAY,
+        state: types.order.ORDER_STATE_APP_STORE_STANBY,
         count: 1,
         price: total_price,
         total_price: total_price,
@@ -1457,7 +1454,7 @@ router.post("/store/iamport", function(req, res){
         requestContent: requestContent,
         merchant_uid: merchant_uid,
         pay_method: pay_method,
-        imp_uid: imp_uid,
+        // imp_uid: imp_uid,
         created_at: date,
         updated_at: date
     }
@@ -1538,87 +1535,212 @@ router.post("/store/iamport", function(req, res){
                 })
                 return;
             }
+
+            return res.json({
+                result:{
+                    state: res_state.success,
+                    order_id: item_order_id
+                }
+            })
     
             // subscribe/customers
-            let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
+            // let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
     
-            let _html = `
-                        <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-                        <html xmlns="http://www.w3.org/1999/xhtml">
-                          <head>
-                            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-                            <title>콘텐츠 상점 주문서</title>
-                            <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-                          </head>
-                          <body style="margin:0%">
-                            상품명 : ${item_title} <br><br>
-                            주문자 정보 
-                            이름 : ${name} <br>
-                            연락처 : ${contact} <br>
-                            이메일 : ${email} <br><br>
-                            요청사항:<br>
-                            ${_requestContents}
-                          </body>
-                        </html>
-                        `
+            // let _html = `
+            //             <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+            //             <html xmlns="http://www.w3.org/1999/xhtml">
+            //               <head>
+            //                 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+            //                 <title>콘텐츠 상점 주문서</title>
+            //                 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+            //               </head>
+            //               <body style="margin:0%">
+            //                 상품명 : ${item_title} <br><br>
+            //                 주문자 정보 
+            //                 이름 : ${name} <br>
+            //                 연락처 : ${contact} <br>
+            //                 이메일 : ${email} <br><br>
+            //                 요청사항:<br>
+            //                 ${_requestContents}
+            //               </body>
+            //             </html>
+            //             `
     
-            const msg = {
-                // to: 'cyan@crowdticket.kr',
-                to: '크라우드티켓<event@crowdticket.kr>',
-                from: 'contact@crowdticket.kr',
-                subject: `콘텐츠 상점 주문 [${item_title}]`,
-                html: _html,
-            };
+            // const msg = {
+            //     // to: 'cyan@crowdticket.kr',
+            //     to: '크라우드티켓<event@crowdticket.kr>',
+            //     from: 'contact@crowdticket.kr',
+            //     subject: `콘텐츠 상점 주문 [${item_title}]`,
+            //     html: _html,
+            // };
     
             if(_data.total_price === 0){
                 //0원이면 iamport 안함.
-                if(process.env.APP_TYPE !== 'local'){
-                    sgMail.send(msg).then((result) => {
+                // if(process.env.APP_TYPE !== 'local'){
+                //     sgMail.send(msg).then((result) => {
                           
-                    }).catch((error) => {
+                //     }).catch((error) => {
                       
-                    });
+                //     });
 
-                    this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+                //     this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
 
-                    this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
+                //     this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
 
-                    this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+                //     this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
 
-                    this.sendStoreOrderCompliteKakaoAlim(item_order_id);
-                }                
+                //     this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+                // }                
     
-                req.body.data.merchant_uid = merchant_uid;
-                req.body.data.imp_uid = 0;
-                this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+                // req.body.data.merchant_uid = merchant_uid;
+                // req.body.data.imp_uid = 0;
+                // this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
     
             }else{
-                // To do
-                // console.log(result);
-                //status: 'paid',
-                
+                // To do                
                 //결제 성공
-                if(process.env.APP_TYPE !== 'local'){
-                    sgMail.send(msg).then((result) => {
+                // if(process.env.APP_TYPE !== 'local'){
+                //     sgMail.send(msg).then((result) => {
                     
-                    }).catch((error) => {
+                //     }).catch((error) => {
                     
-                    });
+                //     });
 
-                    this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+                //     this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
 
-                    this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
+                //     this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
 
-                    this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+                //     this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
 
-                    this.sendStoreOrderCompliteKakaoAlim(item_order_id);
-                }
+                //     this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+                // }
 
-                this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);                
+                // this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
             }
         });
         /////////////////////////////////////
     })
+});
+
+router.post('/store/isp/success', function(req, res){
+    this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+});
+
+router.post('/store/isp/error', function(req, res){
+    // const imp_uid = req.body.data.imp_uid;
+    const merchant_uid = req.body.data.merchant_uid;
+
+    db.UPDATE("UPDATE orders_items SET state=? WHERE merchant_uid=?", [types.order.ORDER_STATE_APP_STORE_STANBY_FAIL, merchant_uid], 
+    (result) => {
+        return res.json({
+            result: {
+                state: res_state.success
+            }
+        })
+    }, (error) => {
+        return res.json({
+            state: res_state.error,
+            message: '주문 상태 업데이트 실패(isp 결제 에러)',
+            result: {}
+        })
+    })
+})
+
+router.post('/store/send/message', function(req, res){
+    //결제 성공
+    if(process.env.APP_TYPE === 'local'){
+        // return res.json({
+        //     result: {
+        //         state: res_state.success
+        //     }
+        // })
+    }
+
+    
+    const store_order_id = req.body.data.store_order_id;
+
+    const querySelect = mysql.format("SELECT orders_item.total_price, orders_item.email, orders_item.requestContent, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+
+    db.SELECT(querySelect, {}, 
+    (result) => {
+        if(result.length === 0){
+            return res.json({
+                result: {
+                    state: res_state.success
+                }
+            })
+        }
+
+        const data = result[0];
+
+        const item_title = data.item_title;
+        const name = data.customer_name;
+        const contact = data.contact;
+        const email = data.email;
+        const requestContent = data.requestContent;
+        const store_id = data.store_id;
+        const total_price = data.total_price;
+        const date = data.requested_at;
+        const user_id = data.user_id;
+
+        
+
+        const _requestContents = Util.getReplaceBRTagToEnter(requestContent);
+
+        let _html = `
+                    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+                    <html xmlns="http://www.w3.org/1999/xhtml">
+                        <head>
+                        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+                        <title>콘텐츠 상점 주문서</title>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+                        </head>
+                        <body style="margin:0%">
+                        상품명 : ${item_title} <br><br>
+                        주문자 정보 
+                        이름 : ${name} <br>
+                        연락처 : ${contact} <br>
+                        이메일 : ${email} <br><br>
+                        요청사항:<br>
+                        ${_requestContents}
+                        </body>
+                    </html>
+                    `
+
+        const msg = {
+            // to: 'cyan@crowdticket.kr',
+            to: '크라우드티켓<event@crowdticket.kr>',
+            from: 'contact@crowdticket.kr',
+            subject: `콘텐츠 상점 주문 [${item_title}]`,
+            html: _html,
+        };
+
+        sgMail.send(msg).then((result) => {
+        
+        }).catch((error) => {
+        
+        });
+
+        this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+        this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
+
+        this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+
+        this.sendStoreOrderCompliteKakaoAlim(store_order_id);
+
+        return res.json({
+            result: {
+                state: res_state.success
+            }
+        })
+    }, (error) => {
+        return res.json({
+            result: {
+                state: res_state.success
+            }
+        })
+    })    
 });
 //rest api Iamport 요청 ENd
 
