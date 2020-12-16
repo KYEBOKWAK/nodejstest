@@ -1590,7 +1590,7 @@ router.post("/store/info", function(req, res){
 router.post('/store/item/list', function(req, res){
   const user_id = req.body.data.user_id;
   
-  const querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE user_id=? ORDER BY id DESC", user_id);
+  const querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE user_id=? AND state<? ORDER BY id DESC", [user_id, types.order.ORDER_STATE_ERROR_START]);
   
   db.SELECT(querySelect, {}, (result) => {
     // if(result.length === 0){
