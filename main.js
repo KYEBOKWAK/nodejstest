@@ -2038,7 +2038,7 @@ function storePayWaitTimeExpireCheck(){
         //이거 주석 풀어줘야 함. 일단 테스트로 8 고정
         
         db.UPDATE("UPDATE orders_items AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_APP_STORE_STANBY_FAIL, orderData.id], (result_order_update) => {
-          console.log(orderData.id + ' changed' + ' ORDER_STATE_APP_STORE_STANBY_FAIL');
+          // console.log(orderData.id + ' changed' + ' ORDER_STATE_APP_STORE_STANBY_FAIL');
           // return res.json({
           //   state: res_state.none,
           //   result: {
