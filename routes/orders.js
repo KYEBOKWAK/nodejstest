@@ -1516,7 +1516,7 @@ function getRefundPolicyStoreContent(){
 router.post("/store/info", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
-  const querySelect = mysql.format('SELECT store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE orders_item.id=?', store_order_id);
+  const querySelect = mysql.format('SELECT item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE orders_item.id=?', store_order_id);
 
   // const querySelect = mysql.format('SELECT item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?', store_order_id);
 
@@ -1564,6 +1564,8 @@ router.post("/store/info", function(req, res){
       refundButtonText = "결제 대기중(결제 실패인 경우 1시간 안으로 취소처리 됩니다)";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_STANBY_FAIL){
       refundButtonText = "결제 에러(결제 실패로 인한 결제 에러)";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS){
+      refundButtonText = "콘텐츠 진행중";
     }
     else{
       refundButtonText = '주문정보에러(크티에문의주세요!)';
@@ -2184,6 +2186,25 @@ router.post("/store/complite/check", function(req, res){
       }
     })
   });
+})
+
+router.post("/store/timecheck/ok", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  db.UPDATE("UPDATE orders_items SET time_check_state=? WHERE id=?", [true, store_order_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        time_check_state: true
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '주문 디테일 요청 정보 수정 에러'
+    })
+  })
 })
 
 

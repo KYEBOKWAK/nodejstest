@@ -172,7 +172,7 @@ router.post('/any/info/alias', function(req, res){
 
 router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
-  const querySelect = mysql.format("SELECT user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result:{
@@ -362,6 +362,9 @@ router.post("/item/add", function(req, res){
   const img_url = req.body.data.img_url;
   const content = req.body.data.content;
   const ask = req.body.data.ask;
+
+  const ask_play_time = req.body.data.ask_play_time;
+
   let file_upload_state = req.body.data.file_upload_state;
 
   let product_state = req.body.data.product_state;
@@ -413,6 +416,7 @@ router.post("/item/add", function(req, res){
       re_set_at: re_set_at,
       file_upload_state: file_upload_state,
       product_state: product_state,
+      ask_play_time: ask_play_time,
       created_at: date,
       updated_at: date
     }
@@ -444,6 +448,8 @@ router.post("/item/update", function(req, res){
   // const img_url = req.body.data.img_url;
   const content = req.body.data.content;
   const ask = req.body.data.ask;
+  
+  const ask_play_time = req.body.data.ask_play_time;
 
   const file_upload_state = req.body.data.file_upload_state;
   // const img_s3_key = '';
@@ -475,7 +481,7 @@ router.post("/item/update", function(req, res){
         })
       }
 
-      db.UPDATE("UPDATE items SET product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+      db.UPDATE("UPDATE items SET ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
       (result_update) => {
         return res.json({
           result: {
@@ -494,7 +500,7 @@ router.post("/item/update", function(req, res){
       })
     })
   }else{
-    db.UPDATE("UPDATE items SET product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
     (result_update) => {
       return res.json({
         result: {
@@ -1209,71 +1215,7 @@ router.post("/product/text/get", function(req, res){
     })
   })
 });
-/*
-router.post("/file/insert", function(req, res){
-  const target_type = req.body.data.target_type;
-  const file_length = req.body.data.file_length;
 
-  // const files = req.body.data.files;
-  if(file_length === 0){
-    return res.json({
-      result: {
-        state: res_state.success
-      }
-    })
-  }
-
-  let _filesInsertQueryArray = [];
-  let _filesInsertOptionArray = [];
-
-  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-  // const expired_date = moment_timezone(date).add(30, 'days').format('YYYY-MM-DD HH:mm:ss');
-
-  for(let i = 0 ; i < file_length ; i++){
-    // const data = files[i];
-    // console.log(data);
-    let queryObject = {
-      key: i,
-      value: "INSERT INTO files SET ?;"
-    }
-
-    let file_object = {
-      target_id: null,
-      target_type: target_type,
-      url: null,
-      file_s3_key: null,
-      originalname: null,
-      mimetype: null,
-      created_at: date,
-      expired_at: null
-    };
-
-    let insertFileObject = {
-      key: i,
-      value: file_object
-    }
-
-    _filesInsertQueryArray.push(queryObject);
-    _filesInsertOptionArray.push(insertFileObject);
-  }
-
-  db.INSERT_MULITPLEX(_filesInsertQueryArray, _filesInsertOptionArray, (result) => {
-    console.log(result);
-    return res.json({
-      result:{
-        state: res_state.success,
-        list: result
-      }
-    })
-  }, (error) => {
-    return res.json({
-      state: res_state.error,
-      message: '파일 추가 실패',
-      result:{}
-    })
-  })
-});
-*/
 
 isLastOrderCheck = (item_id, store_item_order_id, callback) => {
   // let thisWeekStart_at = moment_timezone().startOf('isoWeek').format("YYYY-MM-DD HH:mm:ss");
@@ -1348,8 +1290,161 @@ isSoldOutAllItemCheck = (item_id, order_limit_count, callback) => {
         // return isSoldOut;
     });
   })
-
-  // console.log(thisWeekStart_at);  
 }
+
+router.post("/eventplaytime/select", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const event_play_time_id = req.body.data.event_play_time_id;
+  const select_time = req.body.data.select_time;
+
+  db.UPDATE("UPDATE event_play_times SET select_time=? WHERE id=? AND store_order_id=?", [select_time, event_play_time_id, store_order_id], (result_update) => {
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '시간 정보 수정 에러'
+    })
+  })
+});
+
+router.post("/eventplaytime/set", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  const event_play_times = req.body.data.event_play_times;
+
+  let _eventPlayTimeInsertQueryArray = [];
+  let _eventPlayTimeInsertOptionArray = [];
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  for(let i = 0 ; i < event_play_times.length ; i++){
+    const data = event_play_times[i];
+    let queryObject = {
+      key: i,
+      value: "INSERT INTO event_play_times SET ?;"
+    }
+
+    let eventPlayTime_object = {
+      store_order_id: store_order_id,
+      start_time: data.start_time,
+      end_time: data.end_time,
+      select_time: null,
+      created_at: date,
+      updated_at: date
+    };
+
+    let insertEventPlayTimeObject = {
+      key: i,
+      value: eventPlayTime_object
+    }
+
+    _eventPlayTimeInsertQueryArray.push(queryObject);
+    _eventPlayTimeInsertOptionArray.push(insertEventPlayTimeObject);
+  }
+
+  db.INSERT_MULITPLEX(_eventPlayTimeInsertQueryArray, _eventPlayTimeInsertOptionArray, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '시간 추가 실패',
+      result:{}
+    })
+  })
+});
+
+router.post("/eventplaytime/get", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const querySelect = mysql.format("SELECT id, start_time, end_time, select_time FROM event_play_times WHERE store_order_id=?", store_order_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    // if(result.length === 0){
+    //   return res.json({
+    //     state: res_state.error,
+    //     message: '시간 정보 조회 오류',
+    //     result:{}
+    //   })
+    // }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post("/eventplaytime/select/get", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const querySelect = mysql.format("SELECT id, select_time FROM event_play_times WHERE store_order_id=? AND select_time IS NOT NULL", store_order_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result:{
+          state: res_state.success,
+          select_time: ''
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        select_time: result[0].select_time
+      }
+    })
+  })
+})
+
+router.post("/order/detailask/set", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const product_detail_ask = req.body.data.product_detail_ask;
+
+  db.UPDATE("UPDATE orders_items SET product_detail_ask=? WHERE id=?", [product_detail_ask, store_order_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '주문 디테일 요청 정보 수정 에러'
+    })
+  })
+});
+
+router.post("/order/detailask/get", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+  const querySelect = mysql.format("SELECT product_detail_ask FROM orders_items WHERE id=?", store_order_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '디테일 요청사항 조회 오류',
+        result:{}
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        product_detail_ask: result[0].product_detail_ask
+      }
+    })
+  })
+})
 
 module.exports = router;

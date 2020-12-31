@@ -2052,12 +2052,42 @@ function storePayWaitTimeExpireCheck(){
   });
 }
 
+function storeOneToOneStartContentCheck(){
+  let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
+
+  const querySelect = mysql.format("SELECT orders_item.id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON orders_item.id=event_play_time.store_order_id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE item.product_state=? AND orders_item.state=? AND event_play_time.select_time<=?", [types.product_state.ONE_TO_ONE, types.order.ORDER_STATE_APP_STORE_READY, nowDate]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    const data = result[0];
+
+    db.UPDATE("UPDATE orders_items AS orders_item SET orders_item.state=? WHERE orders_item.id=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS, data.id], (result_order_update) => {
+      console.log("change!!" + data.id);
+      return;
+
+      // console.log(orderData.id + ' changed' + ' ORDER_STATE_APP_STORE_STANBY_FAIL');
+      // return res.json({
+      //   state: res_state.none,
+      //   result: {
+      //   }
+      // });
+    }, (error) => {
+        return;
+    });
+  })
+}
+
 cron.schedule('* * * * *', function(){
   payWaitTimeExpireCheck();
 
   storePayWaitTimeExpireCheck();
 
   resetStoreLimitItem();
+
+  storeOneToOneStartContentCheck();
   //
 });
 
