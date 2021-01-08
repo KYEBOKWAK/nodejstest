@@ -1798,26 +1798,6 @@ sendStoreRefundSMSOrderUser = (store_order_id) => {
       refund_price: data.item_price
     })
   })
-
-  /*
-  const querySelect = mysql.format("SELECT contact FROM orders_items WHERE id=?", store_order_id);
-
-  db.SELECT(querySelect, {}, (result) => {
-    if(!result || result.length === 0){
-      return;
-    }
-    
-    const data = result[0];
-    if(!data.contact || data.contact === ''){
-        return;
-    }
-
-    const content = '[크티] 크리에이터에게 요청하신 콘텐츠가 반려됐습니다. 상세내용은 웹사이트에서 확인하세요.'
-    Global_Func.sendSMS(data.contact, content, (result) => {
-
-    })
-  })
-  */
 }
 
 router.post("/store/state/refund", function(req, res){
@@ -1879,7 +1859,7 @@ sendStoreApproveEmail = (store_order_id) => {
 
 sendStoreApproveSMSOrderUser = (store_order_id) => {
 
-  const querySelect = mysql.format("SELECT item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+  const querySelect = mysql.format("SELECT orders_item.user_id AS user_id, item.product_state, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
@@ -1893,15 +1873,36 @@ sendStoreApproveSMSOrderUser = (store_order_id) => {
 
     let date = moment_timezone().format('YYYY-MM-DD HH:mm');
 
+    let _default_url = 'crowdticket.kr';
+      if(process.env.APP_TYPE === 'local'){
+        _default_url = 'localhost:8000';
+      }else if(process.env.APP_TYPE === 'qa'){
+        _default_url = 'qa.crowdticket.kr';
+      }
+
+    const content_url = _default_url + `/users/store/${data.user_id}/orders`;
+    if(data.product_state === types.product_state.ONE_TO_ONE){
+      Global_Func.sendKakaoAlimTalk({
+        templateCode: 'CTSTORE02c',
+        to: data.contact,
+        creator_name: data.creator_name,
+        item_title: data.item_title,
+        approved_at: date,
+        content_url: content_url,
+        customer_name: data.customer_name,
+      })
+    }else{
+      Global_Func.sendKakaoAlimTalk({
+        templateCode: 'CTSTORE02b',
+        to: data.contact,
+        creator_name: data.creator_name,
+        item_title: data.item_title,
+        approved_at: date,
+        content_url: content_url,
+        customer_name: data.customer_name,
+      })
+    }
     
-    Global_Func.sendKakaoAlimTalk({
-      templateCode: 'CTSTORE02',
-      to: data.contact,
-      creator_name: data.creator_name,
-      item_title: data.item_title,
-      approved_at: date,
-      customer_name: data.customer_name,
-    })
   })
 
   /*
@@ -2024,7 +2025,8 @@ sendStoreRelayCustomerSMSOrderUser = (store_order_id) => {
 router.post("/store/state/ok", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
-  db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_READY, store_order_id], 
+  const apporve_at = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
+  db.UPDATE("UPDATE orders_items SET state=?, apporve_at=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_READY, apporve_at, store_order_id], 
   (result) => {
 
     if(process.env.APP_TYPE !== 'local'){
@@ -2080,7 +2082,8 @@ router.post("/store/state/relay/customer", function(req, res){
     product_answer = null;
   }
 
-  db.UPDATE("UPDATE orders_items SET product_answer=?, state=? WHERE id=?", [product_answer, types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER, store_order_id], 
+  const relay_at = moment_timezone().format("YYYY-MM-DD HH:mm:ss"); //고객에게 넘겨준 시간
+  db.UPDATE("UPDATE orders_items SET relay_at=?, product_answer=?, state=? WHERE id=?", [relay_at, product_answer, types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER, store_order_id], 
   (result) => {
 
     if(process.env.APP_TYPE !== 'local'){
@@ -2105,11 +2108,52 @@ router.post("/store/state/relay/customer", function(req, res){
   });
 });
 
+sendSMSStoreConfirmStoreManager = (store_order_id) => {
+
+  const querySelect = mysql.format("SELECT orders_item.confirm_at, refund_reason, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, store.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+  
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return;
+    }
+    
+    const data = result[0];
+    if(!data.contact || data.contact === ''){
+        return;
+    }
+
+    // let _requested_at = moment_timezone(data.requested_at).format('YYYY-MM-DD HH:mm');
+
+    let _default_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _default_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _default_url = 'qa.crowdticket.kr';
+    }
+
+    const store_manager_url = _default_url+"/manager/store";
+    
+    Global_Func.sendKakaoAlimTalk({
+      templateCode: 'CTSTORE13',
+      to: data.contact,
+      store_manager_url: store_manager_url,
+      customer_name: data.customer_name,
+      creator_name: data.creator_name,
+      item_title: data.item_title,
+      select_time: moment_timezone(data.confirm_at).format('YYYY-MM-DD HH:mm')
+    })
+  })
+}
+
 router.post("/store/state/confirm/ok", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
-  db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, store_order_id], 
+  const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  db.UPDATE("UPDATE orders_items SET state=?, updated_at=?, confirm_at=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, nowDate, nowDate, store_order_id], 
   (result) => {
+
+    sendSMSStoreConfirmStoreManager(store_order_id);
     return res.json({
       result: {
         state: res_state.success,

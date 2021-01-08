@@ -1045,7 +1045,7 @@ sendStoreMasterSMSOrder = (store_id, item_title, total_price, name) => {
         
         Global_Func.sendKakaoAlimTalk(
         {
-            templateCode: 'CTSTORE06',
+            templateCode: 'CTSTORE06a',
             to: data.contact,
             store_manager_url: _order_url,
             creator_name: data.creator_name,
@@ -1218,9 +1218,9 @@ sendStoreOrderCompliteKakaoAlim = (store_order_id) => {
       
       
       Global_Func.sendKakaoAlimTalk({
-        templateCode: 'CTSTORE01',
+        templateCode: 'CTSTORE01a',
         to: data.contact,
-        order_url: _order_url,
+        content_url: _order_url,
         creator_name: data.creator_name,
         item_title: data.item_title,
         item_price: data.item_price,

@@ -11,6 +11,17 @@ const EXPIRE_ACCESS_TOKEN = '1h';
 const REFRESH_TOKEN_RENEW_LAST_DAT_MIL_SEC = 0; //밀리초 단위 refresh 재갱신 기준값.
 const REFRESH_TOKEN_RENEW_LAST_DAT_DAY = 30; //일단위 //refresh 재갱신 기준값. 사용시 밀리초를 0으로 해야함. 예: 4 = 기간이 4일 남았을때 재갱신. refresh expire 시간보다 짧아야한다.
 
+const TIME_DUE_ONE_TO_ONE_CONFIRM_CHECK_PLAY_AFTER_HOUR = 2;//1:1 플레이 2시간 후 확인 요청
+const TIME_DUE_AUTO_CONFIRM_DAY = 3;//자동 확인 대기 시간 3일
+const TIME_DUE_CONFIRM_CHECK_DAY = 2; //TIME_DUE_AUTO_CONFIRM_DAY 보다 작아야 한다.// 구매 미확인 체크 알림 예: 3일 후 자동 확전 전 24시간 전인 2일에 구매 확인 알림을 보낸다. ** 해당 부분이 변경될경우 time_due 를 꼭 확인 해야함 **
+
+const TIME_DUE_WAIT_APPROVE_DAY = 7;//7일뒤 승인 기간 만료
+const TIME_DUE_WAIT_APPROVE_FIRST_CHECK_DAY = 3;  //TIME_DUE_WAIT_APPROVE_DAY 전 첫번째 경고 알림 day **TIME_DUE_WAIT_APPROVE_DAY, TIME_DUE_WAIT_APPROVE_SECOND_CHECK_DAY 보다 무조건 작아야 한다.**
+//** 해당 부분이 변경될경우 time_due 를 꼭 확인 해야함 **
+const TIME_DUE_WAIT_APPROVE_SECOND_CHECK_DAY = 6; //TIME_DUE_WAIT_APPROVE_DAY 전 두번째 경고 알림 day **TIME_DUE_WAIT_APPROVE_DAY 보다 무조건 작아야 하고 TIME_DUE_WAIT_APPROVE_FIRST_CHECK_DAY 보다는 무조건 커야 한다.**
+//** 해당 부분이 변경될경우 time_due 를 꼭 확인 해야함 **
+
+const TIME_DUE_WAIT_RELAY_CONTENT_CHECK_DAY = 7;// 승인 후 콘텐츠 전달이 7일동안 이루어지지 않았을 경우 알림 보냄
 var express = require('express');
 var app = express();
 
@@ -930,142 +941,7 @@ app.post("/sms/send", function(req, res){
   return res.send({aaa:'aaa'});
 });
 */
-
-app.post('/any/email/send', function(req, res){
-  // const msg = {
-  //   to: 'bogame@naver.com',
-  //   from: '크라우드티켓<contact@crowdticket.kr>',
-  //   subject: '새로운 서버에서 이메일 테스트입니다',
-  //   text: '본문 내용',
-  //   html: '<strong>이거슨 HTML!!</strong>',
-  // };
-  // sgMail.send(msg);
-
-  // return res.send({aaa:'bbb'});
-});
 //phone check sms END
-
-//redis 세션관리
-// var client = redis.createClient(process.env.REDIS_PORT, process.env.REDIS_URL);
-//var client = redis.createClient(process.env.REDIS_PORT, process.env.REDIS_URL);
-//console.log('redis client : ' + JSON.stringify(client));
-/*
-app.use(session({
-  secret: process.env.TOKEN_SECRET,
-  //Redis서버의 설정정보//
-  
-  store: new redisStore({
-    client: client,
-    ttl: 120
-  }),
-  
-  //store: new FileStore(),
-  resave: false,
-  saveUninitialized: true
-}));
-*/
-
-//var passport = require('passport'), 
-//LocalStrategy = require('passport-local').Strategy;
-
-//app.use(passport.initialize());
-//app.use(passport.session());
-
-
-/*
-app.post('/login',
-        passport.authenticate('local-login', {  successRedirect: '/login/success',
-                                          failureRedirect: '/login/fail', failureFlash: true, successFlash: true})
-);
-*/
-/*
-app.post('/login',
-        passport.authenticate('local', {  successRedirect: '/login/success',
-                                          failureRedirect: '/login/fail', failureFlash: true, successFlash: true})
-);
-*/
-/*
-passport.use(new LocalStrategy({
-    usernameField: 'user_id',
-    passwordField: 'user_password'
-  },
-  function (username, password, done) {
-    console.log('iun!!');
-
-    const saltRounds = 10 ;   
-    const myPlaintextPassword = password ;   
-    const someOtherPlaintextPassword = ' not_bacon ' ;
-
-    db.SELECT("SELECT * FROM users WHERE email = '"+username+"'", function(result){
-        //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
-        var user = result[0];
-        if(!user)
-        {
-          //return done(err);
-        }
-        var finalNodeGeneratedHash = user.password;
-        if(finalNodeGeneratedHash.indexOf('$2y$') === 0)
-        {
-          finalNodeGeneratedHash = finalNodeGeneratedHash.replace('$2y$', '$2b$');
-        }
-
-        bcrypt.compare(myPlaintextPassword, finalNodeGeneratedHash, function(error, result){
-          console.log('compare : ' + result);
-          if(result){
-            console.log('로그인 성공! in result');
-            jwt.sign({
-              id: user.id,
-              email: user.email
-            }, 
-            process.env.TOKEN_SECRET, 
-            { 
-              expiresIn: '5m',
-              issuer: 'crowdticket.kr',
-              subject: 'userInfo'
-            }, function(err, token){
-              if (err) 
-              {
-                //reject(err)
-                console.log('jwt error : ' + err);
-                
-              }
-              else
-              {
-                user.access_token = token;
-                console.log('token : ' + token);
-                return done(null, user);
-              }
-                            
-            });
-            //req.session.key = user.id;
-
-            //
-          }
-          else{
-            //console.log(JSON.stringify(error));
-            //console.log((error['IncomingMessage']));
-
-
-           //error['test'] = 'aa';
-           console.log('go!');
-           //flash('test', 'aaa');
-           //return done(null, false, req.flash('error', 'aaaa'));
-           //req.flash('testtest', 'Flash is back!');
-           //return done(null, false);
-           return done(null, false, {message: 'Unauthorized user!'});
-          }
-        });
-    });
-  }
-));
-*/
-
-/*
-app.post('/join',
-        passport.authenticate('local-join', {  successRedirect: '/join/success',
-                                          failureRedirect: '/join/fail', failureFlash: true, successFlash: true})
-);
-*/
 
 //로그인 START
 /*
@@ -1183,50 +1059,7 @@ passport.use('local-join', new LocalStrategy({
 ));
 //회원가입 end
 */
-//test start///
-/*
-app.post('/login', function(req, res, next) {
-  console.log(req.body);
-  passport.authenticate('local', function(err, user, info) {
-    if (err) {
-      return next(err); // will generate a 500 error
-    }
-    // Generate a JSON response reflecting authentication status
-    if (! user) {
-      return res.send({ success : false, message : 'authentication failed' });
-    }
-    // ***********************************************************************
-    // "Note that when using a custom callback, it becomes the application's
-    // responsibility to establish a session (by calling req.login()) and send
-    // a response."
-    // Source: http://passportjs.org/docs
-    // ***********************************************************************
-    req.login(user, loginErr => {
-      if (loginErr) {
-        return next(loginErr);
-      }
-      return res.send({ success : true, message : 'authentication succeeded' });
-    });      
-  })(req, res, next);
-});
-*/
-///test end//////
-/*
-app.get("/token/check", function(req, res){
-  //var token = req.cookies.user;
-  //var token = req.cookies.user;
-  console.log(req.body);
-  res.json('asdf');
 
-  var decoded = jwt.verify(token, secretObj.secret);
-  if(decoded){
-    res.send("권한이 있어서 API 수행 가능")
-  }
-  else{
-    res.send("권한이 없습니다.")
-  }
-});
-*/
 
 /*
 $_param['userid'] = '******';           // [필수] 뿌리오 아이디
@@ -2065,7 +1898,7 @@ function storeOneToOneStartContentCheck(){
     const data = result[0];
 
     db.UPDATE("UPDATE orders_items AS orders_item SET orders_item.state=? WHERE orders_item.id=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS, data.id], (result_order_update) => {
-      console.log("change!!" + data.id);
+      // console.log("change!!" + data.id);
       return;
 
       // console.log(orderData.id + ' changed' + ' ORDER_STATE_APP_STORE_STANBY_FAIL');
@@ -2080,6 +1913,486 @@ function storeOneToOneStartContentCheck(){
   })
 }
 
+
+function alarmTalkCTSTORE07CTSTORE12(){
+  let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
+
+  let afterHourTime = moment_timezone(nowDate).add(2, 'hours').format("YYYY-MM-DD HH:mm:00");
+
+  const querySelect = mysql.format("SELECT orders_item.user_id, orders_item.name AS customer_name, store.contact AS store_contact, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND event_play_time.select_time=? AND orders_item.state=?", [afterHourTime, types.order.ORDER_STATE_APP_STORE_READY]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    let _default_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _default_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _default_url = 'qa.crowdticket.kr';
+    }
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      const content_url = _default_url + `/users/store/`+ data.user_id + '/orders';
+      const store_manager_url = _default_url+"/manager/store";
+
+      Global_Func.sendKakaoAlimTalk({
+        templateCode: 'CTSTORE07',
+        to: data.contact,
+        creator_name: data.creator_name,
+        item_title: data.item_title,
+        select_time: moment_timezone(data.select_time).format("YYYY-MM-DD HH:mm"),
+        content_url: content_url
+      })
+
+      Global_Func.sendKakaoAlimTalk({
+        templateCode: 'CTSTORE12',
+        to: data.store_contact,
+        customer_name: data.customer_name,
+        item_title: data.item_title,
+        select_time: moment_timezone(data.select_time).format("YYYY-MM-DD HH:mm"),
+        store_manager_url: store_manager_url
+      })
+    }
+  })
+}
+
+function alarmTalkCTSTORE08c(){
+  // let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
+
+  // let afterHourTime = moment_timezone(nowDate).add(2, 'hours').format("YYYY-MM-DD HH:mm:00");
+
+  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    let _default_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _default_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _default_url = 'qa.crowdticket.kr';
+    }
+
+    let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      const content_url = _default_url + `/store/content/`+ data.store_order_id;
+
+      const afterHourTime = moment_timezone(data.select_time).add(TIME_DUE_ONE_TO_ONE_CONFIRM_CHECK_PLAY_AFTER_HOUR, 'hours').format("YYYY-MM-DD HH:mm:00");
+
+      if(nowDate === afterHourTime){
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'CTSTORE08c',
+          to: data.contact,
+          creator_name: data.creator_name,
+          item_title: data.item_title,
+          customer_name: data.customer_name,
+          content_url: content_url,
+          time_due: TIME_DUE_AUTO_CONFIRM_DAY + '일'
+        })
+      } 
+    }
+  })
+}
+
+function alarmTalkCTSTORE08b(){
+  //(구매자) 콘텐츠 전달 후 5일까지 구매 확인이 안됐을 경우 [구매 확인 요청 알림] (CTSTORE08b)
+  const querySelect = mysql.format("SELECT orders_item.relay_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE relay_at IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    let _default_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _default_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _default_url = 'qa.crowdticket.kr';
+    }
+
+    let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      const content_url = _default_url + `/store/content/`+ data.store_order_id;
+
+      const afterHourday = moment_timezone(data.relay_at).add(TIME_DUE_CONFIRM_CHECK_DAY, 'days').format("YYYY-MM-DD HH:mm:00");
+
+      if(nowDate === afterHourday){
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'CTSTORE08b',
+          to: data.contact,
+          customer_name: data.customer_name,
+          creator_name: data.creator_name,
+          item_title: data.item_title,
+          content_url: content_url,
+          time_due: '24시간'
+        })
+      } 
+    }
+  })
+}
+
+function alarmTalkCTSTORE09a(){
+  //구매 후 승인/반려 안할 시 3일 , 6일 체크 기능 (CTSTORE09)
+  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, item.price AS item_price, orders_item.id, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PAYMENT]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    let _default_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _default_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _default_url = 'qa.crowdticket.kr';
+    }
+
+    const store_manager_url = _default_url+"/manager/store";
+
+    let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      // const content_url = _default_url + `/store/content/`+ data.store_order_id;
+
+      const afterThreeday = moment_timezone(data.created_at).add(TIME_DUE_WAIT_APPROVE_FIRST_CHECK_DAY, 'days').format("YYYY-MM-DD HH:mm:00");
+      const afterSixday = moment_timezone(data.created_at).add(TIME_DUE_WAIT_APPROVE_SECOND_CHECK_DAY, 'days').format("YYYY-MM-DD HH:mm:00");
+
+      if(nowDate === afterThreeday){
+        //3일
+        // console.log('3일남음');
+        // console.log(data.id);
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'CTSTORE09a',
+          to: data.contact,
+          creator_name: data.creator_name,
+          customer_name: data.customer_name,
+          item_title: data.item_title,
+          item_price: data.item_price,
+          requested_at: moment_timezone(data.created_at).format("YYYY-MM-DD HH:mm"),
+          time_due: '4일',
+          store_manager_url: store_manager_url
+        })
+      }else if(nowDate === afterSixday){
+        // console.log('6일남음');
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'CTSTORE09a',
+          to: data.contact,
+          creator_name: data.creator_name,
+          customer_name: data.customer_name,
+          item_title: data.item_title,
+          item_price: data.item_price,
+          requested_at: moment_timezone(data.created_at).format("YYYY-MM-DD HH:mm"),
+          time_due: '1일',
+          store_manager_url: store_manager_url
+        })
+      }
+    }
+  })
+}
+
+function alarmTalkCTSTORE11(){
+  const querySelect = mysql.format("SELECT orders_item.apporve_at, orders_item.name AS customer_name, item.price AS item_price, orders_item.id, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.apporve_at IS NOT NULL AND orders_item.state=? AND item.product_state<>?", [types.order.ORDER_STATE_APP_STORE_READY, types.product_state.ONE_TO_ONE]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    let _default_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _default_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _default_url = 'qa.crowdticket.kr';
+    }
+
+    const store_manager_url = _default_url+"/manager/store";
+
+    let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      const afterSevenday = moment_timezone(data.apporve_at).add(TIME_DUE_WAIT_RELAY_CONTENT_CHECK_DAY, 'days').format("YYYY-MM-DD HH:mm:00");
+
+      if(nowDate === afterSevenday){
+        //3일
+        // console.log('7일지남');
+        // console.log(data.id);
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'CTSTORE11',
+          to: data.contact,
+          creator_name: data.creator_name,
+          customer_name: data.customer_name,
+          item_title: data.item_title,
+          item_price: data.item_price,
+          requested_at: moment_timezone(data.apporve_at).format("YYYY-MM-DD HH:mm"),
+          store_manager_url: store_manager_url
+        })
+      }
+    }
+  })
+}
+
+function alarmTalkSendTimeCheck(){
+
+  alarmTalkCTSTORE07CTSTORE12();
+  alarmTalkCTSTORE08c();
+  alarmTalkCTSTORE08b();
+  alarmTalkCTSTORE09a();
+  alarmTalkCTSTORE11();
+}
+
+function expireReturnStoreOrderCheck(){
+  //승인 기간 만료 체크
+  const querySelect = mysql.format("SELECT store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PAYMENT]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    let _default_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _default_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _default_url = 'qa.crowdticket.kr';
+    }
+
+    const store_manager_url = _default_url+"/manager/store";
+
+    const nowDateMoment = moment_timezone();
+    const nowDateMiliSec = nowDateMoment.format("x");
+
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
+
+    const date = nowDateMoment.format("YYYY-MM-DD HH:mm:00");
+
+    const _refund_reason = "지금은 크리에이터가 요청을 확인하기 어렵습니다.";
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      const content_url = _default_url + `/users/store/${data.user_id}/orders`;
+
+      const expireDay = moment_timezone(data.created_at).format("YYYY-MM-DD HH:mm:00");
+      const expireMoment = moment_timezone(expireDay).add(TIME_DUE_WAIT_APPROVE_DAY, 'days');
+      const expireTimeMiliSecond = expireMoment.format('x');
+      // console.log(expireTime);
+
+      if(nowDateMiliSec >= expireTimeMiliSecond){
+        // console.log("기한지남");
+        // console.log(expireMoment.format("YYYY-MM-DD HH:mm:ss"));
+
+        let object = [{
+          state: types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER,
+          refund_reason: _refund_reason,
+          updated_at: date
+        }, 
+        data.store_order_id];
+    
+        let queryObject = {
+          key: i,
+          value: "UPDATE orders_items SET ? WHERE id=?;"
+        }
+    
+        let updateDataObject = {
+          key: i,
+          value: object
+        }
+    
+        _dataUpdateQueryArray.push(queryObject);
+        _dataUpdateOptionArray.push(updateDataObject);
+
+        if(process.env.APP_TYPE !== 'local'){
+          //구매자
+          Global_Func.sendKakaoAlimTalk({
+            templateCode: 'CTSTORE03',
+            to: data.contact,
+            order_url: content_url,
+            customer_name: data.customer_name,
+            creator_name: data.creator_name,
+            item_title: data.item_title,
+            refund_reason: _refund_reason,
+            refund_price: data.item_price
+          })
+
+          //판매자
+          Global_Func.sendKakaoAlimTalk({
+            templateCode: 'CTSTORE10',
+            to: data.store_manager_contact,
+            item_title: data.item_title,
+            item_price: data.item_price,
+            customer_name: data.customer_name,
+            requested_at: moment_timezone(data.created_at).format("YYYY-MM-DD HH:mm"),
+            store_manager_url: store_manager_url
+          })
+        }
+      }      
+    }
+
+    if(_dataUpdateQueryArray.length === 0){
+      return;
+    }
+
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return;
+    }, (error) => {
+      console.log("기간 만료 STATE 업데이트 오류");
+      return;
+      // return res.json({
+      //   state: res_state.error,
+      //   message: '업데이트 실패',
+      //   result:{}
+      // })
+    })
+  })
+}
+
+function storeConfirmAutoCheck(){
+  const querySelect = mysql.format("SELECT orders_item.relay_at, item.product_state, store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.relay_at IS NOT NULL AND orders_item.state=? ", [types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    const nowDateMoment = moment_timezone();
+    const nowDateMiliSec = nowDateMoment.format("x");
+
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
+
+    const date = nowDateMoment.format("YYYY-MM-DD HH:mm:00");
+
+    const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      const expireDate = moment_timezone(data.relay_at).format("YYYY-MM-DD HH:mm:00");
+      const expireMoment = moment_timezone(expireDate).add(TIME_DUE_AUTO_CONFIRM_DAY, 'days');
+      const expireTimeMiliSecond = expireMoment.format('x');
+      // console.log(expireTime);
+
+      if(nowDateMiliSec >= expireTimeMiliSecond){
+        // console.log("기한지남");
+        // console.log(expireMoment.format("YYYY-MM-DD HH:mm:ss"));
+
+        let object = [{
+          state: types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE,
+          confirm_at: nowDate,
+          updated_at: date
+        }, 
+        data.store_order_id];
+    
+        let queryObject = {
+          key: i,
+          value: "UPDATE orders_items SET ? WHERE id=?;"
+        }
+    
+        let updateDataObject = {
+          key: i,
+          value: object
+        }
+    
+        _dataUpdateQueryArray.push(queryObject);
+        _dataUpdateOptionArray.push(updateDataObject);
+      }      
+    }
+
+    if(_dataUpdateQueryArray.length === 0){
+      return;
+    }
+
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return;
+    }, (error) => {
+      console.log("STATE 고객 확인 업데이트 오류");
+      return;
+      // return res.json({
+      //   state: res_state.error,
+      //   message: '업데이트 실패',
+      //   result:{}
+      // })
+    })
+  })
+}
+
+function storeConfirmAutoOneToOneCheck(){
+  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
+
+    const nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
+    const date = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      const afterHourTime = moment_timezone(data.select_time).add(TIME_DUE_AUTO_CONFIRM_DAY, 'days').format("YYYY-MM-DD HH:mm:00");
+
+      if(nowDate === afterHourTime){
+        let object = [{
+          state: types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE,
+          confirm_at: date,
+          updated_at: date
+        }, 
+        data.store_order_id];
+    
+        let queryObject = {
+          key: i,
+          value: "UPDATE orders_items SET ? WHERE id=?;"
+        }
+    
+        let updateDataObject = {
+          key: i,
+          value: object
+        }
+    
+        _dataUpdateQueryArray.push(queryObject);
+        _dataUpdateOptionArray.push(updateDataObject);
+      } 
+    }
+    
+    if(_dataUpdateQueryArray.length === 0){
+      return;
+    }
+
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return;
+    }, (error) => {
+      console.log("STATE 1:1 고객 확인 업데이트 오류");
+      return;
+      // return res.json({
+      //   state: res_state.error,
+      //   message: '업데이트 실패',
+      //   result:{}
+      // })
+    })
+
+  })
+}
+
 cron.schedule('* * * * *', function(){
   payWaitTimeExpireCheck();
 
@@ -2088,7 +2401,17 @@ cron.schedule('* * * * *', function(){
   resetStoreLimitItem();
 
   storeOneToOneStartContentCheck();
-  //
+
+  expireReturnStoreOrderCheck();
+  
+  if(process.env.APP_TYPE !== 'local'){
+    alarmTalkSendTimeCheck();
+  }
+
+  storeConfirmAutoCheck();
+
+  //1:1 콘텐츠 자동 확인
+  storeConfirmAutoOneToOneCheck();
 });
 
 // cron.schedule('1,2,4,5 * * * *', () => {
