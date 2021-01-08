@@ -53,7 +53,9 @@ router.post('/any/item/list', function(req, res){
   let querySelect = '';
   if(type === Types.store_home_item_list.POPUALER){
     //최근 구매된 아이템
-    querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND (item.state=? OR item.state=? OR item.state=?) AND store.state=? ORDER BY orders_item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.item_state.SALE_PAUSE, Types.item_state.SALE_LIMIT, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
+    // querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND (item.state=? OR item.state=? OR item.state=?) AND store.state=? ORDER BY orders_item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.item_state.SALE_PAUSE, Types.item_state.SALE_LIMIT, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
+
+    querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND item.state=? AND store.state=? ORDER BY orders_item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
 
   }
   else if(type === Types.store_home_item_list.NEW_UPDATE){
