@@ -75,6 +75,12 @@ const res_state = use('lib/res_state.js');
 const Global_Func = use("lib/global_func.js");
 var types = use('lib/types.js');
 
+var Iamport = require('iamport');
+var iamport = new Iamport({
+  impKey: process.env.IAMPORT_API_KEY,
+  impSecret: process.env.IAMPORT_SECRET_KEY
+});
+
 process.setMaxListeners(15);
 /////상단 새로운 코드 START////
 // const bodyParser = require('body-parser');
@@ -1886,31 +1892,77 @@ function storePayWaitTimeExpireCheck(){
 }
 
 function storeOneToOneStartContentCheck(){
+
   let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
 
-  const querySelect = mysql.format("SELECT orders_item.id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON orders_item.id=event_play_time.store_order_id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE item.product_state=? AND orders_item.state=? AND event_play_time.select_time<=?", [types.product_state.ONE_TO_ONE, types.order.ORDER_STATE_APP_STORE_READY, nowDate]);
+  const querySelect = mysql.format("SELECT orders_item.id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON orders_item.id=event_play_time.store_order_id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE item.product_state=? AND orders_item.state=? AND event_play_time.select_time IS NOT NULL AND event_play_time.select_time<=?", [types.product_state.ONE_TO_ONE, types.order.ORDER_STATE_APP_STORE_READY, nowDate]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
       return;
     }
 
-    const data = result[0];
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
 
-    db.UPDATE("UPDATE orders_items AS orders_item SET orders_item.state=? WHERE orders_item.id=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS, data.id], (result_order_update) => {
-      // console.log("change!!" + data.id);
+    const date = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      let object = [{
+        state: types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS,
+        updated_at: date
+      }, 
+      data.id];
+  
+      let queryObject = {
+        key: i,
+        value: "UPDATE orders_items SET ? WHERE id=?;"
+      }
+  
+      let updateDataObject = {
+        key: i,
+        value: object
+      }
+  
+      _dataUpdateQueryArray.push(queryObject);
+      _dataUpdateOptionArray.push(updateDataObject);
+
+    }
+
+    if(_dataUpdateQueryArray.length === 0){
       return;
+    }
+    
 
-      // console.log(orderData.id + ' changed' + ' ORDER_STATE_APP_STORE_STANBY_FAIL');
-      // return res.json({
-      //   state: res_state.none,
-      //   result: {
-      //   }
-      // });
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return;
     }, (error) => {
-        return;
-    });
+      console.log("STATE 1:1 진행 업데이트 오류");
+      return;
+    })
+
   })
+  
+  // let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
+
+  // const querySelect = mysql.format("SELECT orders_item.id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON orders_item.id=event_play_time.store_order_id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE item.product_state=? AND orders_item.state=? AND event_play_time.select_time<=?", [types.product_state.ONE_TO_ONE, types.order.ORDER_STATE_APP_STORE_READY, nowDate]);
+
+  // db.SELECT(querySelect, {}, (result) => {
+  //   if(result.length === 0){
+  //     return;
+  //   }
+
+  //   const data = result[0];
+
+  //   db.UPDATE("UPDATE orders_items AS orders_item SET orders_item.state=? WHERE orders_item.id=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS, data.id], (result_order_update) => {
+  //     // console.log("change!!" + data.id);
+  //     return;
+  //   }, (error) => {
+  //       return;
+  //   });
+  // })
 }
 
 
@@ -2158,7 +2210,7 @@ function alarmTalkSendTimeCheck(){
 
 function expireReturnStoreOrderCheck(){
   //승인 기간 만료 체크
-  const querySelect = mysql.format("SELECT store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PAYMENT]);
+  const querySelect = mysql.format("SELECT orders_item.merchant_uid, orders_item.total_price, store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PAYMENT]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2194,8 +2246,19 @@ function expireReturnStoreOrderCheck(){
       // console.log(expireTime);
 
       if(nowDateMiliSec >= expireTimeMiliSecond){
-        // console.log("기한지남");
-        // console.log(expireMoment.format("YYYY-MM-DD HH:mm:ss"));
+        
+        //iamport cancel start
+        if(data.total_price > 0){
+          iamport.payment.cancel({
+            merchant_uid: data.merchant_uid,
+            amount: data.total_price
+          }).then(function(result_iamport){
+          }).catch(function(error){
+            console.log('iamport 취소 에러 id: ' + data.store_order_id)
+          })
+        }
+        
+        //iamport cancel end
 
         let object = [{
           state: types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER,
