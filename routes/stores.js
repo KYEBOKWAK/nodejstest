@@ -226,6 +226,24 @@ router.post('/orders/ask/list', function(req, res){
   })
 })
 
+router.post("/orders/ask/list/get", function(req, res){
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+
+  let store_id = req.body.data.store_id;
+
+  let querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE store_id=? AND state < ? ORDER BY id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_CANCEL, limit, skip]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
 router.post('/save/info', function(req, res){
   const store_id = req.body.data.store_id;
   const title = req.body.data.title;
