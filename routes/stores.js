@@ -721,7 +721,7 @@ router.post("/item/list/sort", function(req, res){
 router.post("/manager/account/paid/list", function(req, res){
   const store_id = req.body.data.store_id;
 
-  const querySelect = mysql.format("SELECT id, created_at, pay_price FROM paids WHERE store_id=? ORDER BY created_at DESC", store_id);
+  const querySelect = mysql.format("SELECT id, created_at, pay_price, paid.explain FROM paids AS paid WHERE store_id=? ORDER BY created_at DESC", store_id);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -1464,5 +1464,57 @@ router.post("/order/detailask/get", function(req, res){
     })
   })
 })
+
+const COMMISION_PERCENTAGE = 15;
+router.post("/manager/payment/info", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  // const nowDate = moment_timezone('2020-12-17 00:00:00');
+  const nowDate = moment_timezone();
+
+  //범위 구하기
+  let startDate = '';
+  let endDate = '';
+  let paymentDate = '';
+  if(nowDate.date() <= 16){
+    //16일 ~ 31일 전달
+    startDate = moment_timezone(nowDate).add(-1, 'months').format("YYYY-MM-16 00:00:00");
+    let endDays = moment_timezone(startDate).daysInMonth();
+
+    endDate = moment_timezone(startDate).format("YYYY-MM-"+endDays+" 23:59:59");
+
+    paymentDate = moment_timezone(nowDate).format("YYYY-MM-16 00:00:00");
+  }else{
+    //1일 ~ 15일 해당달
+    startDate = moment_timezone(nowDate).format("YYYY-MM-01 00:00:00");
+    endDate = moment_timezone(nowDate).format("YYYY-MM-15 23:59:59");
+
+    paymentDate = moment_timezone(nowDate).add(1, 'months').format("YYYY-MM-01 00:00:00");
+  }
+
+  // console.log(startDate);
+  // console.log(endDate);
+
+  const selectQuery = mysql.format("SELECT orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+
+    for(let i = 0 ; i < result.length ; i++){
+      result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
+      result[i].commission = result[i].total_price * (COMMISION_PERCENTAGE/100);
+      result[i].payment_price = result[i].total_price - result[i].commission;
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        next_deposit_date: paymentDate,
+        standard_payment_date_start: startDate,
+        standard_payment_date_end: endDate,
+        list: result
+      }
+    })
+  })
+});
 
 module.exports = router;
