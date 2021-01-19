@@ -693,6 +693,20 @@ router.post('/info/userid', function(req, res){
   })
 })
 
+router.post('/any/info/userid', function(req, res){
+  //공개 api 이기 때문에 데이터를 조심해야함
+  const target_user_id = req.body.data.target_user_id;
+  let queryMyInfo = mysql.format("SELECT name, nick_name, profile_photo_url FROM users WHERE id=?", target_user_id);
+  db.SELECT(queryMyInfo, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        userInfo: result[0]
+      }
+    })
+  })
+})
+
 router.post("/get/nickname", function(req, res){
   const user_id = req.body.data.user_id;
   const query = mysql.format("SELECT nick_name, name FROM users WHERE id=?", user_id);

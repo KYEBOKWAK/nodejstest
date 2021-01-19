@@ -351,4 +351,32 @@ router.post("/any/allcount", function(req, res){
   });
 });
 
+router.post("/any/second/get", function(req, res){
+  const second_target_id = req.body.data.second_target_id;
+  const second_target_type = this.getCommentableSecondTargetType(req.body.data.second_target_type);
+
+  const querySelect = mysql.format("SELECT id, contents FROM comments WHERE second_target_id=? AND second_target_type=? ORDER BY id DESC", [second_target_id, second_target_type]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          comment_id: null,
+          contents: ''
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        comment_id: data.id,
+        contents: data.contents
+      }
+    })
+  })
+});
+
 module.exports = router;
