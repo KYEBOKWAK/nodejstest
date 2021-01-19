@@ -1653,7 +1653,7 @@ router.post("/any/item/other/get", function(req, res){
   const store_id = req.body.data.store_id;
   const item_id = req.body.data.item_id;
 
-  const querySelect = mysql.format("SELECT id, title, img_url FROM items WHERE store_id=? AND id<>?", [store_id, item_id])
+  const querySelect = mysql.format("SELECT id, title, img_url FROM items WHERE store_id=? AND id<>? AND state=?", [store_id, item_id, Types.item_state.SALE])
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result: {
