@@ -1680,7 +1680,7 @@ router.post("/any/order/review/get", function(req, res){
   })
 })
 
-router.post("/file/item/list", function(req, res){
+router.post("/any/file/item/list", function(req, res){
   const store_item_id = req.body.data.store_item_id;
   let file_upload_target_type = req.body.data.file_upload_target_type;
   if(file_upload_target_type === undefined){
