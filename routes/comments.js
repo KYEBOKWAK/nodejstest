@@ -310,6 +310,30 @@ router.post('/any/list', function(req, res){
   });    
 })
 
+router.post('/any/list/buyer', function(req, res){
+  
+  // let querySelect = mysql.format("SELECT * FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id ORDER BY item.id DESC LIMIT ? OFFSET ?", [limit, skip]);
+
+  let commentType = req.body.data.commentType;
+  let target_id = req.body.data.target_id;
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip
+
+  let commentable_type = this.getCommentableType(commentType);
+  
+  let querySelect = mysql.format("SELECT comment.user_id, comment.created_at, comment.id AS comment_id, nick_name, name, profile_photo_url, commentscomment.commentable_id, comment.contents, comment.second_target_id FROM comments AS comment LEFT JOIN users AS user ON comment.user_id=user.id LEFT JOIN comments AS commentscomment ON comment.id=commentscomment.commentable_id WHERE comment.commentable_id=? AND comment.commentable_type=? AND comment.second_target_id IS NOT NULL GROUP BY comment.id ORDER BY comment.id DESC LIMIT ? OFFSET ?", [target_id, commentable_type, limit, skip]);
+
+  
+  db.SELECT(querySelect, [], function(result){
+    res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    });
+  });    
+})
+
 router.post("/any/allcount", function(req, res){
   let commentType = req.body.data.commentType;
   let target_id = req.body.data.target_id;
