@@ -297,7 +297,7 @@ router.post('/any/list', function(req, res){
 
   let commentable_type = this.getCommentableType(commentType);
   
-  let querySelect = mysql.format("SELECT comment.user_id, comment.created_at, comment.id AS comment_id, nick_name, name, profile_photo_url, commentscomment.commentable_id, comment.contents FROM comments AS comment LEFT JOIN users AS user ON comment.user_id=user.id LEFT JOIN comments AS commentscomment ON comment.id=commentscomment.commentable_id WHERE comment.commentable_id=? AND comment.commentable_type=? GROUP BY comment.id ORDER BY comment.id DESC LIMIT ? OFFSET ?", [target_id, commentable_type, limit, skip]);
+  let querySelect = mysql.format("SELECT comment.user_id, comment.created_at, comment.id AS comment_id, nick_name, name, profile_photo_url, commentscomment.commentable_id, comment.contents, comment.second_target_id FROM comments AS comment LEFT JOIN users AS user ON comment.user_id=user.id LEFT JOIN comments AS commentscomment ON comment.id=commentscomment.commentable_id WHERE comment.commentable_id=? AND comment.commentable_type=? GROUP BY comment.id ORDER BY comment.id DESC LIMIT ? OFFSET ?", [target_id, commentable_type, limit, skip]);
 
   
   db.SELECT(querySelect, [], function(result){

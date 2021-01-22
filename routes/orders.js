@@ -2309,5 +2309,40 @@ router.post("/any/store/info", function(req, res){
   })
 })
 
+router.post("/any/item/info", function(req, res){
+  //공개 api 이므로 개인정보 get은 안댐!
+  const store_order_id = req.body.data.store_order_id;
+
+  const querySelect = mysql.format('SELECT item.id, item.title, item.state FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?', store_order_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: {
+            id: null,
+            title: '', 
+            state: 0
+          }
+        }
+        // state: res_state.error,
+        // message: '아이템 정보 조회 오류 ' + store_order_id,
+        // result: {}
+      })
+    }
+
+    let data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data,
+        }
+      }
+    })
+  })
+})
+
 
 module.exports = router;
