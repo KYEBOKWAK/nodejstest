@@ -22,6 +22,9 @@ const TIME_DUE_WAIT_APPROVE_SECOND_CHECK_DAY = 6; //TIME_DUE_WAIT_APPROVE_DAY �
 //** 해당 부분이 변경될경우 time_due 를 꼭 확인 해야함 **
 
 const TIME_DUE_WAIT_RELAY_CONTENT_CHECK_DAY = 7;// 승인 후 콘텐츠 전달이 7일동안 이루어지지 않았을 경우 알림 보냄
+
+const TIME_DUE_ONE_TO_ONE_PLAYING_WAIT_CHECK_FIRST_DAY = 2; //1:1 승인 후 2일뒤에 진행 요청 알림
+const TIME_DUE_ONE_TO_ONE_PLAYING_WAIT_CHECK_SECOND_DAY = 7;  //1:1 승인 후 7일뒤에 진행 요청 알림
 var express = require('express');
 var app = express();
 
@@ -1891,6 +1894,8 @@ function storePayWaitTimeExpireCheck(){
   });
 }
 
+/*
+//해당 기능 제거
 function storeOneToOneStartContentCheck(){
 
   let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
@@ -1911,7 +1916,7 @@ function storeOneToOneStartContentCheck(){
       const data = result[i];
 
       let object = [{
-        state: types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS,
+        state: types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS,
         updated_at: date
       }, 
       data.id];
@@ -1944,27 +1949,8 @@ function storeOneToOneStartContentCheck(){
     })
 
   })
-  
-  // let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
-
-  // const querySelect = mysql.format("SELECT orders_item.id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON orders_item.id=event_play_time.store_order_id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE item.product_state=? AND orders_item.state=? AND event_play_time.select_time<=?", [types.product_state.ONE_TO_ONE, types.order.ORDER_STATE_APP_STORE_READY, nowDate]);
-
-  // db.SELECT(querySelect, {}, (result) => {
-  //   if(result.length === 0){
-  //     return;
-  //   }
-
-  //   const data = result[0];
-
-  //   db.UPDATE("UPDATE orders_items AS orders_item SET orders_item.state=? WHERE orders_item.id=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS, data.id], (result_order_update) => {
-  //     // console.log("change!!" + data.id);
-  //     return;
-  //   }, (error) => {
-  //       return;
-  //   });
-  // })
 }
-
+*/
 
 function alarmTalkCTSTORE07CTSTORE12(){
   let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
@@ -2017,7 +2003,7 @@ function alarmTalkCTSTORE08c(){
 
   // let afterHourTime = moment_timezone(nowDate).add(2, 'hours').format("YYYY-MM-DD HH:mm:00");
 
-  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS]);
+  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2056,8 +2042,48 @@ function alarmTalkCTSTORE08c(){
 }
 
 function alarmTalkCTSTORE08b(){
-  //(구매자) 콘텐츠 전달 후 5일까지 구매 확인이 안됐을 경우 [구매 확인 요청 알림] (CTSTORE08b)
+  //(구매자) 콘텐츠 전달 후 2일까지 구매 확인이 안됐을 경우 [구매 확인 요청 알림] (CTSTORE08b)
   const querySelect = mysql.format("SELECT orders_item.relay_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE relay_at IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    let _default_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _default_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _default_url = 'qa.crowdticket.kr';
+    }
+
+    let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      const content_url = _default_url + `/store/content/`+ data.store_order_id;
+
+      const afterHourday = moment_timezone(data.relay_at).add(TIME_DUE_CONFIRM_CHECK_DAY, 'days').format("YYYY-MM-DD HH:mm:00");
+
+      if(nowDate === afterHourday){
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'CTSTORE08b',
+          to: data.contact,
+          customer_name: data.customer_name,
+          creator_name: data.creator_name,
+          item_title: data.item_title,
+          content_url: content_url,
+          time_due: '24시간'
+        })
+      } 
+    }
+  })
+}
+
+function alarmTalkCTSTORE08b_oneToOneCheck(){
+  //(구매자) 콘텐츠 전달 후 2일까지 구매 확인이 안됐을 경우 [구매 확인 요청 알림] (CTSTORE08b)
+  const querySelect = mysql.format("SELECT orders_item.relay_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE relay_at IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2199,6 +2225,48 @@ function alarmTalkCTSTORE11(){
   })
 }
 
+function alarmTalkSsell12v2_oneToOneReminder(){
+  const querySelect = mysql.format("SELECT orders_item.created_at, item.price AS item_price, orders_item.apporve_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE apporve_at IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_READY]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    let _default_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _default_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _default_url = 'qa.crowdticket.kr';
+    }
+
+    const store_manager_url = _default_url+"/manager/store";
+
+    let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      const firstSendCheckDay = moment_timezone(data.apporve_at).add(TIME_DUE_ONE_TO_ONE_PLAYING_WAIT_CHECK_FIRST_DAY, 'days').format("YYYY-MM-DD HH:mm:00");
+
+      const secondSendCheckDay = moment_timezone(data.apporve_at).add(TIME_DUE_ONE_TO_ONE_PLAYING_WAIT_CHECK_SECOND_DAY, 'days').format("YYYY-MM-DD HH:mm:00");
+
+      if(nowDate === firstSendCheckDay ||
+        nowDate === secondSendCheckDay){
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'Ssell12v2',
+          to: data.contact,
+          customer_name: data.customer_name,
+          item_price: data.item_price,
+          requested_at: moment_timezone(data.created_at).format("YYYY-MM-DD HH:mm"),
+          item_title: data.item_title,
+          store_manager_url: store_manager_url,
+        })
+      } 
+    }
+  })
+}
+
 function alarmTalkSendTimeCheck(){
 
   alarmTalkCTSTORE07CTSTORE12();
@@ -2206,6 +2274,10 @@ function alarmTalkSendTimeCheck(){
   alarmTalkCTSTORE08b();
   alarmTalkCTSTORE09a();
   alarmTalkCTSTORE11();
+
+
+  alarmTalkCTSTORE08b_oneToOneCheck();
+  alarmTalkSsell12v2_oneToOneReminder();
 }
 
 function expireReturnStoreOrderCheck(){
@@ -2396,7 +2468,77 @@ function storeConfirmAutoCheck(){
 }
 
 function storeConfirmAutoOneToOneCheck(){
-  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS]);
+
+  const querySelect = mysql.format("SELECT orders_item.relay_at, item.product_state, store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.relay_at IS NOT NULL AND orders_item.state=? ", [types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    const nowDateMoment = moment_timezone();
+    const nowDateMiliSec = nowDateMoment.format("x");
+
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
+
+    const date = nowDateMoment.format("YYYY-MM-DD HH:mm:00");
+
+    const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      const expireDate = moment_timezone(data.relay_at).format("YYYY-MM-DD HH:mm:00");
+      const expireMoment = moment_timezone(expireDate).add(TIME_DUE_AUTO_CONFIRM_DAY, 'days');
+      const expireTimeMiliSecond = expireMoment.format('x');
+      // console.log(expireTime);
+
+      if(nowDateMiliSec >= expireTimeMiliSecond){
+        // console.log("기한지남");
+        // console.log(expireMoment.format("YYYY-MM-DD HH:mm:ss"));
+
+        let object = [{
+          state: types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE,
+          confirm_at: nowDate,
+          updated_at: date
+        }, 
+        data.store_order_id];
+    
+        let queryObject = {
+          key: i,
+          value: "UPDATE orders_items SET ? WHERE id=?;"
+        }
+    
+        let updateDataObject = {
+          key: i,
+          value: object
+        }
+    
+        _dataUpdateQueryArray.push(queryObject);
+        _dataUpdateOptionArray.push(updateDataObject);
+      }      
+    }
+
+    if(_dataUpdateQueryArray.length === 0){
+      return;
+    }
+
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return;
+    }, (error) => {
+      console.log("1:1 STATE 고객 확인 업데이트 오류");
+      return;
+      // return res.json({
+      //   state: res_state.error,
+      //   message: '업데이트 실패',
+      //   result:{}
+      // })
+    })
+  })
+
+  /*
+  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2454,6 +2596,7 @@ function storeConfirmAutoOneToOneCheck(){
     })
 
   })
+  */
 }
 
 cron.schedule('* * * * *', function(){
@@ -2463,7 +2606,7 @@ cron.schedule('* * * * *', function(){
 
   resetStoreLimitItem();
 
-  storeOneToOneStartContentCheck();
+  // storeOneToOneStartContentCheck();
 
   expireReturnStoreOrderCheck();
   

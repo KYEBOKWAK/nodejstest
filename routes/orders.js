@@ -893,6 +893,9 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
   else if(state === types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER)
   {
     return '승인 만료(취소됨)'
+  }else if(state === types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS)
+  {
+    return '진행완료';
   }
 
 
@@ -1516,7 +1519,7 @@ function getRefundPolicyStoreContent(){
 router.post("/store/info", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
-  const querySelect = mysql.format('SELECT item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE orders_item.id=?', store_order_id);
+  const querySelect = mysql.format('SELECT item.file_upload_state, item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE orders_item.id=?', store_order_id);
 
   // const querySelect = mysql.format('SELECT item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?', store_order_id);
 
@@ -1564,8 +1567,8 @@ router.post("/store/info", function(req, res){
       refundButtonText = "결제 대기중(결제 실패인 경우 1시간 안으로 취소처리 됩니다)";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_STANBY_FAIL){
       refundButtonText = "결제 에러(결제 실패로 인한 결제 에러)";
-    }else if(data.state === types.order.ORDER_STATE_APP_STORE_PLAYING_CONTENTS){
-      refundButtonText = "콘텐츠 진행중";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS){
+      refundButtonText = "콘텐츠 진행완료";
     }
     else{
       refundButtonText = '주문정보에러(크티에문의주세요!)';
@@ -1909,7 +1912,7 @@ sendStoreApproveSMSOrderUser = (store_order_id) => {
     const content_url = _default_url + `/users/store/${data.user_id}/orders`;
     if(data.product_state === types.product_state.ONE_TO_ONE){
       Global_Func.sendKakaoAlimTalk({
-        templateCode: 'CTSTORE02c',
+        templateCode: 'Sbuy02v2',
         to: data.contact,
         creator_name: data.creator_name,
         item_title: data.item_title,
@@ -2134,9 +2137,44 @@ router.post("/store/state/relay/customer", function(req, res){
   });
 });
 
+router.post("/store/state/complite/customer", function(req, res){
+  //1:1 콘텐츠 일때 진행 완료 api 
+  const store_order_id = req.body.data.store_order_id;
+
+  let product_answer = req.body.data.product_answer;
+  if(product_answer === undefined){
+    product_answer = null;
+  }
+
+  const relay_at = moment_timezone().format("YYYY-MM-DD HH:mm:ss"); //고객에게 넘겨준 시간
+  db.UPDATE("UPDATE orders_items SET relay_at=?, product_answer=?, state=? WHERE id=?", [relay_at, product_answer, types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS, store_order_id], 
+  (result) => {
+
+    if(process.env.APP_TYPE !== 'local'){
+      // this.sendStoreRelayCustomerEmailOrderUser(store_order_id);
+      // this.sendStoreRelayCustomerSMSOrderUser(store_order_id);
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          state: types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS
+        }
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '주문 업데이트 실패',
+      result: {}
+    })
+  });
+});
+
 sendSMSStoreConfirmStoreManager = (store_order_id) => {
 
-  const querySelect = mysql.format("SELECT orders_item.confirm_at, refund_reason, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, store.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+  const querySelect = mysql.format("SELECT item.product_state, orders_item.confirm_at, refund_reason, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, store.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
   
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
@@ -2159,15 +2197,27 @@ sendSMSStoreConfirmStoreManager = (store_order_id) => {
 
     const store_manager_url = _default_url+"/manager/store";
     
-    Global_Func.sendKakaoAlimTalk({
-      templateCode: 'CTSTORE13',
-      to: data.contact,
-      store_manager_url: store_manager_url,
-      customer_name: data.customer_name,
-      creator_name: data.creator_name,
-      item_title: data.item_title,
-      select_time: moment_timezone(data.confirm_at).format('YYYY-MM-DD HH:mm')
-    })
+    if(data.product_state === types.product_state.ONE_TO_ONE){
+      Global_Func.sendKakaoAlimTalk({
+        templateCode: 'Ssell13v2',
+        to: data.contact,
+        store_manager_url: store_manager_url,
+        customer_name: data.customer_name,
+        creator_name: data.creator_name,
+        item_title: data.item_title,
+        select_time: moment_timezone(data.confirm_at).format('YYYY-MM-DD HH:mm')
+      })
+    }else{
+      Global_Func.sendKakaoAlimTalk({
+        templateCode: 'CTSTORE13',
+        to: data.contact,
+        store_manager_url: store_manager_url,
+        customer_name: data.customer_name,
+        creator_name: data.creator_name,
+        item_title: data.item_title,
+        select_time: moment_timezone(data.confirm_at).format('YYYY-MM-DD HH:mm')
+      })
+    }
   })
 }
 
@@ -2179,7 +2229,10 @@ router.post("/store/state/confirm/ok", function(req, res){
   db.UPDATE("UPDATE orders_items SET state=?, updated_at=?, confirm_at=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, nowDate, nowDate, store_order_id], 
   (result) => {
 
-    sendSMSStoreConfirmStoreManager(store_order_id);
+    if(process.env.APP_TYPE !== 'local'){
+      sendSMSStoreConfirmStoreManager(store_order_id);
+    }
+
     return res.json({
       result: {
         state: res_state.success,
