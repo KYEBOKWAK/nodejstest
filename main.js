@@ -2270,7 +2270,7 @@ function alarmTalkSsell12v2_oneToOneReminder(){
 function alarmTalkSendTimeCheck(){
 
   alarmTalkCTSTORE07CTSTORE12();
-  alarmTalkCTSTORE08c();
+  // alarmTalkCTSTORE08c();
   alarmTalkCTSTORE08b();
   alarmTalkCTSTORE09a();
   alarmTalkCTSTORE11();

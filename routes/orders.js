@@ -2051,6 +2051,61 @@ sendStoreRelayCustomerSMSOrderUser = (store_order_id) => {
   */
 }
 
+const TIME_DUE_AUTO_CONFIRM_DAY = 3;//자동 확인 대기 시간 3일
+
+sendStorePlayingCompliteSMSOrderUser = (store_order_id) => {
+
+  const querySelect = mysql.format("SELECT item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return;
+    }
+    
+    const data = result[0];
+    if(!data.contact || data.contact === ''){
+        return;
+    }
+
+    // const content = `[크티] 주문하신 콘텐츠가 도착했습니다!  '나의 콘텐츠' 에서 확인해보세요!`;
+    // Global_Func.sendSMS(data.contact, content, (result) => {
+
+    // })
+
+    let _order_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+    _order_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+    _order_url = 'qa.crowdticket.kr';
+    }
+
+    _order_url = _order_url + `/store/content/`+store_order_id;
+
+    // let date = moment_timezone().format('YYYY-MM-DD HH:mm');
+
+    
+    Global_Func.sendKakaoAlimTalk({
+      templateCode: 'CTSTORE08c',
+      to: data.contact,
+      creator_name: data.creator_name,
+      item_title: data.item_title,
+      customer_name: data.customer_name,
+      content_url: _order_url,
+      time_due: TIME_DUE_AUTO_CONFIRM_DAY + '일'
+    })
+  })
+
+  // Global_Func.sendKakaoAlimTalk({
+  //   templateCode: 'CTSTORE08c',
+  //   to: data.contact,
+  //   creator_name: data.creator_name,
+  //   item_title: data.item_title,
+  //   customer_name: data.customer_name,
+  //   content_url: content_url,
+  //   time_due: TIME_DUE_AUTO_CONFIRM_DAY + '일'
+  // })
+}
+
 router.post("/store/state/ok", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
@@ -2151,8 +2206,7 @@ router.post("/store/state/complite/customer", function(req, res){
   (result) => {
 
     if(process.env.APP_TYPE !== 'local'){
-      // this.sendStoreRelayCustomerEmailOrderUser(store_order_id);
-      // this.sendStoreRelayCustomerSMSOrderUser(store_order_id);
+      this.sendStorePlayingCompliteSMSOrderUser(store_order_id);
     }
 
     return res.json({
