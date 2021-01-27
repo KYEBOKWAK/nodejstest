@@ -620,7 +620,7 @@ router.post("/manager/order/list", function(req, res){
   let querySelect = '';
 
   if(sort_state === 0 && sort_item_id === -1){
-    querySelect = mysql.format("SELECT orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+    querySelect = mysql.format("SELECT orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
   }else if(sort_item_id === -1){
     querySelect = mysql.format("SELECT orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, sort_state, limit, skip]);
   }else if(sort_state === 0){
@@ -722,6 +722,33 @@ router.post("/order/readysuccess/count", function(req, res){
   // const querySelect = mysql.format("SELECT COUNT(id) AS ready_success_total_count FROM orders_items WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
 
   const querySelect = mysql.format("SELECT COUNT(id) AS ready_success_total_count FROM orders_items WHERE (store_id=? AND state=?) OR (store_id=? AND state=?)", [store_id, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER, store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+         state: res_state.success,
+         ready_success_total_count: 0 
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        ready_success_total_count: data.ready_success_total_count
+      }
+    })
+  })
+})
+
+router.post("/order/comfirm/count", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  // const querySelect = mysql.format("SELECT COUNT(id) AS ready_success_total_count FROM orders_items WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
+
+  const querySelect = mysql.format("SELECT COUNT(id) AS ready_success_total_count FROM orders_items WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
