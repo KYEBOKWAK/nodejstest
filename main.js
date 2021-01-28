@@ -2226,7 +2226,7 @@ function alarmTalkCTSTORE11(){
 }
 
 function alarmTalkSsell12v2_oneToOneReminder(){
-  const querySelect = mysql.format("SELECT orders_item.created_at, item.price AS item_price, orders_item.apporve_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE apporve_at IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_READY]);
+  const querySelect = mysql.format("SELECT orders_item.created_at, item.price AS item_price, orders_item.apporve_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE apporve_at IS NOT NULL AND orders_item.state=? AND item.product_state=?", [types.order.ORDER_STATE_APP_STORE_READY, types.product_state.ONE_TO_ONE]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
