@@ -620,7 +620,7 @@ router.post("/manager/order/list", function(req, res){
   let querySelect = '';
 
   if(sort_state === 0 && sort_item_id === -1){
-    querySelect = mysql.format("SELECT orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+    querySelect = mysql.format("SELECT orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
   }else if(sort_item_id === -1){
     querySelect = mysql.format("SELECT orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, sort_state, limit, skip]);
   }else if(sort_state === 0){
@@ -695,6 +695,31 @@ router.post("/order/ready/count", function(req, res){
   const store_id = req.body.data.store_id;
 
   const querySelect = mysql.format("SELECT COUNT(id) AS ready_total_count FROM orders_items WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_STORE_PAYMENT]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+         state: res_state.success,
+         ready_total_count: 0 
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        ready_total_count: data.ready_total_count
+      }
+    })
+  })
+})
+
+router.post("/order/saling/count", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const querySelect = mysql.format("SELECT COUNT(id) AS ready_total_count FROM orders_items WHERE store_id=? AND (state=? OR state=? OR state=?)", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER, Types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1572,31 +1597,33 @@ const COMMISION_PERCENTAGE = 15;
 router.post("/manager/payment/info", function(req, res){
   const store_id = req.body.data.store_id;
 
-  // const nowDate = moment_timezone('2020-12-17 00:00:00');
   const nowDate = moment_timezone();
-
   //범위 구하기
   let startDate = '';
   let endDate = '';
   let paymentDate = '';
-  if(nowDate.date() <= 16){
-    //16일 ~ 31일 전달
+  if(nowDate.date() === 1){
+    //전달 1일 ~ 16일 전달
+    startDate = moment_timezone(nowDate).add(-1, 'months').format("YYYY-MM-01 00:00:00");
+    endDate = moment_timezone(nowDate).add(-1, 'months').format("YYYY-MM-15 23:59:59");
+
+    paymentDate = moment_timezone(nowDate).format("YYYY-MM-01 00:00:00");
+    
+  }
+  else if(nowDate.date() <= 16){
     startDate = moment_timezone(nowDate).add(-1, 'months').format("YYYY-MM-16 00:00:00");
     let endDays = moment_timezone(startDate).daysInMonth();
 
     endDate = moment_timezone(startDate).format("YYYY-MM-"+endDays+" 23:59:59");
 
     paymentDate = moment_timezone(nowDate).format("YYYY-MM-16 00:00:00");
-  }else{
-    //1일 ~ 15일 해당달
+  }
+  else if(nowDate.date() > 16){
     startDate = moment_timezone(nowDate).format("YYYY-MM-01 00:00:00");
     endDate = moment_timezone(nowDate).format("YYYY-MM-15 23:59:59");
 
     paymentDate = moment_timezone(nowDate).add(1, 'months').format("YYYY-MM-01 00:00:00");
   }
-
-  // console.log(startDate);
-  // console.log(endDate);
 
   const selectQuery = mysql.format("SELECT orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
 
@@ -1792,6 +1819,5 @@ router.post("/file/set/itemsimgs/itemid", function(req, res){
     })
   })
 });
-
 
 module.exports = router;
