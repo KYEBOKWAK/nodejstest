@@ -188,7 +188,7 @@ router.post('/any/item/info', function(req, res){
 router.post('/info/userid', function(req, res){
   // const user_id = req.body.data.user_id;
   const store_user_id = req.body.data.store_user_id;
-  const querySelect = mysql.format("SELECT store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", store_user_id);
+  const querySelect = mysql.format("SELECT store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name, user.profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", store_user_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -244,6 +244,7 @@ router.post("/orders/ask/list/get", function(req, res){
   })
 });
 
+//save/info 이거는 이전꺼, 시간 좀 지나면 제거
 router.post('/save/info', function(req, res){
   const store_id = req.body.data.store_id;
   const title = req.body.data.title;
@@ -252,6 +253,29 @@ router.post('/save/info', function(req, res){
   const content = req.body.data.content;
 
   db.UPDATE("UPDATE stores AS store SET title=?, content=? WHERE id=?", [title, content, store_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '스토어 정보 수정 에러'
+    })
+  })
+})
+
+router.post('/save/info/v1', function(req, res){
+  const store_id = req.body.data.store_id;
+  const title = req.body.data.title;
+  // const contact = req.body.data.contact;
+  // const email = req.body.data.email;
+  const content = req.body.data.content;
+  const alias = req.body.data.alias;
+
+  db.UPDATE("UPDATE stores AS store SET alias=?, title=?, content=? WHERE id=?", [alias, title, content, store_id], 
   (result) => {
     return res.json({
       result: {
@@ -1819,5 +1843,91 @@ router.post("/file/set/itemsimgs/itemid", function(req, res){
     })
   })
 });
+
+router.post("/notice/list", function(req, res){
+  const selectQuery = mysql.format("SELECT contents, contents_img_url, link FROM notice_stores")
+
+  db.SELECT(selectQuery, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post("/order/new/list", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const selectQuery = mysql.format("SELECT orders_item.created_at, orders_item.id AS store_order_id, item.title, item.price, item.img_url FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=?", [store_id, Types.order.ORDER_STATE_APP_STORE_PAYMENT]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+const MAX_ALIAS_LENGTH = 32;
+
+router.post("/alias/check", function(req, res){
+  const alias = req.body.data.store_alias;
+  const store_id = req.body.data.store_id;
+
+  let warning_text = '';
+  if(Util.checkPatternSpecial(alias.charAt(0))){
+    // console.log("특수문자가 있음");
+    warning_text = '첫글자는 특수문자가 올 수 없습니다.';
+  }else if(Util.checkPatternSpecialInAlias(alias)){
+    warning_text = '특수문자는 _ 만 입력이 가능합니다.';
+  }else if(Util.checkPatternKor(alias)){
+    warning_text = '한글은 입력 불가능합니다.';
+  }else if(alias.length === MAX_ALIAS_LENGTH){
+    warning_text = '32자 이내만 가능합니다';
+  }
+
+  if(warning_text !== ''){
+    return res.json({
+      result: {
+        state: res_state.success,
+        warning_text: warning_text
+      }
+    })
+  }
+
+  const selectQuery = mysql.format("SELECT id FROM stores WHERE alias=?", [alias]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          warning_text: ''
+        }
+      })
+    }
+
+    const data = result[0];
+    if(data.id === store_id){
+      return res.json({
+        result: {
+          state: res_state.success,
+          warning_text: ''
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        warning_text: '이 상점 링크는 이미 존재합니다.'
+      }
+    })
+  })
+})
 
 module.exports = router;
