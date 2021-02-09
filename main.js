@@ -2620,6 +2620,18 @@ cron.schedule('* * * * *', function(){
   storeConfirmAutoOneToOneCheck();
 });
 
+// cron.schedule('37 15 * * *', function(){
+//   //특정 시간에 체크한다. 15시 37분
+//   storeTierEnterCheck();  
+// });
+
+function storeTierEnterCheck(){
+  // const querySelect = mysql.format("SELECT store.id, store.title, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? GROUP BY store.id HAVING COUNT(orders_item.id) = ?", [types.store.STATE_APPROVED, 0]);
+
+  // const querySelect = mysql.format("SELECT store.id, store.title, COUNT(orders_item.id) AS order_count, COUNT(item.id) AS item_count FROM stores AS store LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id LEFT JOIN items AS item ON item.store_id=store.id WHERE store.state=? GROUP BY store.id HAVING COUNT(orders_item.id)=?, COUNT(item.id)=?", [types.store.STATE_APPROVED, 0, 0]);
+}
+
+
 // cron.schedule('1,2,4,5 * * * *', () => {
 //   console.log('running every minute 1, 2, 4 and 5');
 // });
