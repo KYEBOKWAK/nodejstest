@@ -76,7 +76,7 @@ var Types = use('lib/types.js');
 const res_state = use('lib/res_state.js');
 
 const Global_Func = use("lib/global_func.js");
-var types = use('lib/types.js');
+// var types = use('lib/types.js');
 
 var Iamport = require('iamport');
 var iamport = new Iamport({
@@ -1779,7 +1779,7 @@ app.get("/any/sns/callback/apple", function(req, res){
 
 function payWaitTimeExpireCheck(){
   // console.log(moment_timezone().format('YYYY-MM-DD HH:mm:ss'));
-  const querySelect = mysql.format("SELECT id, created_at, state FROM orders WHERE state=?", [types.order.ORDER_STATE_APP_PAY_WAIT]);
+  const querySelect = mysql.format("SELECT id, created_at, state FROM orders WHERE state=?", [Types.order.ORDER_STATE_APP_PAY_WAIT]);
 
   db.SELECT(querySelect, {}, (result) => {
     for(let i = 0 ; i < result.length ; i++){
@@ -1790,7 +1790,7 @@ function payWaitTimeExpireCheck(){
         //0보다 작으면 값을 바꿔줘야함.
         //이거 주석 풀어줘야 함. 일단 테스트로 8 고정
         
-        db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_CANCEL_WAIT_PAY, orderData.id], (result_order_update) => {
+        db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [Types.order.ORDER_STATE_CANCEL_WAIT_PAY, orderData.id], (result_order_update) => {
           console.log(orderData.id + ' changed' + ' ORDER_STATE_CANCEL_WAIT_PAY');
           // return res.json({
           //   state: res_state.none,
@@ -1808,7 +1808,7 @@ function payWaitTimeExpireCheck(){
 function resetStoreLimitItem(){
 
   let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
-  // const itemQuerySelect = mysql.format("SELECT id, re_set_at FROM items AS item WHERE item.state=? AND re_set_at<=?", [types.item_state.SALE_LIMIT, nowDate]);
+  // const itemQuerySelect = mysql.format("SELECT id, re_set_at FROM items AS item WHERE item.state=? AND re_set_at<=?", [Types.item_state.SALE_LIMIT, nowDate]);
 
   const itemQuerySelect = mysql.format("SELECT id, state, re_set_at FROM items AS item WHERE re_set_at IS NOT NULL AND re_set_at<=?", [nowDate]);
 
@@ -1828,8 +1828,8 @@ function resetStoreLimitItem(){
 
       let _state = data.state;
 
-      if(data.state === types.item_state.SALE_LIMIT){
-        _state = types.item_state.SALE
+      if(data.state === Types.item_state.SALE_LIMIT){
+        _state = Types.item_state.SALE
       }
 
       let dbUpdateData = [{
@@ -1868,7 +1868,7 @@ function resetStoreLimitItem(){
 
 function storePayWaitTimeExpireCheck(){
   // console.log(moment_timezone().format('YYYY-MM-DD HH:mm:ss'));
-  const querySelect = mysql.format("SELECT id, created_at, state FROM orders_items WHERE state=?", [types.order.ORDER_STATE_APP_STORE_STANBY]);
+  const querySelect = mysql.format("SELECT id, created_at, state FROM orders_items WHERE state=?", [Types.order.ORDER_STATE_APP_STORE_STANBY]);
 
   db.SELECT(querySelect, {}, (result) => {
     for(let i = 0 ; i < result.length ; i++){
@@ -1879,7 +1879,7 @@ function storePayWaitTimeExpireCheck(){
         //0보다 작으면 값을 바꿔줘야함.
         //이거 주석 풀어줘야 함. 일단 테스트로 8 고정
         
-        db.UPDATE("UPDATE orders_items AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_APP_STORE_STANBY_FAIL, orderData.id], (result_order_update) => {
+        db.UPDATE("UPDATE orders_items AS _order SET _order.state=? WHERE _order.id=?", [Types.order.ORDER_STATE_APP_STORE_STANBY_FAIL, orderData.id], (result_order_update) => {
           // console.log(orderData.id + ' changed' + ' ORDER_STATE_APP_STORE_STANBY_FAIL');
           // return res.json({
           //   state: res_state.none,
@@ -1900,7 +1900,7 @@ function storeOneToOneStartContentCheck(){
 
   let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
 
-  const querySelect = mysql.format("SELECT orders_item.id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON orders_item.id=event_play_time.store_order_id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE item.product_state=? AND orders_item.state=? AND event_play_time.select_time IS NOT NULL AND event_play_time.select_time<=?", [types.product_state.ONE_TO_ONE, types.order.ORDER_STATE_APP_STORE_READY, nowDate]);
+  const querySelect = mysql.format("SELECT orders_item.id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON orders_item.id=event_play_time.store_order_id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE item.product_state=? AND orders_item.state=? AND event_play_time.select_time IS NOT NULL AND event_play_time.select_time<=?", [Types.product_state.ONE_TO_ONE, Types.order.ORDER_STATE_APP_STORE_READY, nowDate]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1916,7 +1916,7 @@ function storeOneToOneStartContentCheck(){
       const data = result[i];
 
       let object = [{
-        state: types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS,
+        state: Types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS,
         updated_at: date
       }, 
       data.id];
@@ -1957,7 +1957,7 @@ function alarmTalkCTSTORE07CTSTORE12(){
 
   let afterHourTime = moment_timezone(nowDate).add(2, 'hours').format("YYYY-MM-DD HH:mm:00");
 
-  const querySelect = mysql.format("SELECT orders_item.user_id, orders_item.name AS customer_name, store.contact AS store_contact, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND event_play_time.select_time=? AND orders_item.state=?", [afterHourTime, types.order.ORDER_STATE_APP_STORE_READY]);
+  const querySelect = mysql.format("SELECT orders_item.user_id, orders_item.name AS customer_name, store.contact AS store_contact, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND event_play_time.select_time=? AND orders_item.state=?", [afterHourTime, Types.order.ORDER_STATE_APP_STORE_READY]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2003,7 +2003,7 @@ function alarmTalkCTSTORE08c(){
 
   // let afterHourTime = moment_timezone(nowDate).add(2, 'hours').format("YYYY-MM-DD HH:mm:00");
 
-  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
+  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [Types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2043,7 +2043,7 @@ function alarmTalkCTSTORE08c(){
 
 function alarmTalkCTSTORE08b(){
   //(구매자) 콘텐츠 전달 후 2일까지 구매 확인이 안됐을 경우 [구매 확인 요청 알림] (CTSTORE08b)
-  const querySelect = mysql.format("SELECT orders_item.relay_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE relay_at IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
+  const querySelect = mysql.format("SELECT orders_item.relay_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE relay_at IS NOT NULL AND orders_item.state=?", [Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2083,7 +2083,7 @@ function alarmTalkCTSTORE08b(){
 
 function alarmTalkCTSTORE08b_oneToOneCheck(){
   //(구매자) 콘텐츠 전달 후 2일까지 구매 확인이 안됐을 경우 [구매 확인 요청 알림] (CTSTORE08b)
-  const querySelect = mysql.format("SELECT orders_item.relay_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE relay_at IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
+  const querySelect = mysql.format("SELECT orders_item.relay_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE relay_at IS NOT NULL AND orders_item.state=?", [Types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2123,7 +2123,7 @@ function alarmTalkCTSTORE08b_oneToOneCheck(){
 
 function alarmTalkCTSTORE09a(){
   //구매 후 승인/반려 안할 시 3일 , 6일 체크 기능 (CTSTORE09)
-  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, item.price AS item_price, orders_item.id, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PAYMENT]);
+  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, item.price AS item_price, orders_item.id, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.state=?", [Types.order.ORDER_STATE_APP_STORE_PAYMENT]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2183,7 +2183,7 @@ function alarmTalkCTSTORE09a(){
 }
 
 function alarmTalkCTSTORE11(){
-  const querySelect = mysql.format("SELECT orders_item.apporve_at, orders_item.name AS customer_name, item.price AS item_price, orders_item.id, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.apporve_at IS NOT NULL AND orders_item.state=? AND item.product_state<>?", [types.order.ORDER_STATE_APP_STORE_READY, types.product_state.ONE_TO_ONE]);
+  const querySelect = mysql.format("SELECT orders_item.apporve_at, orders_item.name AS customer_name, item.price AS item_price, orders_item.id, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.apporve_at IS NOT NULL AND orders_item.state=? AND item.product_state<>?", [Types.order.ORDER_STATE_APP_STORE_READY, Types.product_state.ONE_TO_ONE]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2226,7 +2226,7 @@ function alarmTalkCTSTORE11(){
 }
 
 function alarmTalkSsell12v2_oneToOneReminder(){
-  const querySelect = mysql.format("SELECT orders_item.created_at, item.price AS item_price, orders_item.apporve_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE apporve_at IS NOT NULL AND orders_item.state=? AND item.product_state=?", [types.order.ORDER_STATE_APP_STORE_READY, types.product_state.ONE_TO_ONE]);
+  const querySelect = mysql.format("SELECT orders_item.created_at, item.price AS item_price, orders_item.apporve_at, orders_item.id AS store_order_id, orders_item.name AS customer_name, orders_item.created_at, store.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE apporve_at IS NOT NULL AND orders_item.state=? AND item.product_state=?", [Types.order.ORDER_STATE_APP_STORE_READY, Types.product_state.ONE_TO_ONE]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2282,7 +2282,7 @@ function alarmTalkSendTimeCheck(){
 
 function expireReturnStoreOrderCheck(){
   //승인 기간 만료 체크
-  const querySelect = mysql.format("SELECT orders_item.merchant_uid, orders_item.total_price, store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PAYMENT]);
+  const querySelect = mysql.format("SELECT orders_item.merchant_uid, orders_item.total_price, store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.state=?", [Types.order.ORDER_STATE_APP_STORE_PAYMENT]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2333,7 +2333,7 @@ function expireReturnStoreOrderCheck(){
         //iamport cancel end
 
         let object = [{
-          state: types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER,
+          state: Types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER,
           refund_reason: _refund_reason,
           updated_at: date
         }, 
@@ -2398,7 +2398,7 @@ function expireReturnStoreOrderCheck(){
 }
 
 function storeConfirmAutoCheck(){
-  const querySelect = mysql.format("SELECT orders_item.relay_at, item.product_state, store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.relay_at IS NOT NULL AND orders_item.state=? ", [types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
+  const querySelect = mysql.format("SELECT orders_item.relay_at, item.product_state, store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.relay_at IS NOT NULL AND orders_item.state=? ", [Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2428,7 +2428,7 @@ function storeConfirmAutoCheck(){
         // console.log(expireMoment.format("YYYY-MM-DD HH:mm:ss"));
 
         let object = [{
-          state: types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE,
+          state: Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE,
           confirm_at: nowDate,
           updated_at: date
         }, 
@@ -2469,7 +2469,7 @@ function storeConfirmAutoCheck(){
 
 function storeConfirmAutoOneToOneCheck(){
 
-  const querySelect = mysql.format("SELECT orders_item.relay_at, item.product_state, store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.relay_at IS NOT NULL AND orders_item.state=? ", [types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
+  const querySelect = mysql.format("SELECT orders_item.relay_at, item.product_state, store.contact AS store_manager_contact, orders_item.user_id AS user_id, item.price AS item_price, orders_item.name AS customer_name, orders_item.id AS store_order_id, orders_item.created_at, orders_item.contact, store.title AS creator_name, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.relay_at IS NOT NULL AND orders_item.state=? ", [Types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2499,7 +2499,7 @@ function storeConfirmAutoOneToOneCheck(){
         // console.log(expireMoment.format("YYYY-MM-DD HH:mm:ss"));
 
         let object = [{
-          state: types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE,
+          state: Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE,
           confirm_at: nowDate,
           updated_at: date
         }, 
@@ -2538,7 +2538,7 @@ function storeConfirmAutoOneToOneCheck(){
   })
 
   /*
-  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
+  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [Types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2558,7 +2558,7 @@ function storeConfirmAutoOneToOneCheck(){
 
       if(nowDate === afterHourTime){
         let object = [{
-          state: types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE,
+          state: Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE,
           confirm_at: date,
           updated_at: date
         }, 
@@ -2620,21 +2620,294 @@ cron.schedule('* * * * *', function(){
   storeConfirmAutoOneToOneCheck();
 });
 
-// cron.schedule('37 15 * * *', function(){
+// cron.schedule('00 17 * * *', function(){
 //   //특정 시간에 체크한다. 15시 37분
-//   storeTierEnterCheck();  
+//   storeTierCloseCheck();
+//   storeTierEnterCheck();
+//   storeTierOpenCheck();
+//   storeTierSaleCheck();
+//   storeTierSaleKeepCheck();
+//   storeTierBreakCheck();
 // });
 
-function storeTierEnterCheck(){
-  // const querySelect = mysql.format("SELECT store.id, store.title, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? GROUP BY store.id HAVING COUNT(orders_item.id) = ?", [types.store.STATE_APPROVED, 0]);
+function storeTierCloseCheck(){
+  const querySelect = mysql.format("SELECT store.id AS store_id FROM stores AS store WHERE store.state<>? AND (store.tier<>? OR store.tier IS NULL)", [Types.store.STATE_APPROVED, Types.tier_store.close]);
 
-  // const querySelect = mysql.format("SELECT store.id, store.title, COUNT(orders_item.id) AS order_count, COUNT(item.id) AS item_count FROM stores AS store LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id LEFT JOIN items AS item ON item.store_id=store.id WHERE store.state=? GROUP BY store.id HAVING COUNT(orders_item.id)=?, COUNT(item.id)=?", [types.store.STATE_APPROVED, 0, 0]);
+  db.SELECT(querySelect, {}, (result_select) => {
+    
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
+
+    for(let i = 0 ; i < result_select.length ; i++){
+      const data = result_select[i];
+
+      let object = [{
+        tier: Types.tier_store.close
+      }, 
+      data.store_id];
+  
+      let queryObject = {
+        key: i,
+        value: "UPDATE stores SET ? WHERE id=?;"
+      }
+  
+      let updateDataObject = {
+        key: i,
+        value: object
+      }
+  
+      _dataUpdateQueryArray.push(queryObject);
+      _dataUpdateOptionArray.push(updateDataObject);
+       
+    }
+
+    if(_dataUpdateQueryArray.length === 0){
+      return res.json({});
+    }
+
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return res.json({});
+    }, (error) => {
+      console.log("tier close 체크 업데이트 오류");
+      return res.json({});
+    })
+  })
 }
 
+function storeTierEnterCheck(){
+  //상점 오픈, item이 0개 판매 완료 0개 -> 입점확정
+  const querySelect = mysql.format("SELECT store.id AS store_id, COUNT(item.id) AS item_count, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? AND store.tier<>? GROUP BY store.id HAVING COUNT(orders_item.id)=? AND COUNT(CASE WHEN item.state=? THEN 1 END)=0", [Types.store.STATE_APPROVED, Types.tier_store.enter, 0, Types.item_state.SALE]); //enter
+  
+  db.SELECT(querySelect, {}, (result_select) => {
+    
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
 
-// cron.schedule('1,2,4,5 * * * *', () => {
-//   console.log('running every minute 1, 2, 4 and 5');
-// });
+    for(let i = 0 ; i < result_select.length ; i++){
+      const data = result_select[i];
+
+      let object = [{
+        tier: Types.tier_store.enter
+      }, 
+      data.store_id];
+  
+      let queryObject = {
+        key: i,
+        value: "UPDATE stores SET ? WHERE id=?;"
+      }
+  
+      let updateDataObject = {
+        key: i,
+        value: object
+      }
+  
+      _dataUpdateQueryArray.push(queryObject);
+      _dataUpdateOptionArray.push(updateDataObject);
+        
+    }
+
+    if(_dataUpdateQueryArray.length === 0){
+      return res.json({});
+    }
+
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return res.json({});
+    }, (error) => {
+      console.log("tier enter NO ITEM LIST 체크 업데이트 오류");
+      return res.json({});
+    })
+    
+  })
+}
+
+function storeTierOpenCheck(){
+  const querySelect = mysql.format("SELECT store.id AS store_id, COUNT(item.id) AS item_count, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? AND store.tier<>? GROUP BY store.id HAVING COUNT(orders_item.id)=? AND COUNT(CASE WHEN item.state=? THEN 1 END)>?", [Types.store.STATE_APPROVED, Types.tier_store.open, 0, Types.item_state.SALE, 0]); //open
+  
+  db.SELECT(querySelect, {}, (result_select) => {
+    
+    // console.log(result_select);
+    // return res.json({});
+    
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
+
+    for(let i = 0 ; i < result_select.length ; i++){
+      const data = result_select[i];
+
+      let object = [{
+        tier: Types.tier_store.open
+      }, 
+      data.store_id];
+  
+      let queryObject = {
+        key: i,
+        value: "UPDATE stores SET ? WHERE id=?;"
+      }
+  
+      let updateDataObject = {
+        key: i,
+        value: object
+      }
+  
+      _dataUpdateQueryArray.push(queryObject);
+      _dataUpdateOptionArray.push(updateDataObject);
+        
+    }
+
+    if(_dataUpdateQueryArray.length === 0){
+      return res.json({});
+    }
+
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return res.json({});
+    }, (error) => {
+      console.log("tier open 체크 업데이트 오류");
+      return res.json({});
+    })
+    
+  })
+}
+
+function storeTierSaleCheck(){
+  const querySelect = mysql.format("SELECT store.id AS store_id, COUNT(item.id) AS item_count, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? AND store.tier<>? GROUP BY store.id HAVING COUNT(orders_item.id)>=? AND COUNT(orders_item.id)<? AND COUNT(CASE WHEN item.state=? THEN 1 END)>?", [Types.store.STATE_APPROVED, Types.tier_store.sale, 1, 3, Types.item_state.SALE, 0]); //open
+  
+  db.SELECT(querySelect, {}, (result_select) => {
+    
+    // console.log(result_select);
+    // return res.json({});
+    
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
+
+    for(let i = 0 ; i < result_select.length ; i++){
+      const data = result_select[i];
+
+      let object = [{
+        tier: Types.tier_store.sale
+      }, 
+      data.store_id];
+  
+      let queryObject = {
+        key: i,
+        value: "UPDATE stores SET ? WHERE id=?;"
+      }
+  
+      let updateDataObject = {
+        key: i,
+        value: object
+      }
+  
+      _dataUpdateQueryArray.push(queryObject);
+      _dataUpdateOptionArray.push(updateDataObject);
+        
+    }
+
+    if(_dataUpdateQueryArray.length === 0){
+      return res.json({});
+    }
+
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return res.json({});
+    }, (error) => {
+      console.log("tier enter NO ITEM LIST 체크 업데이트 오류");
+      return res.json({});
+    })
+  })
+}
+
+function storeTierSaleKeepCheck(){
+  const querySelect = mysql.format("SELECT store.id AS store_id, COUNT(item.id) AS item_count, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? AND store.tier<>? GROUP BY store.id HAVING COUNT(orders_item.id)>=? AND COUNT(CASE WHEN item.state=? THEN 1 END)>?", [Types.store.STATE_APPROVED, Types.tier_store.sale_keep, 3, Types.item_state.SALE, 0]); //open
+  
+  db.SELECT(querySelect, {}, (result_select) => {
+    
+    // console.log(result_select);
+    // return res.json({});
+    
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
+
+    for(let i = 0 ; i < result_select.length ; i++){
+      const data = result_select[i];
+
+      let object = [{
+        tier: Types.tier_store.sale_keep
+      }, 
+      data.store_id];
+  
+      let queryObject = {
+        key: i,
+        value: "UPDATE stores SET ? WHERE id=?;"
+      }
+  
+      let updateDataObject = {
+        key: i,
+        value: object
+      }
+  
+      _dataUpdateQueryArray.push(queryObject);
+      _dataUpdateOptionArray.push(updateDataObject);
+        
+    }
+
+    if(_dataUpdateQueryArray.length === 0){
+      return res.json({});
+    }
+
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return res.json({});
+    }, (error) => {
+      console.log("tier enter NO ITEM LIST 체크 업데이트 오류");
+      return res.json({});
+    })
+  })
+}
+
+function storeTierBreakCheck(){
+  const querySelect = mysql.format("SELECT store.id AS store_id, COUNT(item.id) AS item_count, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? AND store.tier<>? GROUP BY store.id HAVING COUNT(orders_item.id)>? AND COUNT(CASE WHEN item.state=? THEN 1 END)=?", [Types.store.STATE_APPROVED, Types.tier_store.break, 0, Types.item_state.SALE, 0]); //break
+  
+  db.SELECT(querySelect, {}, (result_select) => {
+    
+    // console.log(result_select);
+    // return res.json({});
+    
+    let _dataUpdateQueryArray = [];
+    let _dataUpdateOptionArray = [];
+
+    for(let i = 0 ; i < result_select.length ; i++){
+      const data = result_select[i];
+
+      let object = [{
+        tier: Types.tier_store.break
+      }, 
+      data.store_id];
+  
+      let queryObject = {
+        key: i,
+        value: "UPDATE stores SET ? WHERE id=?;"
+      }
+  
+      let updateDataObject = {
+        key: i,
+        value: object
+      }
+  
+      _dataUpdateQueryArray.push(queryObject);
+      _dataUpdateOptionArray.push(updateDataObject);
+        
+    }
+
+    if(_dataUpdateQueryArray.length === 0){
+      return res.json({});
+    }
+
+    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
+      return res.json({});
+    }, (error) => {
+      console.log("tier enter NO ITEM LIST 체크 업데이트 오류");
+      return res.json({});
+    })
+  })
+}
 
 app.listen(3000, function () {
   console.log('Example app listening on port 3000!');

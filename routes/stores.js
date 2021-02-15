@@ -1968,14 +1968,4 @@ router.post('/any/viewcount/item/add', function(req, res){
   })
 });
 
-// router.post('/any/test', function(req, res){
-//   const querySelect = mysql.format("SELECT store.id, store.title, COUNT(orders_item.id) AS order_count, COUNT(item.id) AS item_count FROM stores AS store LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id LEFT JOIN items AS item ON item.store_id=store.id WHERE store.state=? GROUP BY store.id HAVING COUNT(orders_item.id)=? AND COUNT(item.id)=?", [Types.store.STATE_APPROVED, 0, 0]);
-
-//   db.SELECT(querySelect, {}, (result) => {
-//     return res.json({
-//       aaa: result
-//     })
-//   })
-// })
-
 module.exports = router;
