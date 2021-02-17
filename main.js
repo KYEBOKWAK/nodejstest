@@ -2620,18 +2620,19 @@ cron.schedule('* * * * *', function(){
   storeConfirmAutoOneToOneCheck();
 });
 
-// cron.schedule('00 17 * * *', function(){
-//   //특정 시간에 체크한다. 15시 37분
-//   storeTierCloseCheck();
-//   storeTierEnterCheck();
-//   storeTierOpenCheck();
-//   storeTierSaleCheck();
-//   storeTierSaleKeepCheck();
-//   storeTierBreakCheck();
-// });
+cron.schedule('* * * * *', function(){
+// cron.schedule('0 0 * * Mon', function(){
+  //특정 시간에 체크한다. 월요일 0시 0분
+  storeTierCloseCheck();
+  storeTierEnterCheck();
+  storeTierOpenCheck();
+  storeTierSaleCheck();
+  storeTierSaleKeepCheck();
+  storeTierBreakCheck();
+});
 
 function storeTierCloseCheck(){
-  const querySelect = mysql.format("SELECT store.id AS store_id FROM stores AS store WHERE store.state<>? AND (store.tier<>? OR store.tier IS NULL)", [Types.store.STATE_APPROVED, Types.tier_store.close]);
+  const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store WHERE store.state<>? AND (store.tier<>? OR store.tier IS NULL)", [Types.store.STATE_APPROVED, Types.tier_store.close]);
 
   db.SELECT(querySelect, {}, (result_select) => {
     
@@ -2662,21 +2663,21 @@ function storeTierCloseCheck(){
     }
 
     if(_dataUpdateQueryArray.length === 0){
-      return res.json({});
+      return {};
     }
 
     db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
-      return res.json({});
+      return {};
     }, (error) => {
       console.log("tier close 체크 업데이트 오류");
-      return res.json({});
+      return {};
     })
   })
 }
 
 function storeTierEnterCheck(){
   //상점 오픈, item이 0개 판매 완료 0개 -> 입점확정
-  const querySelect = mysql.format("SELECT store.id AS store_id, COUNT(item.id) AS item_count, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? AND store.tier<>? GROUP BY store.id HAVING COUNT(orders_item.id)=? AND COUNT(CASE WHEN item.state=? THEN 1 END)=0", [Types.store.STATE_APPROVED, Types.tier_store.enter, 0, Types.item_state.SALE]); //enter
+  const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)=0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id WHERE store.state=? AND (orders_item.state < 99 OR orders_item.state IS NULL) AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)=0", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.enter]); //enter
   
   db.SELECT(querySelect, {}, (result_select) => {
     
@@ -2707,26 +2708,23 @@ function storeTierEnterCheck(){
     }
 
     if(_dataUpdateQueryArray.length === 0){
-      return res.json({});
+      return {};
     }
 
     db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
-      return res.json({});
+      return {};
     }, (error) => {
       console.log("tier enter NO ITEM LIST 체크 업데이트 오류");
-      return res.json({});
+      return {};
     })
     
   })
 }
 
 function storeTierOpenCheck(){
-  const querySelect = mysql.format("SELECT store.id AS store_id, COUNT(item.id) AS item_count, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? AND store.tier<>? GROUP BY store.id HAVING COUNT(orders_item.id)=? AND COUNT(CASE WHEN item.state=? THEN 1 END)>?", [Types.store.STATE_APPROVED, Types.tier_store.open, 0, Types.item_state.SALE, 0]); //open
+  const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)>0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id WHERE store.state=? AND (orders_item.state < 99 OR orders_item.state IS NULL) AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)=0", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.open]); //open
   
   db.SELECT(querySelect, {}, (result_select) => {
-    
-    // console.log(result_select);
-    // return res.json({});
     
     let _dataUpdateQueryArray = [];
     let _dataUpdateOptionArray = [];
@@ -2755,27 +2753,24 @@ function storeTierOpenCheck(){
     }
 
     if(_dataUpdateQueryArray.length === 0){
-      return res.json({});
+      return {};
     }
 
     db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
-      return res.json({});
+      return {};
     }, (error) => {
       console.log("tier open 체크 업데이트 오류");
-      return res.json({});
+      return {};
     })
     
   })
 }
 
 function storeTierSaleCheck(){
-  const querySelect = mysql.format("SELECT store.id AS store_id, COUNT(item.id) AS item_count, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? AND store.tier<>? GROUP BY store.id HAVING COUNT(orders_item.id)>=? AND COUNT(orders_item.id)<? AND COUNT(CASE WHEN item.state=? THEN 1 END)>?", [Types.store.STATE_APPROVED, Types.tier_store.sale, 1, 3, Types.item_state.SALE, 0]); //open
+  const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END) > 0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE store.state=? AND orders_item.state < 99 AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)>0 AND COUNT(orders_item.id)<=2", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.sale]); //open
   
   db.SELECT(querySelect, {}, (result_select) => {
-    
-    // console.log(result_select);
-    // return res.json({});
-    
+        
     let _dataUpdateQueryArray = [];
     let _dataUpdateOptionArray = [];
 
@@ -2803,26 +2798,23 @@ function storeTierSaleCheck(){
     }
 
     if(_dataUpdateQueryArray.length === 0){
-      return res.json({});
+      return {};
     }
 
     db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
-      return res.json({});
+      return {};
     }, (error) => {
-      console.log("tier enter NO ITEM LIST 체크 업데이트 오류");
-      return res.json({});
+      console.log("tier sale NO ITEM LIST 체크 업데이트 오류");
+      return {};
     })
   })
 }
 
 function storeTierSaleKeepCheck(){
-  const querySelect = mysql.format("SELECT store.id AS store_id, COUNT(item.id) AS item_count, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? AND store.tier<>? GROUP BY store.id HAVING COUNT(orders_item.id)>=? AND COUNT(CASE WHEN item.state=? THEN 1 END)>?", [Types.store.STATE_APPROVED, Types.tier_store.sale_keep, 3, Types.item_state.SALE, 0]); //open
+  const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END) > 0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE store.state=? AND orders_item.state < 99 AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)>=3", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.sale_keep]); //open
   
   db.SELECT(querySelect, {}, (result_select) => {
-    
-    // console.log(result_select);
-    // return res.json({});
-    
+
     let _dataUpdateQueryArray = [];
     let _dataUpdateOptionArray = [];
 
@@ -2850,25 +2842,22 @@ function storeTierSaleKeepCheck(){
     }
 
     if(_dataUpdateQueryArray.length === 0){
-      return res.json({});
+      return {};
     }
 
     db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
-      return res.json({});
+      return {};
     }, (error) => {
-      console.log("tier enter NO ITEM LIST 체크 업데이트 오류");
-      return res.json({});
+      console.log("tier sale keep NO ITEM LIST 체크 업데이트 오류");
+      return {};
     })
   })
 }
 
 function storeTierBreakCheck(){
-  const querySelect = mysql.format("SELECT store.id AS store_id, COUNT(item.id) AS item_count, COUNT(orders_item.id) AS order_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id LEFT JOIN orders_items AS orders_item ON orders_item.store_id=store.id WHERE store.state=? AND store.tier<>? GROUP BY store.id HAVING COUNT(orders_item.id)>? AND COUNT(CASE WHEN item.state=? THEN 1 END)=?", [Types.store.STATE_APPROVED, Types.tier_store.break, 0, Types.item_state.SALE, 0]); //break
+  const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)=0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id WHERE store.state=? AND (orders_item.state < 99 OR orders_item.state IS NULL) AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)>0", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.break]); //break
   
   db.SELECT(querySelect, {}, (result_select) => {
-    
-    // console.log(result_select);
-    // return res.json({});
     
     let _dataUpdateQueryArray = [];
     let _dataUpdateOptionArray = [];
@@ -2897,14 +2886,14 @@ function storeTierBreakCheck(){
     }
 
     if(_dataUpdateQueryArray.length === 0){
-      return res.json({});
+      return {};
     }
 
     db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
-      return res.json({});
+      return {};
     }, (error) => {
-      console.log("tier enter NO ITEM LIST 체크 업데이트 오류");
-      return res.json({});
+      console.log("tier break NO ITEM LIST 체크 업데이트 오류");
+      return {};
     })
   })
 }
