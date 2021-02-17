@@ -1970,10 +1970,17 @@ router.post('/any/viewcount/item/add', function(req, res){
 
 /*
 router.post("/any/test", function(req, res){
-  const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)=0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id WHERE store.state=? AND (orders_item.state < 99 OR orders_item.state IS NULL) AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)>0", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.break]); //break
+  // const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)=0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id WHERE store.state=? AND (orders_item.state < 99 OR orders_item.state IS NULL) AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)=0", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.enter]); //enter
+
+  // const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)=0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id WHERE store.state=? AND (orders_item.state < 99 OR orders_item.state IS NULL) AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)=0", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.enter]); //enter
+
+  const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)=0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id WHERE store.state=? AND (orders_item.state < 99 OR orders_item.state IS NULL) AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)=0", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.enter]); //enter
   
   db.SELECT(querySelect, {}, (result_select) => {
     
+    console.log(result_select);
+    return res.json({});
+
     let _dataUpdateQueryArray = [];
     let _dataUpdateOptionArray = [];
 
@@ -1981,7 +1988,7 @@ router.post("/any/test", function(req, res){
       const data = result_select[i];
 
       let object = [{
-        tier: Types.tier_store.break
+        tier: Types.tier_store.enter
       }, 
       data.store_id];
   
@@ -2001,15 +2008,16 @@ router.post("/any/test", function(req, res){
     }
 
     if(_dataUpdateQueryArray.length === 0){
-      return res.json({});
+      return {};
     }
 
     db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
-      return res.json({});
+      return {};
     }, (error) => {
       console.log("tier enter NO ITEM LIST 체크 업데이트 오류");
-      return res.json({});
+      return {};
     })
+    
   })
 })
 */
