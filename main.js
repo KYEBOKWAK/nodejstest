@@ -2620,8 +2620,7 @@ cron.schedule('* * * * *', function(){
   storeConfirmAutoOneToOneCheck();
 });
 
-cron.schedule('* * * * *', function(){
-// cron.schedule('0 0 * * Mon', function(){
+cron.schedule('0 0 * * Mon', function(){
   //특정 시간에 체크한다. 월요일 0시 0분
   storeTierCloseCheck();
   storeTierEnterCheck();
