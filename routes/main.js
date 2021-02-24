@@ -212,7 +212,7 @@ router.post('/event/feed', function(req, res){
 router.post('/any/thumbnails/popular/list', function(req, res){
   const thumbnails_type = req.body.data.thumbnails_type;
 
-  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url FROM main_thumbnails WHERE type=?", [thumbnails_type]);
+  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url, first_text FROM main_thumbnails WHERE type=?", [thumbnails_type]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
