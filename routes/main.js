@@ -3,7 +3,7 @@ var router = express.Router();
 const use = require('abrequire');
 var db = use('lib/db_sql.js');
 
-var types = use('lib/types.js');
+var Types = use('lib/types.js');
 var mysql = require('mysql');
 const res_state = use('lib/res_state.js');
 const Util = use('lib/util.js');
@@ -14,7 +14,7 @@ moment_timezone.tz.setDefault("Asia/Seoul");
 router.post('/wait/order', function(req, res){
   const user_id = req.body.data.user_id;
   
-  let orderQuery = mysql.format("SELECT ticket.category, categories_ticket.title AS categories_ticket_title, ticket.price AS ticket_price, ticket.show_date, _order.id, _order.state AS order_state, _order.project_id AS project_id, _order.created_at, project.title, project.poster_renew_url, project.isDelivery, project.type AS pay_type, merchant_uid, total_price, _order.count, _order.ticket_id FROM orders AS _order LEFT JOIN projects AS project ON project.id=_order.project_id LEFT JOIN tickets AS ticket ON _order.ticket_id=ticket.id LEFT JOIN categories_tickets AS categories_ticket ON categories_ticket.id=ticket.category WHERE _order.user_id=? AND _order.state=? ORDER BY id DESC", [user_id, types.order.ORDER_STATE_APP_PAY_WAIT]);
+  let orderQuery = mysql.format("SELECT ticket.category, categories_ticket.title AS categories_ticket_title, ticket.price AS ticket_price, ticket.show_date, _order.id, _order.state AS order_state, _order.project_id AS project_id, _order.created_at, project.title, project.poster_renew_url, project.isDelivery, project.type AS pay_type, merchant_uid, total_price, _order.count, _order.ticket_id FROM orders AS _order LEFT JOIN projects AS project ON project.id=_order.project_id LEFT JOIN tickets AS ticket ON _order.ticket_id=ticket.id LEFT JOIN categories_tickets AS categories_ticket ON categories_ticket.id=ticket.category WHERE _order.user_id=? AND _order.state=? ORDER BY id DESC", [user_id, Types.order.ORDER_STATE_APP_PAY_WAIT]);
   db.SELECT(orderQuery, [], (result_order) => {
     // console.log(result_order);
     if(result_order === undefined || result_order.length === 0){
@@ -92,7 +92,7 @@ router.post('/wait/order', function(req, res){
         //0보다 작으면 값을 바꿔줘야함.
         //이거 주석 풀어줘야 함. 일단 테스트로 8 고정
         
-        db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [types.order.ORDER_STATE_CANCEL_WAIT_PAY, orderData.id], (result_order_update) => {
+        db.UPDATE("UPDATE orders AS _order SET _order.state=? WHERE _order.id=?", [Types.order.ORDER_STATE_CANCEL_WAIT_PAY, orderData.id], (result_order_update) => {
           return res.json({
             state: res_state.none,
             result: {
@@ -109,7 +109,7 @@ router.post('/wait/order', function(req, res){
       return res.json({
         result: {
           state: res_state.success,
-          toastType: types.toastMessage.TOAST_TYPE_CONNECT_TICKETING,
+          toastType: Types.toastMessage.TOAST_TYPE_CONNECT_TICKETING,
           toastMessage: '',
           toastMessageData: {
             wait_sec: waitSec,
@@ -165,9 +165,9 @@ router.post('/all/project', function(req, res) {
 
   const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
-  let querySelect = mysql.format("SELECT title, poster_renew_url, poster_url, id FROM projects WHERE state=? AND event_type_sub!=? ORDER BY funding_closing_at DESC", [types.project.STATE_APPROVED, types.project.EVENT_TYPE_SUB_SECRET_PROJECT]);
+  let querySelect = mysql.format("SELECT title, poster_renew_url, poster_url, id FROM projects WHERE state=? AND event_type_sub!=? ORDER BY funding_closing_at DESC", [Types.project.STATE_APPROVED, Types.project.EVENT_TYPE_SUB_SECRET_PROJECT]);
 
-  // let querySelect = mysql.format("SELECT title, poster_renew_url, poster_url, id FROM projects WHERE state=? AND event_type_sub<>? AND funding_closing_at>? ORDER BY funding_closing_at DESC", [types.project.STATE_APPROVED, types.project.EVENT_TYPE_SUB_SECRET_PROJECT, date]);
+  // let querySelect = mysql.format("SELECT title, poster_renew_url, poster_url, id FROM projects WHERE state=? AND event_type_sub<>? AND funding_closing_at>? ORDER BY funding_closing_at DESC", [Types.project.STATE_APPROVED, Types.project.EVENT_TYPE_SUB_SECRET_PROJECT, date]);
 
   db.SELECT(querySelect, {}, function(result){
               res.json({
@@ -177,7 +177,7 @@ router.post('/all/project', function(req, res) {
   // db.SELECT("SELECT title, poster_renew_url, poster_url, id FROM projects" +
   //           " WHERE state = ?"+
   //           " AND event_type_sub <> ?"+
-  //           " ORDER BY id DESC LIMIT 13", [types.project.STATE_APPROVED, types.project.EVENT_TYPE_SUB_SECRET_PROJECT], function(result){
+  //           " ORDER BY id DESC LIMIT 13", [Types.project.STATE_APPROVED, Types.project.EVENT_TYPE_SUB_SECRET_PROJECT], function(result){
   //             res.json({
   //               result
   //             });
@@ -185,8 +185,8 @@ router.post('/all/project', function(req, res) {
 
   /*
   db.SELECT("SELECT title, poster_renew_url, id FROM projects" +
-            " WHERE state = "+types.project.STATE_APPROVED +
-            " AND event_type_sub != "+types.project.EVENT_TYPE_SUB_SECRET_PROJECT +
+            " WHERE state = "+Types.project.STATE_APPROVED +
+            " AND event_type_sub != "+Types.project.EVENT_TYPE_SUB_SECRET_PROJECT +
             " ORDER BY id DESC LIMIT 13", function(result){
     res.json({
       result
@@ -208,5 +208,74 @@ router.post('/event/feed', function(req, res){
     }
   })
 });
+
+router.post('/any/thumbnails/popular/list', function(req, res){
+  const thumbnails_type = req.body.data.thumbnails_type;
+
+  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url FROM main_thumbnails WHERE type=?", [thumbnails_type]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post('/any/recommand/creator', function(req, res){
+  const querySelect = mysql.format("SELECT store.user_id AS store_user_id, store.title AS store_title, store.id AS store_id, store.alias, store.view_count, user.profile_photo_url, COUNT(comment.id) AS comment_count FROM stores AS store LEFT JOIN comments AS comment ON comment.commentable_id=store.id AND comment.commentable_type=? LEFT JOIN users AS user ON store.user_id=user.id WHERE store.tier=? AND store.state=? GROUP BY store.id ORDER BY RAND() LIMIT ?", ['App\\Models\\Store', Types.tier_store.sale_keep, Types.store.STATE_APPROVED, 6])
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post('/any/thumbnails/attention/list', function(req, res){
+  
+  const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.alias, store.state FROM (SELECT store.id, store.title, store.alias, store.state FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)>0 ) AS store WHERE store.state=? GROUP BY store.id ORDER BY store.id DESC LIMIT ?", [Types.item_state.SALE, Types.store.STATE_APPROVED, 8]); //open
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post('/any/thumbnails/event/list', function(req, res){
+
+  const querySelect = mysql.format("SELECT id, target_id AS item_id, first_text FROM main_thumbnails AS main_thumbnail WHERE main_thumbnail.type=?", [Types.thumbnails.store_home_event]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post('/any/thumbnails/updates/list', function(req, res){
+  const querySelect = mysql.format("SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.state=? AND store.state=? ORDER BY item.updated_at DESC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, 8]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
 
 module.exports = router;
