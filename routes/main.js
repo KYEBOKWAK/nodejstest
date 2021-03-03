@@ -278,4 +278,107 @@ router.post('/any/thumbnails/updates/list', function(req, res){
   })
 })
 
+router.post('/any/search/stores', function(req, res){
+  const search_text = req.body.data.search_text;
+
+  let querySelect = mysql.format("SELECT store.id AS store_id FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.title LIKE ?", ["%"+search_text+"%"]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+
+})
+
+router.post('/any/search/items', function(req, res){
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+
+  const search_text = req.body.data.search_text;
+
+  const querySelect = mysql.format("SELECT id AS item_id FROM items AS item WHERE item.title LIKE ? LIMIT ? OFFSET ?", ["%"+search_text+"%", limit, skip]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post('/any/search/items/count', function(req, res){
+  const search_text = req.body.data.search_text;
+
+  const querySelect = mysql.format("SELECT COUNT(id) AS item_count FROM items AS item WHERE item.title LIKE ?", ["%"+search_text+"%"]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          count: result[0].item_count
+        }
+      }
+    })
+  })
+});
+
+router.post('/any/search/projects', function(req, res){
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+
+  const search_text = req.body.data.search_text;
+
+  const queyrFind = "%"+search_text+"%";
+
+  const querySelect = mysql.format("SELECT project.id AS project_id FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.state=? AND (project.title LIKE ? OR categorie.title LIKE ? OR citie.name LIKE ?) GROUP BY project.id ORDER BY project.id DESC LIMIT ? OFFSET ?", [Types.project.STATE_APPROVED, queyrFind, queyrFind, queyrFind, limit, skip]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post('/any/search/projects/count', function(req, res){
+  const search_text = req.body.data.search_text;
+
+  const queyrFind = "%"+search_text+"%";
+
+  const querySelect = mysql.format("SELECT COUNT(project.id) AS project_count FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.state=? AND (project.title LIKE ? OR categorie.title LIKE ? OR citie.name LIKE ?) ", [Types.project.STATE_APPROVED, queyrFind, queyrFind, queyrFind]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          count: result[0].project_count
+        }
+      }
+    })
+  })
+});
+
+router.post('/any/search/no/recommend', function(req, res){
+  const querySelect = mysql.format("SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE store.tier=? AND store.state=? AND item.state=? GROUP BY item.id ORDER BY RAND()", [Types.tier_store.sale, Types.project.STATE_APPROVED, Types.item_state.SALE]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
 module.exports = router;

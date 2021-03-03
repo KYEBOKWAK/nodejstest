@@ -775,15 +775,6 @@ router.post('/detail', function(req, res) {
       }
     });
   });
-
-  // db.SELECT("SELECT project.id AS project_id, user.id AS user_id, user.name, user.profile_photo_url, user.introduce, project.title, project.poster_renew_url, project.poster_url, project.story, detailed_address, concert_hall, isDelivery, project.type FROM projects AS project" +
-  //           " INNER JOIN users AS user" +
-  //           " ON project.user_id=user.id" +
-  //           " WHERE project.id=?", [project_id], function(result){
-  //             res.json({
-  //               result
-  //             });
-  //           });
 });
 
 router.post('/tickets', function(req, res) {
@@ -1966,5 +1957,42 @@ router.post("/ticket/showdate", function(req, res){
     })
   });
 });
+
+router.post("/any/info", function(req, res){
+  const project_id = req.body.data.project_id;
+  const querySelect = mysql.format("SELECT project.user_id, title, project_type, temporary_date, city.name AS city_name, poster_renew_url, poster_url, description, alias, funding_closing_at FROM projects AS project LEFT JOIN cities AS city ON city.id=project.city_id WHERE project.id=? GROUP BY project.id", [project_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '프로젝트 검색 조회 에러',
+        result: {}
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: result[0]
+      }
+    })
+  })
+});
+
+router.post("/any/ticket/showdate", function(req, res){
+  const project_id = req.body.data.project_id;
+
+  const querySelect = mysql.format("SELECT show_date FROM tickets AS ticket WHERE project_id=? ORDER BY show_date", [project_id])
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
 
 module.exports = router;
