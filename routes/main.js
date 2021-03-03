@@ -281,7 +281,7 @@ router.post('/any/thumbnails/updates/list', function(req, res){
 router.post('/any/search/stores', function(req, res){
   const search_text = req.body.data.search_text;
 
-  let querySelect = mysql.format("SELECT store.id AS store_id FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.title LIKE ?", ["%"+search_text+"%"]);
+  let querySelect = mysql.format("SELECT store.id AS store_id FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.state=? AND store.title LIKE ?", [Types.project.STATE_APPROVED, "%"+search_text+"%"]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -300,7 +300,7 @@ router.post('/any/search/items', function(req, res){
 
   const search_text = req.body.data.search_text;
 
-  const querySelect = mysql.format("SELECT id AS item_id FROM items AS item WHERE item.state<>? AND item.title LIKE ? LIMIT ? OFFSET ?", [Types.item_state.SALE_STOP, "%"+search_text+"%", limit, skip]);
+  const querySelect = mysql.format("SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE store.state=? AND item.state<>? AND item.title LIKE ? GROUP BY item.id LIMIT ? OFFSET ?", [Types.store.STATE_APPROVED, Types.item_state.SALE_STOP, "%"+search_text+"%", limit, skip]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -315,15 +315,15 @@ router.post('/any/search/items', function(req, res){
 router.post('/any/search/items/count', function(req, res){
   const search_text = req.body.data.search_text;
 
-  const querySelect = mysql.format("SELECT COUNT(id) AS item_count FROM items AS item WHERE item.state<>? AND item.title LIKE ?", [Types.item_state.SALE_STOP, "%"+search_text+"%"]);
+  const querySelect = mysql.format("SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE store.state=? AND item.state<>? AND item.title LIKE ? GROUP BY item.id", [Types.store.STATE_APPROVED, Types.item_state.SALE_STOP, "%"+search_text+"%"]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result: {
         state: res_state.success,
         data: {
-          count: result[0].item_count
-        }
+          count: result.length
+        },
       }
     })
   })
