@@ -300,7 +300,7 @@ router.post('/any/search/items', function(req, res){
 
   const search_text = req.body.data.search_text;
 
-  const querySelect = mysql.format("SELECT id AS item_id FROM items AS item WHERE item.title LIKE ? LIMIT ? OFFSET ?", ["%"+search_text+"%", limit, skip]);
+  const querySelect = mysql.format("SELECT id AS item_id FROM items AS item WHERE item.state<>? AND item.title LIKE ? LIMIT ? OFFSET ?", [Types.item_state.SALE_STOP, "%"+search_text+"%", limit, skip]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -315,7 +315,7 @@ router.post('/any/search/items', function(req, res){
 router.post('/any/search/items/count', function(req, res){
   const search_text = req.body.data.search_text;
 
-  const querySelect = mysql.format("SELECT COUNT(id) AS item_count FROM items AS item WHERE item.title LIKE ?", ["%"+search_text+"%"]);
+  const querySelect = mysql.format("SELECT COUNT(id) AS item_count FROM items AS item WHERE item.state<>? AND item.title LIKE ?", [Types.item_state.SALE_STOP, "%"+search_text+"%"]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
