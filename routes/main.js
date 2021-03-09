@@ -381,4 +381,17 @@ router.post('/any/search/no/recommend', function(req, res){
   })
 })
 
+router.post('/any/carousels', function(req, res){
+  const querySelect = mysql.format("SELECT title, sub_title, bg_color, bg_img_url, bg_img_type, target_id, target_type FROM main_web_carousels ORDER BY order_number");
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
 module.exports = router;
