@@ -395,7 +395,8 @@ router.post('/any/carousels', function(req, res){
 })
 
 router.post('/any/stores/count', function(req, res){
-  const querySelect = mysql.format("SELECT COUNT(id) AS store_count FROM stores WHERE state=?", [Types.store.STATE_APPROVED]);
+  // const querySelect = mysql.format("SELECT COUNT(id) AS store_count FROM stores WHERE state=?", [Types.store.STATE_APPROVED]);
+  const querySelect = mysql.format("SELECT COUNT(id) AS store_count FROM stores", []);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -410,7 +411,8 @@ router.post('/any/stores/count', function(req, res){
 })
 
 router.post('/any/items/count', function(req, res){
-  const querySelect = mysql.format("SELECT COUNT(id) AS item_count FROM items WHERE state=?", [Types.item_state.SALE]);
+  // const querySelect = mysql.format("SELECT COUNT(id) AS item_count FROM items WHERE state=?", [Types.item_state.SALE]);
+  const querySelect = mysql.format("SELECT COUNT(id) AS item_count FROM items", []);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
