@@ -17,13 +17,6 @@ const global = use('lib/global_const.js');
 const axios = require('axios');
 const { Config } = require('aws-sdk');
 
-// var aws = require('aws-sdk');
-// var s3 = new aws.S3({ 
-//   accessKeyId: process.env.AWS_S3_KEY,
-//   secretAccessKey: process.env.AWS_S3_SECRET,
-//   region: process.env.AWS_S3_REGION,
-// });
-
 const STORE_HOME_ITEM_LIST_TAKE = 4;
 const STORE_HOME_ITEM_LIST_IN_ITEM_TAKE = 3;
 
@@ -395,6 +388,31 @@ router.post("/item/delete", function(req, res){
     })
   })
 });
+
+router.post("/item/get/typecontents", function(req, res){
+  const item_id = req.body.data.item_id;
+  const querySelect = mysql.format("SELECT type_contents FROM items WHERE id=?", [item_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0) {
+      return res.json({
+        state: res_state.error,
+        message: '아이템 정보 조회 에러. 새로고침 후 이용해주세요.',
+        result:{}
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          type_contents: data.type_contents
+        }
+      }
+    })
+  })
+})
 
 router.post("/item/add", function(req, res){
   const store_id = req.body.data.store_id;
@@ -2149,6 +2167,85 @@ router.post('/expired/download', function(req, res){
           down_expired_at: _down_expired_at
         }
       }
+    })
+  })
+})
+
+router.post("/delete/item/valid", function(req, res){
+  const item_id = req.body.data.item_id;
+  
+  const querySelect = mysql.format("SELECT COUNT(id) AS order_count FROM orders_items WHERE item_id=?", item_id);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '삭제 가능 정보 조회 에러. 새로고침 후 다시 이용해주세요',
+        result:{}
+      })
+    }
+
+    const data = result[0];
+    
+    if(data.order_count > 0) {
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: {
+            isValid: false
+          }
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          isValid: true
+        }
+      }
+    })
+  })
+})
+
+router.post("/delete/filesdownload", function(req, res){
+  const target_type = req.body.data.target_type;
+  const target_id = req.body.data.target_id;
+
+  const querySelect = mysql.format("SELECT id FROM files_downloads WHERE target_id=? AND target_type=?", [target_id, target_type]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    let _deleteQueryArray = [];
+    let _deleteOptionArray = [];
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+      let queryObject = {
+        key: i,
+        value: "DELETE FROM files_downloads WHERE id=?;"
+      }
+
+      let deleteItemObject = {
+        key: i,
+        value: data.id
+      }
+
+      _deleteQueryArray.push(queryObject);
+      _deleteOptionArray.push(deleteItemObject);
+    }
+
+    db.DELETE_MULITPLEX(_deleteQueryArray, _deleteOptionArray, (result) => {
+      return res.json({
+        result:{
+          state: res_state.success
+        }
+      })
+    }, (error) => {
+      return res.json({
+        state: res_state.error,
+        message: '파일 제거 실패',
+        result:{}
+      })
     })
   })
 })

@@ -98,6 +98,27 @@ removeImageS3 = (key, callback) => {
   });
 }
 
+removeFileS3 = (key, callback) => {
+  var params = {  
+    Bucket: process.env.AWS_S3_BUCKET_FILES, 
+    Key: key
+  };
+
+  s3.deleteObject(params, function(err, data) {
+    if (err) { 
+      return callback({
+        state : 'error',
+        message : err
+      })
+    } else {
+      return callback({
+        state : 'success',
+        ...data
+      })
+    }
+  });
+}
+
 saveImageS3 = (user_id, contentType, imageBinary, callback) => {
   let imgTypes = ["png", "jpg", "jpeg", "bmp", "gif"];
   let extension = "jpg";
@@ -381,5 +402,30 @@ router.post("/delete/img", function(req, res){
 
   });
 });
+
+router.post("/delete/files/s3", function(req, res){
+  const target_type = req.body.data.target_type;
+  const target_id = req.body.data.target_id;
+
+  const querySelect = mysql.format("SELECT file_s3_key FROM files_downloads WHERE target_id=? AND target_type=?", [target_id, target_type]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+
+      removeFileS3(data.file_s3_key, (result_removeS3) => {
+        if(result_removeS3.state === 'error'){
+          console.log("파일 삭제 실패 / " + result_removeS3);
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  })
+})
 
 module.exports = router;
