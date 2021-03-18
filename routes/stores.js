@@ -55,15 +55,15 @@ router.post('/any/item/list', function(req, res){
     //최근 구매된 아이템
     // querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND (item.state=? OR item.state=? OR item.state=?) AND store.state=? ORDER BY orders_item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.item_state.SALE_PAUSE, Types.item_state.SALE_LIMIT, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
 
-    querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND item.state=? AND store.state=? ORDER BY orders_item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
+    querySelect = mysql.format("SELECT item.type_contents, store.title AS store_title, item.id, item.store_id, store.alias, item.price, item.title, item.img_url, nick_name FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE orders_item.state<? AND item.state=? AND store.state=? ORDER BY orders_item.id DESC LIMIT ?", [Types.order.ORDER_STATE_PAY_END, Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
 
   }
   else if(type === Types.store_home_item_list.NEW_UPDATE){
-    querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? ORDER BY item.updated_at DESC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
+    querySelect = mysql.format("SELECT item.type_contents, store.title AS store_title, item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.state=? AND store.state=? ORDER BY item.updated_at DESC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, STORE_HOME_ITEM_LIST_TAKE]);
   }
   else if(type === Types.store_home_item_list.IN_ITEM){
     const store_id = req.body.data.store_id;
-    querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE (item.state=? OR item.state=? OR item.state=?) AND store.state=? AND item.store_id=? ORDER BY item.order_number ASC LIMIT ?", [Types.item_state.SALE, Types.item_state.SALE_PAUSE, Types.item_state.SALE_LIMIT, Types.project.STATE_APPROVED, store_id, STORE_HOME_ITEM_LIST_IN_ITEM_TAKE]);
+    querySelect = mysql.format("SELECT item.type_contents, store.title AS store_title, item.id, item.store_id, store.alias, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE (item.state=? OR item.state=? OR item.state=?) AND store.state=? AND item.store_id=? ORDER BY item.order_number ASC LIMIT ?", [Types.item_state.SALE, Types.item_state.SALE_PAUSE, Types.item_state.SALE_LIMIT, Types.project.STATE_APPROVED, store_id, STORE_HOME_ITEM_LIST_IN_ITEM_TAKE]);
   }
 
   db.SELECT(querySelect, {}, (result) => {
@@ -145,7 +145,7 @@ router.post('/any/detail/item/list', function(req, res){
   let skip = req.body.data.skip;
   let store_id = req.body.data.store_id;
 
-  let querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL ORDER BY item.order_number LIMIT ? OFFSET ?", [store_id, Types.item_state.SALE_STOP, limit, skip]);
+  let querySelect = mysql.format("SELECT item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL ORDER BY item.order_number LIMIT ? OFFSET ?", [store_id, Types.item_state.SALE_STOP, limit, skip]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -172,7 +172,7 @@ router.post('/any/info/alias', function(req, res){
 
 router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
-  const querySelect = mysql.format("SELECT item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result:{
@@ -294,7 +294,7 @@ router.post('/save/info/v1', function(req, res){
 router.post("/item/list/all", function(req, res){
   const store_id = req.body.data.store_id;
 
-  let querySelect = mysql.format("SELECT store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id]);
+  let querySelect = mysql.format("SELECT item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -407,6 +407,16 @@ router.post("/item/add", function(req, res){
 
   const ask_play_time = req.body.data.ask_play_time;
 
+  let completed_type_product_answer = req.body.data.completed_type_product_answer;
+  if(completed_type_product_answer === undefined){
+    completed_type_product_answer = '';
+  }
+
+  let type_contents = req.body.data.type_contents;
+  if(type_contents === undefined){
+    type_contents = Types.contents.customized;
+  }
+
   let file_upload_state = req.body.data.file_upload_state;
 
   let product_state = req.body.data.product_state;
@@ -477,6 +487,8 @@ router.post("/item/add", function(req, res){
       product_category_type: product_category_type,
       notice: item_notice,
       youtube_url: youtube_url,
+      completed_type_product_answer: completed_type_product_answer,
+      type_contents: type_contents,
       created_at: date,
       updated_at: date
     }
@@ -538,6 +550,16 @@ router.post("/item/update", function(req, res){
     youtube_url = null;
   }
 
+  let completed_type_product_answer = req.body.data.completed_type_product_answer;
+  if(completed_type_product_answer === undefined){
+    completed_type_product_answer = '';
+  }
+
+  let type_contents = req.body.data.type_contents;
+  if(type_contents === undefined){
+    type_contents = Types.contents.customized;
+  }
+
   const updated_at = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let re_set_at = null;
@@ -548,7 +570,7 @@ router.post("/item/update", function(req, res){
 
   if(isChangeLimitCount){
 
-    db.UPDATE("UPDATE items SET youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
     (result_update) => {
 
       this.isSoldOutAllItemCheck(item_id, order_limit_count, (isSoldOut) => {
@@ -581,38 +603,8 @@ router.post("/item/update", function(req, res){
         result: {}
       })
     })
-
-    /*
-    this.isSoldOutAllItemCheck(item_id, order_limit_count, (isSoldOut) => {
-      if(isSoldOut){
-        return res.json({
-          state: res_state.error,
-          message: '주문 수 보다 커야합니다.',
-          result: {}
-        })
-      }
-
-      db.UPDATE("UPDATE items SET product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
-      (result_update) => {
-        return res.json({
-          result: {
-            state: res_state.success,
-            data: {
-              state: state
-            }
-          }
-        })
-      }, (error) => {
-        return res.json({
-          state: res_state.error,
-          message: '아이템 정보 업데이트 실패',
-          result: {}
-        })
-      })
-    })
-    */
   }else{
-    db.UPDATE("UPDATE items SET youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
     (result_update) => {
       return res.json({
         result: {
@@ -1768,13 +1760,6 @@ router.post("/any/file/item/list", function(req, res){
   const querySelect = mysql.format("SELECT id, url, mimetype, originalname FROM items_imgs WHERE target_id=? AND target_type=?", [store_item_id, file_upload_target_type]);
 
   db.SELECT(querySelect, {}, (result) => {
-
-    // for(let i = 0 ; i < result.length ; i++){
-    //   const data = result[i];
-    //   const isExpired = Util.isExpireTime(data.expired_at);
-    //   result[i].isExpired = isExpired;
-    // }
-
     return res.json({
       result: {
         state: res_state.success,
@@ -1784,9 +1769,42 @@ router.post("/any/file/item/list", function(req, res){
   })
 });
 
+router.post("/file/download/list", function(req, res){
+  const store_item_id = req.body.data.store_item_id;
+  const file_upload_target_type = req.body.data.file_upload_target_type;
+
+  const querySelect = mysql.format("SELECT id, url, size, originalname, file_s3_key FROM files_downloads WHERE target_id=? AND target_type=?", [store_item_id, file_upload_target_type]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
 router.post("/file/item/delete", function(req, res){
   const items_img_id = req.body.data.items_img_id;
   db.DELETE("DELETE FROM items_imgs WHERE id=?", items_img_id, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '이미지 DB 삭제 실패',
+      result:{}
+    })
+  })
+});
+
+router.post("/file/download/delete", function(req, res){
+  const files_downloads_id = req.body.data.files_downloads_id;
+  db.DELETE("DELETE FROM files_downloads WHERE id=?", files_downloads_id, (result) => {
     return res.json({
       result:{
         state: res_state.success
@@ -1818,6 +1836,49 @@ router.post("/file/set/itemsimgs/itemid", function(req, res){
     let queryObject = {
       key: i,
       value: "UPDATE items_imgs SET ? WHERE id=?;"
+    }
+
+    let updateOrdersItemsObject = {
+      key: i,
+      value: object
+    }
+
+    _orders_itemsUpdateQueryArray.push(queryObject);
+    _orders_itemsUpdateOptionArray.push(updateOrdersItemsObject);
+  }
+
+  db.UPDATE_MULITPLEX(_orders_itemsUpdateQueryArray, _orders_itemsUpdateOptionArray, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '업데이트 실패',
+      result:{}
+    })
+  })
+});
+
+router.post("/file/set/downloadfiles/itemid", function(req, res){
+  const store_item_id = req.body.data.store_item_id;
+  const filesInsertID = req.body.data.filesInsertID;
+
+  let _orders_itemsUpdateQueryArray = [];
+  let _orders_itemsUpdateOptionArray = [];
+
+  for(let i = 0 ; i < filesInsertID.length ; i++){
+    const data = filesInsertID[i];
+    let object = [{
+      target_id: store_item_id,
+    }, 
+    data.file_id];
+
+    let queryObject = {
+      key: i,
+      value: "UPDATE files_downloads SET ? WHERE id=?;"
     }
 
     let updateOrdersItemsObject = {
@@ -1991,58 +2052,105 @@ router.post('/any/item/info/first', function(req, res){
   })
 });
 
-/*
-router.post("/any/test", function(req, res){
-  // const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)=0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id WHERE store.state=? AND (orders_item.state < 99 OR orders_item.state IS NULL) AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)=0", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.enter]); //enter
+router.post('/any/download/file/count', function(req, res){
+  const store_item_id = req.body.data.store_item_id;
 
-  // const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)=0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id WHERE store.state=? AND (orders_item.state < 99 OR orders_item.state IS NULL) AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)=0", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.enter]); //enter
+  const querySelect = mysql.format("SELECT COUNT(id) AS file_count FROM files_downloads WHERE target_id=? AND target_type=?", [store_item_id, Types.file_upload_target_type.download_file]);
 
-  const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM (SELECT store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)=0 ) AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id WHERE store.state=? AND (orders_item.state < 99 OR orders_item.state IS NULL) AND (store.tier<>? OR store.tier IS NULL) GROUP BY store.id HAVING COUNT(orders_item.id)=0", [Types.item_state.SALE, Types.store.STATE_APPROVED, Types.tier_store.enter]); //enter
-  
-  db.SELECT(querySelect, {}, (result_select) => {
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          file_count: 0
+        }
+      })
+    }
     
-    console.log(result_select);
-    return res.json({});
-
-    let _dataUpdateQueryArray = [];
-    let _dataUpdateOptionArray = [];
-
-    for(let i = 0 ; i < result_select.length ; i++){
-      const data = result_select[i];
-
-      let object = [{
-        tier: Types.tier_store.enter
-      }, 
-      data.store_id];
-  
-      let queryObject = {
-        key: i,
-        value: "UPDATE stores SET ? WHERE id=?;"
+    return res.json({
+      result: {
+        state: res_state.success,
+        file_count: result[0].file_count
       }
-  
-      let updateDataObject = {
-        key: i,
-        value: object
-      }
-  
-      _dataUpdateQueryArray.push(queryObject);
-      _dataUpdateOptionArray.push(updateDataObject);
-        
-    }
-
-    if(_dataUpdateQueryArray.length === 0){
-      return {};
-    }
-
-    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
-      return {};
-    }, (error) => {
-      console.log("tier enter NO ITEM LIST 체크 업데이트 오류");
-      return {};
     })
-    
   })
 })
-*/
+
+router.post('/expired/download/valid', function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  const querySelect = mysql.format("SELECT down_expired_at FROM orders_items WHERE id=?", [store_order_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: 'expired time error',
+        result:{}
+      })
+    }
+
+    const down_expired_at = result[0].down_expired_at;
+    if(down_expired_at === null){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: {
+            isExpired: false
+          }
+        }
+      })
+    }
+
+    let isExpired = Util.isExpireTime(down_expired_at);
+    console.log(isExpired);
+    // const _down_expired_at = moment_timezone(down_expired_at).format('YYYY-MM-DD');
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          isExpired: isExpired
+        }
+      }
+    })
+  })
+});
+
+router.post('/expired/download', function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  const querySelect = mysql.format("SELECT down_expired_at FROM orders_items WHERE id=?", [store_order_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: 'expired time error',
+        result:{}
+      })
+    }
+
+    const down_expired_at = result[0].down_expired_at;
+    if(down_expired_at === null){
+      return res.json({
+        state: res_state.error,
+        message: 'expired time error',
+        result:{}
+      })
+    }
+
+    const _down_expired_at = moment_timezone(down_expired_at).format('YYYY-MM-DD');
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          down_expired_at: _down_expired_at
+        }
+      }
+    })
+  })
+})
 
 module.exports = router;

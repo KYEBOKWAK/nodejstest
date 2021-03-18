@@ -61,18 +61,27 @@ function getOrderStateCheckIamportState(iamport_state){
     }
 }
 
-function getStoreOrderStateCheckIamportState(iamport_state){
+function getStoreOrderStateCheckIamportState(iamport_state, type_contents){
     // 결제가 승인되었을 때(모든 결제 수단) - (status : paid)
     // 가상계좌가 발급되었을 때 - (status : ready)
     // 가상계좌에 결제 금액이 입금되었을 때 - (status : paid)
     // 예약결제가 시도되었을 때 - (status : paid or failed)
     // 대시보드에서 환불되었을 때 - (status : cancelled)
     if(iamport_state === 'paid'){
-        // return types.order.ORDER_STATE_APP_PAY_COMPLITE;
+        
+        if(type_contents === types.contents.completed){
+            return types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE;
+        }
+
         return types.order.ORDER_STATE_APP_STORE_PAYMENT;
     }
     else if(iamport_state === 'scheduled'){
         // return types.order.ORDER_STATE_PAY_SCHEDULE;
+        
+        if(type_contents === types.contents.completed){
+            return types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE;
+        }
+
         return types.order.ORDER_STATE_APP_STORE_PAYMENT;
     }
     else if(iamport_state === 'failed'){
@@ -82,6 +91,11 @@ function getStoreOrderStateCheckIamportState(iamport_state){
         return types.order.ORDER_STATE_CANCEL;
     }
     else{
+
+        if(type_contents === types.contents.completed){
+            return types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE;
+        }
+
         return types.order.ORDER_STATE_APP_STORE_PAYMENT;
     }
 
@@ -425,10 +439,11 @@ payStoreComplite = (req, res, serializer_uid) => {
     const customer_uid = Util.getPayNewCustom_uid(user_id);
     const pay_method = req.body.data.pay_method;
 
-    // console.log(order_id+"/"+merchant_uid+"/"+imp_uid);
-    let orderQuery = "SELECT state, id, total_price FROM orders_items AS _order WHERE _order.id=? AND _order.merchant_uid=?";
+    
+    // let orderQuery = "SELECT state, id, total_price FROM orders_items AS _order WHERE _order.id=? AND _order.merchant_uid=?";
+    let orderQuery = "SELECT _order.state, _order.id, _order.total_price, item.type_contents, item.completed_type_product_answer FROM orders_items AS _order LEFT JOIN items AS item ON _order.item_id=item.id WHERE _order.id=? AND _order.merchant_uid=?";
+    
     orderQuery = mysql.format(orderQuery, [order_id, merchant_uid]);
-    // console.log(orderQuery);
     db.SELECT(orderQuery, [], (result_order) => {
         if(result_order.length === 0){
             return  res.json({
@@ -441,11 +456,18 @@ payStoreComplite = (req, res, serializer_uid) => {
 
         const orderData = result_order[0];
 
+        let down_expired_at = null;
+        let product_answer = null;
+        if(orderData.type_contents === types.contents.completed){
+            down_expired_at = moment_timezone().add(59, 'days').format('YYYY-MM-DD 23:59:59');
+            product_answer = orderData.completed_type_product_answer;
+        }
+
         if(orderData.total_price === 0){
             //결제금액 0원
-            const orderState = getStoreOrderStateCheckIamportState('paid');
+            const orderState = getStoreOrderStateCheckIamportState('paid', orderData.type_contents);
 
-            db.UPDATE("UPDATE orders_items AS _order SET state=? WHERE id=?", [orderState, orderData.id], 
+            db.UPDATE("UPDATE orders_items AS _order SET product_answer=?, down_expired_at=?, state=? WHERE id=?", [product_answer, down_expired_at, orderState, orderData.id], 
             (result_order_update) => {
                 // console.log(result_order_update);
                 if(!result_order_update){
@@ -473,7 +495,7 @@ payStoreComplite = (req, res, serializer_uid) => {
             });
         }else{
             if(serializer_uid === PAY_SERIALIZER_SCHEDULE){
-                const orderState = getStoreOrderStateCheckIamportState('scheduled');
+                const orderState = getStoreOrderStateCheckIamportState('scheduled', orderData.type_contents);
                 let _imp_meta = {
                     serializer_uid: serializer_uid,
                     merchant_uid: merchant_uid,
@@ -482,7 +504,7 @@ payStoreComplite = (req, res, serializer_uid) => {
 
                 _imp_meta = JSON.stringify(_imp_meta);
 
-                db.UPDATE("UPDATE orders_items AS _order SET state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
+                db.UPDATE("UPDATE orders_items AS _order SET product_answer=?, down_expired_at=?, state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [product_answer, down_expired_at, orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
                 (result_order_update) => {
                     console.log(result_order_update);
                     if(!result_order_update){
@@ -515,7 +537,7 @@ payStoreComplite = (req, res, serializer_uid) => {
                     // To do
                     const status = result_import.status;
                     if(result_import.amount === orderData.total_price){
-                        const orderState = getStoreOrderStateCheckIamportState(status);
+                        const orderState = getStoreOrderStateCheckIamportState(status, orderData.type_contents);
         
                         let _imp_meta = {
                             serializer_uid: serializer_uid,
@@ -526,7 +548,7 @@ payStoreComplite = (req, res, serializer_uid) => {
     
                         _imp_meta = JSON.stringify(_imp_meta);
         
-                        db.UPDATE("UPDATE orders_items AS _order SET state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
+                        db.UPDATE("UPDATE orders_items AS _order SET product_answer=?, down_expired_at=?, state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [product_answer, down_expired_at, orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
                         (result_order_update) => {
                             // console.log(result_order_update);
                             if(!result_order_update){
