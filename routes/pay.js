@@ -1385,6 +1385,8 @@ router.post('/store/onetime', function(req, res){
                 //0원이면 iamport 안함.
                 if(process.env.APP_TYPE !== 'local'){
 
+                    this.senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
+                    /*
                     this.sendStoreOrderNineAMEvent(item_order_id);
 
                     this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
@@ -1394,6 +1396,7 @@ router.post('/store/onetime', function(req, res){
                     this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
 
                     this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+                    */
                 }                
     
                 req.body.data.merchant_uid = merchant_uid;
@@ -1411,6 +1414,8 @@ router.post('/store/onetime', function(req, res){
                         //결제 성공
                         if(process.env.APP_TYPE !== 'local'){
 
+                            this.senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
+                            /*
                             this.sendStoreOrderNineAMEvent(item_order_id);
 
                             this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
@@ -1420,6 +1425,7 @@ router.post('/store/onetime', function(req, res){
                             this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
 
                             this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+                            */
                         }
     
                         req.body.data.merchant_uid = result.merchant_uid;
@@ -1458,6 +1464,33 @@ router.post('/store/onetime', function(req, res){
         /////////////////////////////////////
     })
 });
+
+senderOrderCompleteAlarm = (item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent) => {
+    const querySelect = mysql.format("SELECT type_contents FROM items WHERE id=?", [item_id]);
+    
+    db.SELECT(querySelect, {}, (result) => {
+        if(result.length === 0){
+            return;
+        }
+
+        const data = result[0];
+        if(data.type_contents === types.contents.completed){
+            return;
+        }
+
+        this.sendStoreOrderNineAMEvent(item_order_id);
+
+        this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+        this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
+
+        this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+
+        this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+    })
+
+    
+}
 
 router.post("/store/isp/iamport", function(req, res){
     const _data = req.body.data;
