@@ -1385,7 +1385,7 @@ router.post('/store/onetime', function(req, res){
                 //0원이면 iamport 안함.
                 if(process.env.APP_TYPE !== 'local'){
 
-                    this.senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
+                    senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
                     /*
                     this.sendStoreOrderNineAMEvent(item_order_id);
 
@@ -1414,7 +1414,7 @@ router.post('/store/onetime', function(req, res){
                         //결제 성공
                         if(process.env.APP_TYPE !== 'local'){
 
-                            this.senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
+                            senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
                             /*
                             this.sendStoreOrderNineAMEvent(item_order_id);
 
@@ -1465,7 +1465,7 @@ router.post('/store/onetime', function(req, res){
     })
 });
 
-senderOrderCompleteAlarm = (item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent) => {
+function senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent){
     const querySelect = mysql.format("SELECT type_contents FROM items WHERE id=?", [item_id]);
     
     db.SELECT(querySelect, {}, (result) => {
