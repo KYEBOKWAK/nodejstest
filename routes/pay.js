@@ -1661,7 +1661,7 @@ router.post('/store/send/message', function(req, res){
     
     const store_order_id = req.body.data.store_order_id;
 
-    const querySelect = mysql.format("SELECT orders_item.total_price, orders_item.email, orders_item.requestContent, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+    const querySelect = mysql.format("SELECT item.type_contents, orders_item.total_price, orders_item.email, orders_item.requestContent, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
 
     db.SELECT(querySelect, {}, 
     (result) => {
@@ -1674,6 +1674,14 @@ router.post('/store/send/message', function(req, res){
         }
 
         const data = result[0];
+
+        if(data.type_contents === types.contents.completed){
+            return res.json({
+                result: {
+                    state: res_state.success
+                }
+            })
+        }
 
         const item_title = data.item_title;
         const name = data.customer_name;
