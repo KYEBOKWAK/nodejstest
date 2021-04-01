@@ -1511,17 +1511,18 @@ function getStorePayState(state){
   }
 }
 
-function getRefundPolicyStoreContent(){
-  return `1. 모든 콘텐츠 주문은 크리에이터의 승인이 필요합니다.\n2. 크리에이터의 의사에 따라 콘텐츠 주문이 반려될 수 있습니다.\n3. 주문 날짜로부터 7일 안에 승인이 안되거나 반려될 경우 결제 금액은 전액 환불됩니다.\n4. 주문이 승인되기 전 구매자에 의한 주문 취소 및 환불이 가능합니다.\n5. 크리에이터가 주문을 승인한 이후에는 취소 및 환불이 불가능합니다. 단, 주문 날짜로부터 최대 14일 이내에 콘텐츠를 제공받지 못한 경우에는 결제 금액을 전액 환불해드립니다.\n6. 콘텐츠를 제공 받은 이후에는 단순 불만족 또는 변심으로 인한 환불이 불가능하니 유의해주세요.`;
-  // return `1. 콘텐츠 주문 이후 크리에이터가 승인을 하기 전까지는 구매자에 의한 주문 취소 및 환불이 가능합니다.\n2. 콘텐츠 주문 날짜로부터 7일 이내에 주문 승인이 이루어지지 않거나 크리에이터에 의해 요청이 반려되는 경우 결제 금액은 전액 환불됩니다..\n3. 크리에이터가 주문을 승인한 이후에는 취소 및 환불이 불가능합니다. 단, 주문 날짜로부터 최대 14일 이내에 콘텐츠를 제공받지 못한 경우에만 결제 금액을 전액 환불해드립니다.\n4. 콘텐츠를 제공 받은 이후에는 콘텐츠에 대한 불만족 또는 단순 변심으로 인한 환불이 불가능한 점 유의해주세요.`
+function getRefundPolicyStoreContent(type_contents){
+  if(type_contents === types.contents.customized){
+    return `• 디지털 콘텐츠 특성상 콘텐츠를 받은 이후에는 단순 불만족 또는 변심으로 인한 환불이 불가능하니 유의해주세요.\n• 해당 콘텐츠상품은 콘텐츠 제작 전 크리에이터의 주문 승인이 필요하며 크리에이터의 정책 또는 의사에 따라 주문이 반려될 수 있습니다.\n• 주문 날짜로부터 7일 안에 승인이 안되거나 반려될 경우 결제 금액은 전액 환불됩니다.\n• 주문이 승인되기 전에는 구매자에 의한 주문 취소 및 환불이 가능합니다.\n• 크리에이터가 주문을 승인한 이후에는 취소 및 환불이 불가능합니다. 단, 주문 날짜로부터 14일 경과 후에도 콘텐츠를 제공받지 못한 경우에는 요청 시 주문 취소 후 결제 금액을 전액 환불해드립니다.\n• 콘텐츠상점을 통해 제공받은 모든 콘텐츠는 상품 설명에 별도로 명시되지 않은 이상 구매자가 크티 플랫폼 밖에서 상업적으로 이용할 수 없습니다.`;
+  }else{
+    return `• 디지털 콘텐츠 특성상 콘텐츠를 받은 이후에는 단순 불만족 또는 변심으로 인한 환불이 불가능하니 유의해주세요.\n• 해당 콘텐츠상품은 구매 완료 시점으로부터 60일 동안 횟수 제한없이 콘텐츠를 다운로드 받아 사용할 수 있습니다.\n• 즉시 다운로드 콘텐츠는 결제 이후 취소 및 환불이 불가능합니다. 단, 다운로드 받은 파일에 문제가 있는 경우 7일 이내에 고객센터 문의를 해주시면 처리해드립니다.\n• 콘텐츠상점을 통해 제공받은 모든 콘텐츠는 상품 설명에 별도로 명시되지 않은 이상 구매자가 크티 플랫폼 밖에서 상업적으로 이용할 수 없습니다.`;
+  }
 }
 
 router.post("/store/info", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
   const querySelect = mysql.format('SELECT item.type_contents, item.file_upload_state, item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE orders_item.id=?', store_order_id);
-
-  // const querySelect = mysql.format('SELECT item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?', store_order_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1537,7 +1538,7 @@ router.post("/store/info", function(req, res){
     const _state_string = getStateStringAttribute(data.state, null, null, null, null, null);
     let refundButtonText = '';
     let isRefund = false;
-    let refundPolicyText = getRefundPolicyStoreContent();
+    let refundPolicyText = getRefundPolicyStoreContent(data.type_contents);
     
     let _card_state_text = '';
     if(data.total_price === 0){
