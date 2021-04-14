@@ -1727,4 +1727,272 @@ router.post("/isadmin", function(req, res){
   })
 })
 
+router.post("/any/login/email/web", function(req, res){
+  var userEmail = req.body.data.email;
+  const saltRounds = 10 ;   
+  const myPlaintextPassword = req.body.data.password;
+  
+  if(userEmail === ""){
+    return res.json({
+      state: res_state.error,
+      message: "이메일을 입력해주세요",
+      result:{}
+    })
+  }
+
+  if(myPlaintextPassword === ""){
+    return res.json({
+      state: res_state.error,
+      message: "비밀번호를 입력해주세요",
+      result:{}
+    })
+  }
+
+  db.SELECT("SELECT email, password, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact FROM users WHERE email = BINARY(?)", [userEmail], function(result){
+      //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
+      
+      // var data = {
+      //   state : 'error',
+      //   message : 'none'
+      // };
+      
+      if(result.length <= 0)
+      {
+        return res.json({
+          result:{
+            state: res_state.success,
+            state_login: 'error',
+            message: '아이디가 없습니다. 아이디를 확인해주세요.',
+            sns_array: [],
+            data: {}
+          }
+        });
+      }
+
+      var user = result[0];
+
+      var finalNodeGeneratedHash = user.password;
+      if(finalNodeGeneratedHash.indexOf('$2y$') === 0)
+      {
+        finalNodeGeneratedHash = finalNodeGeneratedHash.replace('$2y$', '$2b$');
+      }
+
+      bcrypt.compare(myPlaintextPassword, finalNodeGeneratedHash, function(error, result){
+        if(result){
+          return res.json({
+            result:{
+              state: res_state.success,
+              state_login: 'success',
+              sns_array: [],
+              data: {
+                ...user
+              }
+              
+            }
+          });
+        }else{
+          // data.state = 'error';
+          // data.message = '비밀번호가 틀렸습니다.';
+
+          //혹시 sns로 가입되어 있는지 확인해준다.
+          let sns_array = [];
+          if(user.facebook_id === null && user.google_id === null && user.kakao_id === null && user.apple_id === null){
+            // _message = "비밀번호가 틀렸습니다."
+          }else{
+            // _message = "비밀번호가 틀렸습니다. 해당 이메일은";
+
+            if(user.kakao_id){
+              sns_array.push(types.login.kakao)
+            }
+
+            if(user.google_id){
+              sns_array.push(types.login.google)
+            }
+
+            if(user.facebook_id){
+              sns_array.push(types.login.facebook)
+            }
+  
+            // if(user.apple_id){
+            //   _message+= " 애플";
+            // }
+          }
+
+          return res.json({
+            result:{
+              state: res_state.success,
+              state_login: 'error',
+              message: '비밀번호가 틀렸습니다. 비밀번호를 확인해주세요',
+              sns_array: sns_array,
+              data: {
+                
+              }
+            }
+          });
+        }
+      });
+  });
+});
+
+router.post("/any/email/check/web", function(req, res){
+  const email = req.body.data.email;
+
+  let queryUser = mysql.format("SELECT id, email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
+
+  db.SELECT(queryUser, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '가입되어 있지 않는 이메일 입니다.',
+        result: {
+        }
+      })
+    }
+
+    const userData = result[0];
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  });
+});
+
+router.post("/any/check/email/sns/web", function(req, res){  
+  const email = req.body.data.email;
+
+  let queryUser = mysql.format("SELECT id, email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
+  db.SELECT(queryUser, {}, (result) => {
+    if(result.length === 0){
+      //없는 email
+      return res.json({
+        result: {
+          id: null,
+          state: res_state.success
+        }
+      })
+    }
+
+    const userData = result[0];
+    let sns_array = [];
+    if(userData.facebook_id){
+      sns_array.push(types.login.facebook);
+    }
+
+    if(userData.google_id){
+      sns_array.push(types.login.google);
+    }
+
+    if(userData.kakao_id){
+      sns_array.push(types.login.kakao);
+    }
+
+    return res.json({
+      result: {
+        id: userData.id,
+        state: res_state.success,
+        sns_array: sns_array
+      }
+    })
+    
+  })
+});
+
+router.post("/any/check/snsid", function(req, res){
+  const sns_id = req.body.data.sns_id;
+  const sns_type = req.body.data.sns_type;
+
+  let queryUser = '';
+  if(sns_type === 'FACEBOOK'){
+    queryUser = mysql.format("SELECT id FROM users WHERE facebook_id=?", sns_id);
+  }else if(sns_type === 'GOOGLE'){
+    queryUser = mysql.format("SELECT id FROM users WHERE google_id=?", sns_id);
+  }else if(sns_type === 'KAKAO'){
+    queryUser = mysql.format("SELECT id FROM users WHERE kakao_id=?", sns_id);
+  }
+
+  if(queryUser === ''){
+    return res.json({
+      state: res_state.error,
+      message: 'sns id 조회 에러',
+      result: {}
+    })
+  }
+
+  db.SELECT(queryUser, {}, (result) => {
+    if(result.length === 0){
+      //없는 email
+      return res.json({
+        result: {
+          id: null,
+          state: res_state.success
+        }
+      })
+    }
+
+    const userData = result[0];
+    return res.json({
+      result: {
+        id: userData.id,
+        state: res_state.success
+      }
+    })
+    
+  })
+})
+
+router.post("/any/email/join/check/web", function(req, res){
+  const email = req.body.data.email;
+
+  let queryUser = mysql.format("SELECT id, email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
+
+  db.SELECT(queryUser, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          id: null,
+          state: res_state.success,
+          sns_array: []
+        }
+      })
+    }
+
+    const user = result[0];
+
+    let sns_array = [];
+    if(user.facebook_id === null && user.google_id === null && user.kakao_id === null && user.apple_id === null){
+      // _message = "비밀번호가 틀렸습니다."
+    }else{
+      // _message = "비밀번호가 틀렸습니다. 해당 이메일은";
+
+      if(user.kakao_id){
+        sns_array.push(types.login.kakao)
+      }
+
+      if(user.google_id){
+        sns_array.push(types.login.google)
+      }
+
+      if(user.facebook_id){
+        sns_array.push(types.login.facebook)
+      }
+
+      // if(user.apple_id){
+      //   _message+= " 애플";
+      // }
+    }
+
+    return res.json({
+      // state: res_state.error,
+      // message: '이미 가입되어 있는 이메일 입니다.',
+      
+      result: {
+        state: res_state.success,
+        id: user.id,
+        sns_array: sns_array,
+      }
+    })
+  });
+});
+
 module.exports = router;
