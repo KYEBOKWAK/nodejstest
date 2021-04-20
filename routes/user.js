@@ -669,7 +669,7 @@ router.post("/any/register", function(req, res){
 
 router.post("/info", function(req, res){
   const user_id = req.body.data.user_id;
-  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, contact FROM users WHERE id=?", user_id);
+  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, gender, age, facebook_id, google_id, kakao_id, contact FROM users WHERE id=?", user_id);
   db.SELECT(queryMyInfo, {}, (result) => {
     return res.json({
       result: {
@@ -1994,5 +1994,246 @@ router.post("/any/email/join/check/web", function(req, res){
     })
   });
 });
+
+router.post("/info/update/web", function(req, res){
+  const user_id = req.body.data.user_id;
+  if(user_id === undefined || user_id === null){
+    return res.json({
+      state: res_state.error,
+      message: '유저 id가 없습니다. 새로고침 후 이용 바랍니다.',
+      result:{}
+    })
+  }
+  
+  let name = req.body.data.name;
+  let nick_name = req.body.data.nick_name;
+  let contact = req.body.data.contact;
+  let gender = req.body.data.gender;
+  let age = req.body.data.age;
+
+  const data = {
+    name: name,
+    nick_name: nick_name,
+    contact: contact,
+    gender: gender,
+    age: age
+  }
+
+  db.UPDATE("UPDATE users AS user SET ? WHERE user.id=?;", [data, user_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '유저 정보 업데이트 에러',
+      result: {}
+    })
+  })
+
+})
+
+router.post("/update/password", function(req, res){
+  const user_id = req.body.data.user_id;
+  // const name = req.body.data.name;
+  // const nick_name = req.body.data.nick_name;
+
+  const password_now = req.body.data.password_now;
+  const password_new = req.body.data.password_new;
+  const password_new_check = req.body.data.password_new_check;
+
+  //패스워드 값이 있을때
+  if(password_new !== password_new_check){
+    return res.json({
+      state: res_state.error,
+      message: '새 비밀번호가 일치하지 않습니다.',
+      result:{}
+    })
+  }
+
+  const myPlaintextPassword = password_now;
+  let querySelectUser = mysql.format("SELECT password FROM users WHERE id=?", user_id);
+  db.SELECT(querySelectUser, {}, function(result){
+    //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
+    var data = {
+      state : 'error',
+      message : 'none'
+    };
+    
+    if(result.length <= 0)
+    {
+      return res.json({
+        state: res_state.error,
+        message: "아이디가 존재하지 않습니다.",
+        result:{}
+      })
+    }
+
+    var user = result[0];
+
+    var finalNodeGeneratedHash = user.password;
+    if(finalNodeGeneratedHash.indexOf('$2y$') === 0)
+    {
+      finalNodeGeneratedHash = finalNodeGeneratedHash.replace('$2y$', '$2b$');
+    }
+
+    bcrypt.compare(myPlaintextPassword, finalNodeGeneratedHash, function(error, result){
+      if(result){
+
+        const saltRounds = 10 ;   
+        // const myPlaintextPassword = password_now ;   
+        const someOtherPlaintextPassword = ' not_bacon ' ;
+
+        bcrypt.hash(password_new, saltRounds, function(err, hash) {
+          // Store hash in your password DB.
+          let convertToPhpHash = hash;
+          if(convertToPhpHash.indexOf('$2b$') === 0)
+          {
+            convertToPhpHash = convertToPhpHash.replace('$2b$', '$2y$');
+          }            
+          
+          db.UPDATE("UPDATE users AS user SET password=? WHERE user.id=?", [convertToPhpHash, user_id], 
+          (result) => {
+            return res.json({
+              result:{
+                state: res_state.success
+              }
+            })
+          });
+        });
+      }else{
+        return res.json({
+          state: res_state.error,
+          message: '비밀번호가 틀렸습니다.',
+          result:{}
+        })
+      }
+    });
+  });
+});
+
+router.post("/update/sns/id/delete", function(req, res){
+  const user_id = req.body.data.user_id;
+  const sns_type = req.body.data.sns_type;
+
+  if(user_id === undefined || user_id === null || user_id === ''){
+    return res.json({
+      state: res_state.error,
+      message: '유저 정보 없음. 새로고침 후 다시 시도바랍니다.',
+      result:{}
+    })
+  }
+
+  let target_id = '';
+  if(sns_type === 'KAKAO'){
+    target_id = 'kakao_id';
+  }
+  else if(sns_type === 'GOOGLE'){
+    target_id = 'google_id';
+  }
+  else if(sns_type === 'FACEBOOK'){
+    target_id = 'facebook_id';
+  }
+
+  if(target_id === ''){
+    return res.json({
+      state: res_state.error,
+      message: 'sns type 오류',
+      result:{}
+    })
+  }
+
+  db.UPDATE(`UPDATE users AS user SET ${target_id}=? WHERE user.id=?`, [null, user_id], 
+  (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: 'user id 가 없음.',
+        result:{}
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: 'sns id update 해제 오류',
+      result:{}
+    })
+  })
+})
+
+router.post("/update/sns/id", function(req, res){
+  const user_id = req.body.data.user_id;
+  const sns_type = req.body.data.sns_type;
+  const sns_id = req.body.data.sns_id;
+
+  if(user_id === undefined || user_id === null || user_id === ''){
+    return res.json({
+      state: res_state.error,
+      message: '유저 정보 없음. 새로고침 후 다시 시도바랍니다.',
+      result:{}
+    })
+  }
+
+  let target_id = '';
+  if(sns_type === 'KAKAO'){
+    target_id = 'kakao_id';
+  }
+  else if(sns_type === 'GOOGLE'){
+    target_id = 'google_id';
+  }
+  else if(sns_type === 'FACEBOOK'){
+    target_id = 'facebook_id';
+  }
+
+  if(target_id === ''){
+    return res.json({
+      state: res_state.error,
+      message: 'sns type 오류',
+      result:{}
+    })
+  }
+
+  db.UPDATE(`UPDATE users AS user SET ${target_id}=? WHERE user.id=?`, [sns_id, user_id], 
+  (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: 'user id 가 없음.',
+        result:{}
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+
+  }, (error) => {
+    if(error.error_code === 'ER_DUP_ENTRY'){
+      return res.json({
+        state: res_state.error,
+        message: '이미 동기화된 계정이 있습니다. 해당 SNS로 로그인 해주세요.',
+        result:{}
+      })
+    }else{
+      return res.json({
+        state: res_state.error,
+        message: 'sns id update 오류',
+        result:{}
+      })  
+    }
+  })
+})
 
 module.exports = router;
