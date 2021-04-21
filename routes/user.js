@@ -669,7 +669,7 @@ router.post("/any/register", function(req, res){
 
 router.post("/info", function(req, res){
   const user_id = req.body.data.user_id;
-  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, gender, age, facebook_id, google_id, kakao_id, contact FROM users WHERE id=?", user_id);
+  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, gender, age, facebook_id, google_id, kakao_id, contact, is_withdrawal FROM users WHERE id=?", user_id);
   db.SELECT(queryMyInfo, {}, (result) => {
     return res.json({
       result: {
@@ -2235,5 +2235,75 @@ router.post("/update/sns/id", function(req, res){
     }
   })
 })
+
+router.post("/withdrawal", function(req, res){
+  const user_id = req.body.data.user_id;
+  const reason = req.body.data.reason;
+
+  if(user_id === undefined || user_id === null || user_id === ''){
+    return res.json({
+      state: res_state.error,
+      message: '유저 id 에러. 해당 문제가 지속될 경우 크티에 연락주세요!',
+      result:{}
+    })
+  }
+
+  var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  var withdrawal = {
+    user_id : user_id,
+    reason : reason,
+    created_at : date,
+  };
+
+  
+  db.INSERT("INSERT INTO withdrawals SET ? ", withdrawal, function(result){
+
+    const userInfo = {
+      email: `delete_${user_id}`,
+      facebook_id: null,
+		  google_id: null,
+		  kakao_id: null,
+		  apple_id: null,
+
+		  name: '',
+		  nick_name: '',
+		  contact: '',
+      age: null,
+      gender: null,
+      profile_photo_url: null,
+      profile_photo_s3_key: null,
+      bank: '',
+      account: '',
+      account_holder: '',
+      introduce: '',
+      updated_at: date,
+      is_withdrawal: true
+    }
+
+
+
+    db.UPDATE("UPDATE users AS user SET ? WHERE user.id=?;", [userInfo, user_id], function(result_update_user){
+      return res.json({
+        result:{
+          state: res_state.success
+        }
+      })
+    }, (error_user) => {
+      return res.json({
+        state: res_state.error,
+        message: '유저정보 초기화 실패',
+        result:{}
+      })
+    });
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '탈퇴 사유 셋팅 에러',
+      result:{}
+    })
+  });
+
+});
 
 module.exports = router;
