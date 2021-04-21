@@ -2248,62 +2248,71 @@ router.post("/withdrawal", function(req, res){
     })
   }
 
-  var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-
-  var withdrawal = {
-    user_id : user_id,
-    reason : reason,
-    created_at : date,
-  };
-
-  
-  db.INSERT("INSERT INTO withdrawals SET ? ", withdrawal, function(result){
-
-    const userInfo = {
-      email: `delete_${user_id}`,
-      facebook_id: null,
-		  google_id: null,
-		  kakao_id: null,
-		  apple_id: null,
-
-		  name: '',
-		  nick_name: '',
-		  contact: '',
-      age: null,
-      gender: null,
-      profile_photo_url: null,
-      profile_photo_s3_key: null,
-      bank: '',
-      account: '',
-      account_holder: '',
-      introduce: '',
-      updated_at: date,
-      is_withdrawal: true
-    }
-
-
-
-    db.UPDATE("UPDATE users AS user SET ? WHERE user.id=?;", [userInfo, user_id], function(result_update_user){
-      return res.json({
-        result:{
-          state: res_state.success
-        }
-      })
-    }, (error_user) => {
+  //상점주 인지 확인한다.
+  const querySelect = mysql.format("SELECT id FROM stores WHERE user_id=?", [user_id]);
+  db.SELECT(querySelect, {}, (result_store) => {
+    if(result_store.length > 0){
       return res.json({
         state: res_state.error,
-        message: '유저정보 초기화 실패',
+        message: '회원님은 상점주 이십니다. 탈퇴를 원하시면 고객센터로 문의 바랍니다.',
+        result: {}
+      })
+    }
+
+    var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+    var withdrawal = {
+      user_id : user_id,
+      reason : reason,
+      created_at : date,
+    };
+
+    db.INSERT("INSERT INTO withdrawals SET ? ", withdrawal, function(result){
+
+      const userInfo = {
+        email: `delete_${user_id}`,
+        facebook_id: null,
+        google_id: null,
+        kakao_id: null,
+        apple_id: null,
+
+        name: '',
+        nick_name: '',
+        contact: '',
+        age: null,
+        gender: null,
+        profile_photo_url: null,
+        profile_photo_s3_key: null,
+        bank: '',
+        account: '',
+        account_holder: '',
+        introduce: '',
+        updated_at: date,
+        is_withdrawal: true
+      }
+
+
+
+      db.UPDATE("UPDATE users AS user SET ? WHERE user.id=?;", [userInfo, user_id], function(result_update_user){
+        return res.json({
+          result:{
+            state: res_state.success
+          }
+        })
+      }, (error_user) => {
+        return res.json({
+          state: res_state.error,
+          message: '유저정보 초기화 실패',
+          result:{}
+        })
+      });
+    }, (error) => {
+      return res.json({
+        state: res_state.error,
+        message: '탈퇴 사유 셋팅 에러',
         result:{}
       })
     });
-  }, (error) => {
-    return res.json({
-      state: res_state.error,
-      message: '탈퇴 사유 셋팅 에러',
-      result:{}
-    })
-  });
-
+  })
 });
 
 module.exports = router;
