@@ -1939,7 +1939,7 @@ router.post("/notice/list", function(req, res){
 router.post("/order/new/list", function(req, res){
   const store_id = req.body.data.store_id;
 
-  const selectQuery = mysql.format("SELECT orders_item.created_at, orders_item.id AS store_order_id, item.title, item.price, item.img_url FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=?", [store_id, Types.order.ORDER_STATE_APP_STORE_PAYMENT]);
+  const selectQuery = mysql.format("SELECT orders_item.created_at, orders_item.id AS store_order_id, item.title, item.price, item.img_url FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? ORDER BY orders_item.id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_PAYMENT]);
 
   db.SELECT(selectQuery, {}, (result) => {
     return res.json({
