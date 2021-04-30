@@ -28,13 +28,23 @@ router.post('/any/sub/list', function(req, res){
 
   let querySelect = '';
   if(category_top_id === 0){
-    querySelect = mysql.format("SELECT id, title FROM category_sub_items");
+    querySelect = mysql.format("SELECT id, title FROM category_sub_items WHERE title<>'기타'");
   }else{
     querySelect = mysql.format("SELECT id, title FROM category_sub_items WHERE category_top_id=? ORDER BY order_number", [category_top_id]);
   }
    
   
   db.SELECT(querySelect, {}, (result) => {
+
+    if(category_top_id === 0){
+      //기타 data
+      const data = {
+        id: Types.category_total_etc_id, //전체 카테고리의 기타는 하나만 묶여서 보여야 함.. 9999로 별도 처리
+        title: '기타'
+      }
+      result.push(data);
+    }
+
     return res.json({
       result: {
         state: res_state.success,
@@ -148,72 +158,6 @@ router.post('/any/items/list', function(req, res){
   })
 });
 
-/*
-router.post('/any/items/list', function(req, res){
-  let limit = req.body.data.limit;
-  let skip = req.body.data.skip;
-
-  const category_top_item_id = req.body.data.category_top_item_id;
-  const category_sub_item_ids = req.body.data.category_sub_item_ids;
-
-  const contents_filter_selects = req.body.data.contents_filter_selects;
-  const contents_sort_select_type = req.body.data.contents_sort_select_type;
-
-  // let queryString = ""
-  let query_category_top_item_id = ''
-  let query_category_sub_item_ids = '';
-
-  let query_category_filter_selects = '';
-
-  let datas = [Types.store.STATE_APPROVED, Types.item_state.SALE_STOP];
-  if(category_top_item_id === 0){
-    query_category_top_item_id = '';
-  }
-  else{
-    query_category_top_item_id = 'AND item.category_top_item_id=?';
-    datas.push(category_top_item_id);
-  }
-
-  if(category_sub_item_ids.length === 0){
-    query_category_sub_item_ids = '';
-  }else{
-    query_category_sub_item_ids = 'AND item.category_sub_item_id IN (?)';
-    datas.push(category_sub_item_ids);
-  }
-
-  if(contents_filter_selects.length === 0){
-    query_category_filter_selects = '';
-  }else{
-    let filter_selects = [];
-    for(let i = 0 ; i < contents_filter_selects.length ; i++){
-      const data = contents_filter_selects[i];
-      filter_selects.push(data.type);
-    }
-    query_category_filter_selects = 'AND item.product_category_type IN (?)';
-
-    datas.push(filter_selects);
-  }
-    
-  datas.push(limit);
-  datas.push(skip);
-
-  const querySelect = mysql.format(`SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE store.state=? AND item.state<>? ${query_category_top_item_id} ${query_category_sub_item_ids} ${query_category_filter_selects} AND item.category_top_item_id IS NOT NULL AND item.category_sub_item_id IS NOT NULL GROUP BY item.id ORDER BY item.id DESC LIMIT ? OFFSET ?`, datas);
-
-  // if(contents_sort_select_type === Types.sort_category.SORT_POPULAR){
-
-  // }
-
-  db.SELECT(querySelect, {}, (result) => {
-    return res.json({
-      result: {
-        state: res_state.success,
-        list: result
-      }
-    })
-  })
-});
-*/
-
 router.post('/any/store/list', function(req, res){
   let limit = req.body.data.limit;
   let skip = req.body.data.skip;
@@ -253,10 +197,10 @@ router.post('/any/store/list', function(req, res){
     query_order_by = 'ORDER BY item.id DESC';
   }
   else if(creator_sort_select_type === Types.sort_category.SORT_NAME_HIGH){
-    query_order_by = 'ORDER BY store.title DESC';
+    query_order_by = 'ORDER BY store.title';
   }
   else if(creator_sort_select_type === Types.sort_category.SORT_NAME_LOW){
-    query_order_by = 'ORDER BY store.title';
+    query_order_by = 'ORDER BY store.title DESC';
   }
   else{
     query_order_by = 'ORDER BY item.id DESC';
