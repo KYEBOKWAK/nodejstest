@@ -915,6 +915,11 @@ router.post('/store/schedule', function(req, res){
         created_at: date,
         updated_at: date
     }
+
+    return res.json({
+        state: res_state.error,
+        message: '지원하지 않는 기능입니다. 해당 현상이 반복된다면 크티에 연락바랍니다.'
+    })
     
     db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
         const item_order_id = result_insert_orders_items.insertId;
@@ -1276,6 +1281,21 @@ router.post('/store/onetime', function(req, res){
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
     const merchant_uid = Util.getPayStoreNewMerchant_uid(store_id, user_id);
 
+    let total_price_usd = _data.total_price_usd;
+    if(total_price_usd === undefined || total_price_usd === null){
+        total_price_usd = 0;
+    }
+
+    let price_usd = _data.price_usd;
+    if(price_usd === undefined || price_usd === null){
+        price_usd = 0;
+    }
+
+    let currency_code = _data.currency_code;
+    if(currency_code === undefined){
+        currency_code = types.currency_code.Won;
+    }
+
     // const item_price = _data.item_price;
 
     const insertOrderItemData = {
@@ -1285,7 +1305,10 @@ router.post('/store/onetime', function(req, res){
         state: types.order.ORDER_STATE_STAY,
         count: 1,
         price: total_price,
+        price_USD: price_usd,
         total_price: total_price,
+        total_price_USD: total_price_usd,
+        currency_code: currency_code,
         name: name,
         contact: contact,
         email: email,
@@ -1517,6 +1540,21 @@ router.post("/store/isp/iamport", function(req, res){
 
     const merchant_uid = _data.merchant_uid;
 
+    let currency_code = _data.currency_code;
+    if(currency_code === undefined){
+        currency_code = types.currency_code.Won;
+    }
+
+    let total_price_usd = _data.total_price_usd;
+    if(total_price_usd === undefined || total_price_usd === null){
+        total_price_usd = 0;
+    }
+
+    let price_usd = _data.price_usd;
+    if(price_usd === undefined || price_usd === null){
+        price_usd = 0;
+    }
+
     const insertOrderItemData = {
         store_id: store_id,
         item_id: item_id,
@@ -1524,7 +1562,9 @@ router.post("/store/isp/iamport", function(req, res){
         state: types.order.ORDER_STATE_APP_STORE_STANBY,
         count: 1,
         price: total_price,
+        price_USD: price_usd,
         total_price: total_price,
+        total_price_USD: total_price_usd,
         name: name,
         contact: contact,
         email: email,
@@ -1532,6 +1572,7 @@ router.post("/store/isp/iamport", function(req, res){
         merchant_uid: merchant_uid,
         pay_method: pay_method,
         // imp_uid: imp_uid,
+        currency_code: currency_code,
         created_at: date,
         updated_at: date
     }

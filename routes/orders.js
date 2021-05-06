@@ -1522,7 +1522,7 @@ function getRefundPolicyStoreContent(type_contents){
 router.post("/store/info", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
-  const querySelect = mysql.format('SELECT item.type_contents, item.file_upload_state, item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE orders_item.id=?', store_order_id);
+  const querySelect = mysql.format('SELECT orders_item.total_price_USD, item.price_USD, item.currency_code, item.type_contents, item.file_upload_state, item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE orders_item.id=?', store_order_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1647,7 +1647,7 @@ router.post("/store/cancel", function(req, res){
   const user_id = req.body.data.user_id;
   const order_user_id = req.body.data.order_user_id;
   
-  const querySelect = mysql.format("SELECT serializer_uid, merchant_uid, orders_item.user_id, orders_item.total_price, orders_item.state FROM orders_items AS orders_item WHERE orders_item.id=?", [store_order_id]);
+  const querySelect = mysql.format("SELECT orders_item.total_price_USD, orders_item.currency_code, serializer_uid, merchant_uid, orders_item.user_id, orders_item.total_price, orders_item.state FROM orders_items AS orders_item WHERE orders_item.id=?", [store_order_id]);
 
   // const querySelect = mysql.format("SELECT merchant_uid, user_id, total_price FROM orders AS _order WHERE _order.id=?", [order_id]);
   db.SELECT(querySelect, {}, (result_select_order) => {
@@ -1679,7 +1679,14 @@ router.post("/store/cancel", function(req, res){
     }
     
 
-    if(orderData.total_price > 0){
+    let merchant_uid = orderData.merchant_uid;
+    let amount = orderData.total_price;
+
+    if(orderData.currency_code === types.currency_code.US_Dollar){
+      amount = orderData.total_price_USD;
+    }
+
+    if(amount > 0){
       if(orderData.serializer_uid && orderData.serializer_uid === 'scheduled'){
         // const customer_uid = Util.getPayNewCustom_uid(user_id);
         // iamport.subscribe.unschedule({
@@ -1710,8 +1717,8 @@ router.post("/store/cancel", function(req, res){
         // })
       }else{
         iamport.payment.cancel({
-          merchant_uid: orderData.merchant_uid,
-          amount: orderData.total_price
+          merchant_uid: merchant_uid,
+          amount: amount
         }).then(function(result_iamport){
           db.UPDATE("UPDATE orders_items AS orders_item SET orders_item.state=? WHERE orders_item.id=?", [types.order.ORDER_STATE_CANCEL, store_order_id], 
           (result_order_update) => {
