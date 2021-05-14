@@ -458,16 +458,18 @@ payStoreComplite = (req, res, serializer_uid) => {
 
         let down_expired_at = null;
         let product_answer = null;
+        let confirm_at = null;
         if(orderData.type_contents === types.contents.completed){
             down_expired_at = moment_timezone().add(59, 'days').format('YYYY-MM-DD 23:59:59');
             product_answer = orderData.completed_type_product_answer;
+            confirm_at = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
         }
 
         if(orderData.total_price === 0){
             //결제금액 0원
             const orderState = getStoreOrderStateCheckIamportState('paid', orderData.type_contents);
 
-            db.UPDATE("UPDATE orders_items AS _order SET product_answer=?, down_expired_at=?, state=? WHERE id=?", [product_answer, down_expired_at, orderState, orderData.id], 
+            db.UPDATE("UPDATE orders_items AS _order SET confirm_at=?, product_answer=?, down_expired_at=?, state=? WHERE id=?", [confirm_at, product_answer, down_expired_at, orderState, orderData.id], 
             (result_order_update) => {
                 // console.log(result_order_update);
                 if(!result_order_update){
@@ -504,7 +506,7 @@ payStoreComplite = (req, res, serializer_uid) => {
 
                 _imp_meta = JSON.stringify(_imp_meta);
 
-                db.UPDATE("UPDATE orders_items AS _order SET product_answer=?, down_expired_at=?, state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [product_answer, down_expired_at, orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
+                db.UPDATE("UPDATE orders_items AS _order SET confirm_at=?, product_answer=?, down_expired_at=?, state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [confirm_at, product_answer, down_expired_at, orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
                 (result_order_update) => {
                     console.log(result_order_update);
                     if(!result_order_update){
@@ -548,7 +550,7 @@ payStoreComplite = (req, res, serializer_uid) => {
     
                         _imp_meta = JSON.stringify(_imp_meta);
         
-                        db.UPDATE("UPDATE orders_items AS _order SET product_answer=?, down_expired_at=?, state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [product_answer, down_expired_at, orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
+                        db.UPDATE("UPDATE orders_items AS _order SET confirm_at=?, product_answer=?, down_expired_at=?, state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [confirm_at, product_answer, down_expired_at, orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
                         (result_order_update) => {
                             // console.log(result_order_update);
                             if(!result_order_update){
