@@ -1188,11 +1188,11 @@ router.post("/channels/update", function(req, res){
 router.post("/item/state/check", function(req, res){
   const store_item_id = req.body.data.store_item_id;
 
-  return res.json({
-    state: res_state.error,
-    message: '주문량이 많아 결제가 지연 되고 있습니다. 잠시 후에 시도해주세요.',
-    result: {}
-  })
+  // return res.json({
+  //   state: res_state.error,
+  //   message: '주문량이 많아 결제가 지연 되고 있습니다. 잠시 후에 시도해주세요.',
+  //   result: {}
+  // })
 
   const querySelect = mysql.format("SELECT state FROM items WHERE id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
