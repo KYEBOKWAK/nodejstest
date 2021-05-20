@@ -138,7 +138,19 @@ router.post('/any/detail/item/list', function(req, res){
   let skip = req.body.data.skip;
   let store_id = req.body.data.store_id;
 
-  let querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL ORDER BY item.order_number LIMIT ? OFFSET ?", [store_id, Types.item_state.SALE_STOP, limit, skip]);
+  let language_code = req.body.data.language_code;
+  if(language_code === undefined){
+    language_code = 'kr'
+  }
+
+  let currency_code = Types.currency_code.Won;
+  if(language_code === 'kr'){
+    currency_code = Types.currency_code.Won;
+  }else{
+    currency_code = Types.currency_code.US_Dollar;
+  }
+
+  let querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL  AND currency_code=? ORDER BY item.order_number LIMIT ? OFFSET ?", [store_id, Types.item_state.SALE_STOP, currency_code, limit, skip]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
