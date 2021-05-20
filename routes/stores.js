@@ -1783,7 +1783,20 @@ router.post("/any/item/other/get", function(req, res){
   const store_id = req.body.data.store_id;
   const item_id = req.body.data.item_id;
 
-  const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id=? AND id<>? AND state=?", [store_id, item_id, Types.item_state.SALE])
+
+  let language_code = req.body.data.language_code;
+  if(language_code === undefined){
+    language_code = 'kr'
+  }
+
+  let currency_code = Types.currency_code.Won;
+  if(language_code === 'kr'){
+    currency_code = Types.currency_code.Won;
+  }else{
+    currency_code = Types.currency_code.US_Dollar;
+  }
+
+  const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id=? AND id<>? AND state=? AND currency_code=?", [store_id, item_id, Types.item_state.SALE, currency_code])
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result: {
