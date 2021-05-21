@@ -1514,7 +1514,7 @@ function senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_
             return;
         }
 
-        this.sendStoreOrderNineAMEvent(item_order_id);
+        // this.sendStoreOrderNineAMEvent(item_order_id);
 
         this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
 
@@ -1769,7 +1769,7 @@ router.post('/store/send/message', function(req, res){
 
         
 
-        this.sendStoreOrderNineAMEvent(store_order_id);
+        // this.sendStoreOrderNineAMEvent(store_order_id);
 
         this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
 
