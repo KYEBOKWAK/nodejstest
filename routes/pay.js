@@ -1747,6 +1747,8 @@ router.post('/store/send/message', function(req, res){
 
         const data = result[0];
 
+        this.sendSlackAlim(store_order_id);
+
         if(data.type_contents === types.contents.completed){
             return res.json({
                 result: {
