@@ -30,6 +30,16 @@ var iamport = new Iamport({
 app.use(express.json())
 app.use(cors());
 
+//slack
+var Slack = require('slack-node');
+ 
+webhookUri = process.env.CROWDTICKET_SLACK_WEBHOOK_URI;
+ 
+slack = new Slack();
+slack.setWebhook(webhookUri);
+////////////
+
+
 const PAY_SERIALIZER_ONETIME = "onetime"
 const PAY_SERIALIZER_SCHEDULE = "scheduled"
 
@@ -1499,6 +1509,7 @@ function senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_
         }
 
         const data = result[0];
+        this.sendSlackAlim(item_order_id);
         if(data.type_contents === types.contents.completed){
             return;
         }
@@ -1513,8 +1524,26 @@ function senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_
 
         this.sendStoreOrderCompliteKakaoAlim(item_order_id);
     })
+}
 
-    
+sendSlackAlim = (item_order_id) => {
+    const querySelect = mysql.format("SELECT orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", item_order_id);
+  
+    db.SELECT(querySelect, {}, (result) => {
+      if(!result || result.length === 0){
+        return;
+      }
+      
+      const data = result[0];  
+      
+      slack.webhook({
+        channel: "#결제알림",
+        username: "알림bot",
+        text: `점주명: ${data.creator_name}\n상품명: ${data.item_title}\n금액: ${data.item_price}\n주문자명: ${data.customer_name}`
+      }, function(err, response) {
+        console.log(err);
+      });
+    })
 }
 
 router.post("/store/isp/iamport", function(req, res){
