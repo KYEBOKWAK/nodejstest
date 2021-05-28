@@ -1960,7 +1960,7 @@ router.post("/ticket/showdate", function(req, res){
 
 router.post("/any/info", function(req, res){
   const project_id = req.body.data.project_id;
-  const querySelect = mysql.format("SELECT project.user_id, title, project_type, temporary_date, city.name AS city_name, poster_renew_url, poster_url, description, alias, funding_closing_at FROM projects AS project LEFT JOIN cities AS city ON city.id=project.city_id WHERE project.id=? GROUP BY project.id", [project_id]);
+  const querySelect = mysql.format("SELECT project.id AS project_id, project.user_id, title, project_type, temporary_date, city.name AS city_name, poster_renew_url, poster_url, description, alias, funding_closing_at FROM projects AS project LEFT JOIN cities AS city ON city.id=project.city_id WHERE project.id=? GROUP BY project.id", [project_id]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
