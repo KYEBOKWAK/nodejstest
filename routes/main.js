@@ -265,6 +265,20 @@ router.post('/any/thumbnails/event/list', function(req, res){
   })
 });
 
+router.post('/any/thumbnails/fanevent/list', function(req, res){
+
+  const querySelect = mysql.format("SELECT id, target_id, first_text FROM main_thumbnails AS main_thumbnail WHERE main_thumbnail.type=?", [Types.thumbnails.fan_events]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
 router.post('/any/thumbnails/updates/list', function(req, res){
   const querySelect = mysql.format("SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.state=? AND store.state=? ORDER BY item.updated_at DESC LIMIT ?", [Types.item_state.SALE, Types.project.STATE_APPROVED, 8]);
 
@@ -425,5 +439,21 @@ router.post('/any/items/count', function(req, res){
     })
   })
 })
+
+router.post('/any/projects', function(req, res){
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+
+  const querySelect = mysql.format("SELECT project.id AS project_id FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.state=? AND project.is_secret=? AND event_type_sub<>? GROUP BY project.id ORDER BY project.funding_closing_at DESC LIMIT ? OFFSET ?", [Types.project.STATE_APPROVED, false, Types.project.EVENT_TYPE_SUB_SECRET_PROJECT, limit, skip]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
 
 module.exports = router;
