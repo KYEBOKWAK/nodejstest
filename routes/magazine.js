@@ -91,5 +91,17 @@ router.post("/any/list", function(req, res){
   });
 });
 
+router.post("/any/list/hidden", function(req, res){
+  const querySelect = mysql.format("SELECT id, title, subtitle, thumb_img_url FROM magazines WHERE is_open=? ORDER BY id DESC", [false]);
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  });
+});
+
 
 module.exports = router;
