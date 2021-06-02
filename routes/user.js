@@ -2301,7 +2301,9 @@ router.post("/withdrawal", function(req, res){
         account_holder: '',
         introduce: '',
         updated_at: date,
-        is_withdrawal: true
+        is_withdrawal: true,
+        inactive_at: null,
+        inactive: false
       }
 
 
