@@ -2334,6 +2334,12 @@ router.post("/store/owner/check", function(req, res){
           state: res_state.success
         }
       })
+    }else if(user_id === 2){
+      return res.json({
+        result: {
+          state: res_state.success
+        }
+      })
     }
 
     return res.json({
