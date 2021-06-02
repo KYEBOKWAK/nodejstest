@@ -2539,67 +2539,16 @@ function storeConfirmAutoOneToOneCheck(){
       // })
     })
   })
+}
 
-  /*
-  const querySelect = mysql.format("SELECT orders_item.name AS customer_name, orders_item.contact, select_time, store.title AS creator_name, item.title AS item_title, store_order_id FROM event_play_times AS event_play_time LEFT JOIN orders_items AS orders_item ON event_play_time.store_order_id=orders_item.id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE event_play_time.select_time IS NOT NULL AND orders_item.state=?", [Types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
-
-  db.SELECT(querySelect, {}, (result) => {
-    if(result.length === 0){
-      return;
-    }
-
-    let _dataUpdateQueryArray = [];
-    let _dataUpdateOptionArray = [];
-
-    const nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
-    const date = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
-
-    for(let i = 0 ; i < result.length ; i++){
-      const data = result[i];
-
-      const afterHourTime = moment_timezone(data.select_time).add(TIME_DUE_AUTO_CONFIRM_DAY, 'days').format("YYYY-MM-DD HH:mm:00");
-
-      if(nowDate === afterHourTime){
-        let object = [{
-          state: Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE,
-          confirm_at: date,
-          updated_at: date
-        }, 
-        data.store_order_id];
-    
-        let queryObject = {
-          key: i,
-          value: "UPDATE orders_items SET ? WHERE id=?;"
-        }
-    
-        let updateDataObject = {
-          key: i,
-          value: object
-        }
-    
-        _dataUpdateQueryArray.push(queryObject);
-        _dataUpdateOptionArray.push(updateDataObject);
-      } 
-    }
-    
-    if(_dataUpdateQueryArray.length === 0){
-      return;
-    }
-
-    db.UPDATE_MULITPLEX(_dataUpdateQueryArray, _dataUpdateOptionArray, (result) => {
-      return;
-    }, (error) => {
-      console.log("STATE 1:1 고객 확인 업데이트 오류");
-      return;
-      // return res.json({
-      //   state: res_state.error,
-      //   message: '업데이트 실패',
-      //   result:{}
-      // })
-    })
-
+function inactiveUserCheck(){
+  //휴면 계정으로 만들어주는 쿼리
+  const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+  db.UPDATE("UPDATE users SET inactive=? WHERE inactive=? AND inactive_at<=? AND is_withdrawal=? AND inactive_at IS NOT NULL", [true, false, nowDate, false], (result) => {
+    return;
+  }, (error) => {
+    console.log('#### 휴면 유저 셋팅 에러');
   })
-  */
 }
 
 cron.schedule('* * * * *', function(){
@@ -2621,6 +2570,8 @@ cron.schedule('* * * * *', function(){
 
   //1:1 콘텐츠 자동 확인
   storeConfirmAutoOneToOneCheck();
+
+  inactiveUserCheck();
 });
 
 cron.schedule('0 0 * * Mon', function(){

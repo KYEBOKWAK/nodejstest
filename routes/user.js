@@ -29,7 +29,7 @@ const sgMail = require('@sendgrid/mail');
 const { default: Axios } = require('axios');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const EXPIRE_REFRESH_TOKEN = '7d';
+const EXPIRE_REFRESH_TOKEN = '365d';
 const EXPIRE_ACCESS_TOKEN = '1h';
 
 /*
@@ -198,6 +198,7 @@ router.post("/any/login", function(req, res){
   
         //insert db start
         var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+        const inactive_at = moment_timezone(date).add(1, 'years').format('YYYY-MM-DD HH:mm:ss');
   
         var refreshTokenObject = {
           user_id : user.id,
@@ -208,16 +209,29 @@ router.post("/any/login", function(req, res){
           updated_at: date
         };
   
-        
-        db.INSERT("INSERT INTO devices SET ? ", refreshTokenObject, function(result){
-          makeAccessToken(user.id, data, res);
-        }, (error) => {
+        let updateUserInfo = {
+          updated_at: date,
+          inactive_at: inactive_at,
+          inactive: false//이건 추후 ui 붙일때 조건으로 작업 해야함 일단 로그인하면 무조건 false 만들게 수정
+        }
+
+        db.UPDATE("UPDATE users SET ? WHERE id=?", [updateUserInfo, user_id], (result_user_update) => {
+          db.INSERT("INSERT INTO devices SET ? ", refreshTokenObject, function(result){
+            makeAccessToken(user.id, data, res);
+          }, (error) => {
+            return res.json({
+              state: res_state.error,
+              message: error,
+              result:{}
+            })
+          });
+        }, (result_user_update_error) => {
           return res.json({
             state: res_state.error,
-            message: error,
+            message: '유저 정보 업데이트 오류',
             result:{}
           })
-        });
+        })
       }
     });
   })
