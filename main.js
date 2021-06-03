@@ -687,24 +687,33 @@ app.post("/any/call/certify/number", function(req, res){
           })
         }else{
           let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
-          Global_Func.sendSMS(contact, content, (result) => {
-              // console.log(result);
-              if(result.status === '200'){
-                  return res.json({
-                      result:{
-                          state: res_state.success,
-                          waitSec: _result.expire
-                      }
-                  })
-              }else{
-                  return res.json({
-                      state: 'error',
-                      message: '인증번호 전송 오류',
-                      result:{
-                      }
-                  })
-              }
-          })
+
+          console.log(content);
+          return res.json({
+            result:{
+                state: res_state.success,
+                waitSec: _result.expire
+            }
+        })
+
+          // Global_Func.sendSMS(contact, content, (result) => {
+          //     // console.log(result);
+          //     if(result.status === '200'){
+          //         return res.json({
+          //             result:{
+          //                 state: res_state.success,
+          //                 waitSec: _result.expire
+          //             }
+          //         })
+          //     }else{
+          //         return res.json({
+          //             state: 'error',
+          //             message: '인증번호 전송 오류',
+          //             result:{
+          //             }
+          //         })
+          //     }
+          // })
         }
       }
     }
