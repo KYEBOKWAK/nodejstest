@@ -1941,29 +1941,6 @@ sendStoreApproveSMSOrderUser = (store_order_id) => {
     }
     
   })
-
-  /*
-  const querySelect = mysql.format("SELECT contact FROM orders_items WHERE id=?", store_order_id);
-
-  db.SELECT(querySelect, {}, (result) => {
-    if(!result || result.length === 0){
-      return;
-    }
-    
-    const data = result[0];
-    if(!data.contact || data.contact === ''){
-        return;
-    }
-
-    
-    const content = '[크티] 크리에이터가 요청된 콘텐츠 준비를 시작했습니다! 상세내용은 웹사이트에서 확인하세요.';
-    Global_Func.sendSMS(data.contact, content, (result) => {
-
-    })
-    
-
-  })
-  */
 }
 
 sendStoreRelayCustomerEmailOrderUser = (store_order_id) => {
@@ -2008,11 +1985,6 @@ sendStoreRelayCustomerSMSOrderUser = (store_order_id) => {
         return;
     }
 
-    // const content = `[크티] 주문하신 콘텐츠가 도착했습니다!  '나의 콘텐츠' 에서 확인해보세요!`;
-    // Global_Func.sendSMS(data.contact, content, (result) => {
-
-    // })
-
     let _order_url = 'crowdticket.kr';
     if(process.env.APP_TYPE === 'local'){
     _order_url = 'localhost:8000';
@@ -2034,29 +2006,6 @@ sendStoreRelayCustomerSMSOrderUser = (store_order_id) => {
       content_url: _order_url
     })
   })
-
-  /*
-  const querySelect = mysql.format("SELECT contact FROM orders_items WHERE id=?", store_order_id);
-
-  db.SELECT(querySelect, {}, (result) => {
-    if(!result || result.length === 0){
-      return;
-    }
-    
-    const data = result[0];
-    if(!data.contact || data.contact === ''){
-        return;
-    }
-
-    
-    const content = '[크티] 크리에이터가 요청된 콘텐츠 준비를 시작했습니다! 상세내용은 웹사이트에서 확인하세요.';
-    Global_Func.sendSMS(data.contact, content, (result) => {
-
-    })
-    
-
-  })
-  */
 }
 
 const TIME_DUE_AUTO_CONFIRM_DAY = 3;//자동 확인 대기 시간 3일
@@ -2074,11 +2023,6 @@ sendStorePlayingCompliteSMSOrderUser = (store_order_id) => {
     if(!data.contact || data.contact === ''){
         return;
     }
-
-    // const content = `[크티] 주문하신 콘텐츠가 도착했습니다!  '나의 콘텐츠' 에서 확인해보세요!`;
-    // Global_Func.sendSMS(data.contact, content, (result) => {
-
-    // })
 
     let _order_url = 'crowdticket.kr';
     if(process.env.APP_TYPE === 'local'){

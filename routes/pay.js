@@ -1094,27 +1094,6 @@ sendStoreMasterSMSOrder = (store_id, item_title, total_price, name) => {
             requested_at: _requested_at,
         })
     })
-
-    /*
-    const querySelect = mysql.format("SELECT contact FROM stores AS store WHERE store.id=?", store_id);
-
-    db.SELECT(querySelect, {}, (result) => {
-        if(result.length === 0){
-            return;
-        }
-
-        const data = result[0];
-
-        if(!data.contact || data.contact === ''){
-            return;
-        }
-
-        const content = '[크티] 콘텐츠 요청이 들어왔습니다. 크티 웹사이트에서 요청을 승인해주세요.'
-        Global_Func.sendSMS(data.contact, content, (result) => {
-
-        })
-    })
-    */
 }
 
 sendStoreOrderNineAMEvent = (store_order_id) => {

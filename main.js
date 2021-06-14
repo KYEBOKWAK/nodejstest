@@ -1,6 +1,7 @@
 const exprieTimeMS = 60000;
 // const phoneRandNumExpire = 180;
 const phoneRandNumExpire = 180;
+// const phoneRandNumExpire = 30;
 
 
 const EXPIRE_REFRESH_TOKEN = '365d';
@@ -86,13 +87,7 @@ var iamport = new Iamport({
 
 process.setMaxListeners(15);
 /////상단 새로운 코드 START////
-// const bodyParser = require('body-parser');
 
-//app.use('/main', main);
-/////상단 새로운 코드 END////
-//const redis = require('redis');
-//redis 세션관리
-//var client = redis.createClient(process.env.REDIS_PORT, process.env.REDIS_URL);
 app.use(express.json({ limit : "50mb" }));
 
 // app.use(bodyParser.json());
@@ -101,23 +96,7 @@ app.use(cors());
 // app.use(express.json({ limit : "50mb" }));
 // app.use(express.urlencoded({ limit:"50mb", extended: false }));
 
-//middleware start
-/*
-app.use('/user', function(req, res, next){
-  console.log('middel');
-  const token = req.headers['x-access-token'] || req.query.token;
-  // token does not exist
-  if(!token || token === 'undefined') {
-    console.log('ttt');
-    return res.send({
-        state: 'error',
-        message: '토큰 정보가 없음'
-    });
-  }
-
-  next();
-});
-*/
+//middleware star
 //middleware end
 
 //여기서부터 새로운 코드 간다!! START
@@ -538,72 +517,6 @@ app.post('/any/init', function(req, res){
       }
     });
   }
-
-  /*
-  let userInfoQuery = "SELECT email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
-  userInfoQuery = mysql.format(userInfoQuery, req.body.data.user_id);
-
-  db.SELECT(userInfoQuery, [], (result) => {
-    if(result.state === 'error'){
-      return res.json({
-        result: {
-          state: 'error',
-          message: '유저 정보를 불러오지 못했습니다.'
-        }
-      })
-    };
-
-    return res.json({
-      result: {
-        state: 'success',
-        email: result[0].email,
-        name: result[0].name,
-        contact: result[0].contact,
-        user_id: result[0].id,
-        nick_name: result[0].nick_name,
-        profile_photo_url: result[0].profile_photo_url,
-        iamport_IMP: process.env.IAMPORT_IMP,
-        iamport_PG: process.env.IAMPORT_PG,
-        app_scheme: process.env.IAMPORT_APP_SCHEME,
-        findPlaceHolder: '그날의 이슈!'
-        // toastMessage: '오잇!'
-      }
-    });
-  });
-  */
-
-  /*
-  let userInfoQuery = "SELECT email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
-  userInfoQuery = mysql.format(userInfoQuery, req.body.data.user_id);
-
-  db.SELECT(userInfoQuery, [], (result) => {
-    if(result.state === 'error'){
-      return res.json({
-        result: {
-          state: 'error',
-          message: '유저 정보를 불러오지 못했습니다.'
-        }
-      })
-    };
-
-    return res.json({
-      result: {
-        state: 'success',
-        email: result[0].email,
-        name: result[0].name,
-        contact: result[0].contact,
-        user_id: result[0].id,
-        nick_name: result[0].nick_name,
-        profile_photo_url: result[0].profile_photo_url,
-        iamport_IMP: process.env.IAMPORT_IMP,
-        iamport_PG: process.env.IAMPORT_PG,
-        app_scheme: process.env.IAMPORT_APP_SCHEME,
-        findPlaceHolder: '그날의 이슈!'
-        // toastMessage: '오잇!'
-      }
-    });
-  });
-  */
 });
 
 // app.post("")
@@ -643,6 +556,10 @@ app.post('/token/uuid', function(req, res){
 app.post("/any/call/certify/number", function(req, res){
 
   const contact = req.body.data.contact;
+  let countryCode = req.body.data.countryCode;
+  if(countryCode === undefined || countryCode === null || countryCode === ''){
+    countryCode = '82';
+  }
   
   // return res.json({});
   //6자리수 생성
@@ -653,9 +570,9 @@ app.post("/any/call/certify/number", function(req, res){
 
   
   //심의용 코드 START
-  if(contact === '00000000000'){
-    randVal = '123456'
-  }
+  // if(contact === '00000000000'){
+  //   randVal = '123456'
+  // }
   //심의용 코드 END
 
   
@@ -672,11 +589,6 @@ app.post("/any/call/certify/number", function(req, res){
               waitSec: _result.expire
           }
         })
-        // return res.json({
-        //   state: res_state.error,
-        //   message: "개발로컬에선 이렇게 옵니당 " + randVal,
-        //   result:{}
-        // })
       }else{
         if(contact === '00000000000'){
           return res.json({
@@ -687,33 +599,24 @@ app.post("/any/call/certify/number", function(req, res){
           })
         }else{
           let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
-
-          console.log(content);
-          return res.json({
-            result:{
-                state: res_state.success,
-                waitSec: _result.expire
-            }
-        })
-
-          // Global_Func.sendSMS(contact, content, (result) => {
-          //     // console.log(result);
-          //     if(result.status === '200'){
-          //         return res.json({
-          //             result:{
-          //                 state: res_state.success,
-          //                 waitSec: _result.expire
-          //             }
-          //         })
-          //     }else{
-          //         return res.json({
-          //             state: 'error',
-          //             message: '인증번호 전송 오류',
-          //             result:{
-          //             }
-          //         })
-          //     }
-          // })
+          Global_Func.sendSMS(contact, countryCode, content, (result) => {
+              // console.log(result);
+              if(result.status === '200'){
+                  return res.json({
+                      result:{
+                          state: res_state.success,
+                          waitSec: _result.expire
+                      }
+                  })
+              }else{
+                  return res.json({
+                      state: 'error',
+                      message: '인증번호 전송 오류',
+                      result:{
+                      }
+                  })
+              }
+          })
         }
       }
     }
@@ -728,59 +631,6 @@ app.post("/any/call/certify/number", function(req, res){
       })
     }
   });
-
-  /*
-  db_redis.save(contact, randVal, phoneRandNumExpire, function(_result){
-    if(_result.state === 'success'){
-      //레디스 저장 성공
-      //console.log('redis success');
-
-      // console.log(_result);
-      // return res.json({
-      //     waitSec: _result.expire
-      //     // ..._result
-      // })
-
-      //test//
-      db_redis.load(contact, function(result_load){
-          console.log(result_load);
-      })
-      ///////
-
-      // let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요." 
-      // this.sendSMS(contact, content, (result) => {
-      //     // console.log(result);
-      //     if(result.status === '200'){
-      //         res.json({
-      //             // result:{
-      //             //     state: 'success'
-      //             // }
-      //             waitSec: _result.expire
-      //         })
-      //     }else{
-      //         res.json({
-      //             state: 'error',
-      //             message: '인증번호 전송 오류',
-      //             result:{
-      //             }
-      //         })
-      //     }
-      // })
-
-      
-    }
-    else{
-      //레디스 저장 실패
-      //console.log('redis fail');
-      return res.json({
-          result:{
-              state: 'error',
-              message: '레디스 저장 실패'
-          }
-      })
-    }
-  });
-  */
 });
 
 app.post('/any/call/certify/confirm', function(req, res){
@@ -814,14 +664,24 @@ app.post('/any/call/certify/confirm', function(req, res){
       }
       else if(_result.data === certify_number){
           //console.log('일치!!');
-          return res.json({
-            result: {
-              state: res_state.success,
 
-            }
-              // state: 'success',
-              // phone: req.body.phone
-          });
+          //일치 하다면 기존에 중복된 번호가 있는지 확인 한다.
+          db.UPDATE('UPDATE users SET contact=?, country_code=?, is_certification=? WHERE contact=?', ['', null, false, contact], 
+          (result_update) => {
+            return res.json({
+              result: {
+                state: res_state.success,
+              }
+            });
+          }, (error_update) => {
+            console.log('#### 번호 초기화 오류 : ' + contact);
+            return res.json({
+              state: 'error',
+              message: '중복 초기화 오류',
+              result: {}
+            });
+          })
+          
       }
       else{
           //console.log('불일치!!');
@@ -2553,7 +2413,7 @@ function storeConfirmAutoOneToOneCheck(){
 function inactiveUserCheck(){
   //휴면 계정으로 만들어주는 쿼리
   const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-  db.UPDATE("UPDATE users SET inactive=? WHERE inactive=? AND inactive_at<=? AND is_withdrawal=? AND inactive_at IS NOT NULL", [true, false, nowDate, false], (result) => {
+  db.UPDATE("UPDATE users SET inactive=?, is_certification=? WHERE inactive=? AND inactive_at<=? AND is_withdrawal=? AND inactive_at IS NOT NULL", [true, false, false, nowDate, false], (result) => {
     return;
   }, (error) => {
     console.log('#### 휴면 유저 셋팅 에러');

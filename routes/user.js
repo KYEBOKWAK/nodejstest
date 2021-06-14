@@ -683,7 +683,7 @@ router.post("/any/register", function(req, res){
 
 router.post("/info", function(req, res){
   const user_id = req.body.data.user_id;
-  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, gender, age, facebook_id, google_id, kakao_id, contact, is_withdrawal FROM users WHERE id=?", user_id);
+  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, gender, age, facebook_id, google_id, kakao_id, contact, is_withdrawal, is_certification, advertising FROM users WHERE id=?", user_id);
   db.SELECT(queryMyInfo, {}, (result) => {
     return res.json({
       result: {
@@ -1762,7 +1762,7 @@ router.post("/any/login/email/web", function(req, res){
     })
   }
 
-  db.SELECT("SELECT email, password, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact FROM users WHERE email = BINARY(?)", [userEmail], function(result){
+  db.SELECT("SELECT email, password, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact, inactive, profile_photo_url FROM users WHERE email = BINARY(?)", [userEmail], function(result){
       //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
       
       // var data = {
@@ -1918,11 +1918,11 @@ router.post("/any/check/snsid", function(req, res){
 
   let queryUser = '';
   if(sns_type === 'FACEBOOK'){
-    queryUser = mysql.format("SELECT id FROM users WHERE facebook_id=?", sns_id);
+    queryUser = mysql.format("SELECT id, inactive FROM users WHERE facebook_id=?", sns_id);
   }else if(sns_type === 'GOOGLE'){
-    queryUser = mysql.format("SELECT id FROM users WHERE google_id=?", sns_id);
+    queryUser = mysql.format("SELECT id, inactive FROM users WHERE google_id=?", sns_id);
   }else if(sns_type === 'KAKAO'){
-    queryUser = mysql.format("SELECT id FROM users WHERE kakao_id=?", sns_id);
+    queryUser = mysql.format("SELECT id, inactive FROM users WHERE kakao_id=?", sns_id);
   }
 
   if(queryUser === ''){
@@ -1939,6 +1939,7 @@ router.post("/any/check/snsid", function(req, res){
       return res.json({
         result: {
           id: null,
+          inactive: false,
           state: res_state.success
         }
       })
@@ -1948,6 +1949,7 @@ router.post("/any/check/snsid", function(req, res){
     return res.json({
       result: {
         id: userData.id,
+        inactive: userData.inactive,
         state: res_state.success
       }
     })
@@ -2021,17 +2023,30 @@ router.post("/info/update/web", function(req, res){
   
   let name = req.body.data.name;
   let nick_name = req.body.data.nick_name;
-  let contact = req.body.data.contact;
+  // let contact = req.body.data.contact;
   let gender = req.body.data.gender;
   let age = req.body.data.age;
 
-  const data = {
+  const ori_advertising = req.body.data.ori_advertising;
+
+  let data = {
     name: name,
     nick_name: nick_name,
-    contact: contact,
     gender: gender,
-    age: age
+    age: age,
   }
+
+  if(ori_advertising !== undefined){
+    let advertising = req.body.data.advertising;
+
+    if(ori_advertising !== advertising){
+      data = {
+        ...data,
+        advertising: advertising,
+        advertising_at: moment_timezone().format('YYYY-MM-DD HH:mm:ss')
+      }
+    }
+  }  
 
   db.UPDATE("UPDATE users AS user SET ? WHERE user.id=?;", [data, user_id], 
   (result) => {
@@ -2303,7 +2318,8 @@ router.post("/withdrawal", function(req, res){
         updated_at: date,
         is_withdrawal: true,
         inactive_at: null,
-        inactive: false
+        inactive: false,
+        is_certification: false
       }
 
 
@@ -2330,5 +2346,31 @@ router.post("/withdrawal", function(req, res){
     });
   })
 });
+
+router.post("/any/certification", function(req, res){
+  const user_id = req.body.data._user_id;
+  const contact = req.body.data.contact;
+  const country_code = req.body.data.country_code;
+
+  const userInfo = {
+    contact: contact,
+    country_code: country_code,
+    is_certification: true
+  }
+
+  db.UPDATE("UPDATE users AS user SET ? where user.id=?", [userInfo, user_id], (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '연락처 인증 업데이트 오류',
+      result:{}
+    })
+  })
+})
 
 module.exports = router;
