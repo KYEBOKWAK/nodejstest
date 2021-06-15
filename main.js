@@ -570,9 +570,9 @@ app.post("/any/call/certify/number", function(req, res){
 
   
   //심의용 코드 START
-  // if(contact === '00000000000'){
-  //   randVal = '123456'
-  // }
+  if(contact === '00000000000'){
+    randVal = '123456'
+  }
   //심의용 코드 END
 
   
