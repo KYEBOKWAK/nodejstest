@@ -13,6 +13,32 @@ const Util = use('lib/util.js');
 const global = use('lib/global_const.js');
 var mysql = require('mysql');
 
+router.post('/any/banner/top/info', function(req, res){
+  const querySelect = mysql.format("SELECT id, type, contents, contents_color, background_color, icon_img_url, link_url, icon_img_size FROM top_banners ORDER BY id desc LIMIT 1");
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+
+    const data = result[0];
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+})
+
 router.post('/any/pages', function(req, res){
   const alias = req.body.data.alias;
   const querySelect = mysql.format("SELECT layer_1, layer_2, background_url FROM event_pages WHERE alias=?", [alias]);
