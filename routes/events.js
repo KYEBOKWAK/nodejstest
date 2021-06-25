@@ -39,9 +39,10 @@ router.post('/any/banner/top/info', function(req, res){
   })
 })
 
+
 router.post('/any/pages', function(req, res){
   const alias = req.body.data.alias;
-  const querySelect = mysql.format("SELECT layer_1, layer_2, background_url FROM event_pages WHERE alias=?", [alias]);
+  const querySelect = mysql.format("SELECT image_pc, image_mobile FROM event_pages WHERE alias=?", [alias]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -59,7 +60,7 @@ router.post('/any/pages', function(req, res){
     })
   })
 })
-
+/*
 router.post('/any/items', function(req, res){
   const alias = req.body.data.alias;
   const querySelect = mysql.format("SELECT target_id, target_type, thumb_img_url, first_text, second_text, third_text FROM event_items WHERE alias=?", [alias]);
@@ -80,5 +81,6 @@ router.post('/any/items', function(req, res){
     })
   })
 });
+*/
 
 module.exports = router;
