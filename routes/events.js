@@ -39,7 +39,7 @@ router.post('/any/banner/top/info', function(req, res){
   })
 })
 
-
+/*
 router.post('/any/pages', function(req, res){
   const alias = req.body.data.alias;
   const querySelect = mysql.format("SELECT image_pc, image_mobile FROM event_pages WHERE alias=?", [alias]);
@@ -60,6 +60,7 @@ router.post('/any/pages', function(req, res){
     })
   })
 })
+*/
 /*
 router.post('/any/items', function(req, res){
   const alias = req.body.data.alias;
