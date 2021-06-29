@@ -444,8 +444,10 @@ router.post('/any/projects', function(req, res){
   let limit = req.body.data.limit;
   let skip = req.body.data.skip;
 
-  const querySelect = mysql.format("SELECT project.id AS project_id FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.state=? AND project.is_secret=? AND event_type_sub<>? GROUP BY project.id ORDER BY project.funding_closing_at DESC LIMIT ? OFFSET ?", [Types.project.STATE_APPROVED, false, Types.project.EVENT_TYPE_SUB_SECRET_PROJECT, limit, skip]);
+  // const querySelect = mysql.format("SELECT project.id AS project_id FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.state=? AND project.is_secret=? AND event_type_sub<>? GROUP BY project.id ORDER BY project.funding_closing_at DESC LIMIT ? OFFSET ?", [Types.project.STATE_APPROVED, false, Types.project.EVENT_TYPE_SUB_SECRET_PROJECT, limit, skip]);
 
+  const querySelect = mysql.format("SELECT project.id AS project_id FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.state=? AND project.is_secret=? AND event_type_sub<>? AND project.id<>716 GROUP BY project.id ORDER BY project.funding_closing_at DESC LIMIT ? OFFSET ?", [Types.project.STATE_APPROVED, false, Types.project.EVENT_TYPE_SUB_SECRET_PROJECT, limit, skip]);
+  
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result: {
