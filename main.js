@@ -2734,8 +2734,7 @@ function storeTierBreakCheck(){
 }
 
 app.post('/filedownload/token/make', function(req, res){
-  // const user_id = req.body.data.user_id;
-  const user_id = 2;
+  const user_id = req.body.data.user_id;
   const file_id = req.body.data.file_id;
   if(user_id === undefined){
     return res.json({
