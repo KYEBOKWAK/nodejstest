@@ -6,6 +6,8 @@ const phoneRandNumExpire = 180;
 
 const EXPIRE_REFRESH_TOKEN = '365d';
 const EXPIRE_ACCESS_TOKEN = '1h';
+
+const EXPIRE_DOWNLOAD_FILE_TOKEN = 10;
 // const EXPIRE_REFRESH_TOKEN = '5m';
 // const EXPIRE_ACCESS_TOKEN = 10;
 // const REFRESH_TOKEN_RENEW_LAST_DAT_MIL_SEC = 180000; //밀리초 단위 refresh 재갱신 기준값.
@@ -232,9 +234,11 @@ app.use(function (req, res, next) {
       // console.log('none!!');
       //엑세스토큰이 없다면 완전 오류임!!
       return res.json({
+        state: 'error',
+        message: '토큰 정보가 없음. 다시 로그인 해주세요.',
         result: {
           state: 'error',
-          message: '토큰 정보가 없음. 재설치 해주세요.'
+          message: '토큰 정보가 없음. 다시 로그인 해주세요.'
         }
       })
     }else if(req.body.data.refresh_token && req.body.data.refresh_token !== ''){
@@ -370,7 +374,6 @@ app.use(function (req, res, next) {
             }
           })
         }
-        
       });
     }
     // //console.log(req.body.data);
@@ -2729,6 +2732,51 @@ function storeTierBreakCheck(){
     })
   })
 }
+
+app.post('/filedownload/token/make', function(req, res){
+  // const user_id = req.body.data.user_id;
+  const user_id = 2;
+  const file_id = req.body.data.file_id;
+  if(user_id === undefined){
+    return res.json({
+      state: res_state.error,
+      message: '유저 정보가 없습니다. 재로그인 후 다시 이용해주세요',
+      result: {}
+    });
+  }
+
+  if(file_id === undefined){
+    return res.json({
+      state: res_state.error,
+      message: '파일 ID 정보가 없습니다. 새로고침 후 다시 이용해주세요',
+      result: {}
+    })
+  }
+
+
+  _jwt.CREATE(jwtType.TYPE_JWT_FILEDOWNLOAD, 
+    {
+      user_id: user_id,
+      file_id: file_id
+    }, 
+    EXPIRE_DOWNLOAD_FILE_TOKEN, function(value){
+    if(value.state === 'error'){
+      console.log('#### 토큰 생성 실패 File id: ' + file_id);
+      return res.json({
+        state: 'error',
+        message: value.message,
+        result: {}
+      })
+    }else{
+      let filedownloadtoken = value.token;
+      return res.json({
+        result: {
+          filedownloadtoken: filedownloadtoken
+        }
+      });
+    }
+  });
+})
 
 app.listen(3000, function () {
   console.log('Example app listening on port 3000!');
