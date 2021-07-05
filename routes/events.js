@@ -39,10 +39,78 @@ router.post('/any/banner/top/info', function(req, res){
   })
 })
 
-/*
+router.post('/any/page/notice', function(req, res){
+  const alias = req.body.data.alias;
+  const querySelect = mysql.format("SELECT text FROM event_pages WHERE alias=? AND row_type=?", [alias, Types.event_row_type.notice]);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          text: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        text: data.text
+      }
+    })
+  })
+})
+
+router.post('/any/page/tag', function(req, res){
+  const alias = req.body.data.alias;
+  const querySelect = mysql.format("SELECT text FROM event_pages WHERE alias=? AND row_type=?", [alias, Types.event_row_type.tag]);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          text: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        text: data.text
+      }
+    })
+  })
+})
+
+router.post('/any/page/title', function(req, res){
+  const alias = req.body.data.alias;
+  const querySelect = mysql.format("SELECT text FROM event_pages WHERE alias=? AND row_type=?", [alias, Types.event_row_type.title]);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          text: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        text: data.text
+      }
+    })
+  })
+})
+
 router.post('/any/pages', function(req, res){
   const alias = req.body.data.alias;
-  const querySelect = mysql.format("SELECT image_pc, image_mobile FROM event_pages WHERE alias=?", [alias]);
+  const querySelect = mysql.format("SELECT image_pc, image_mobile FROM event_pages WHERE alias=? AND row_type=?", [alias, Types.event_row_type.image]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -60,11 +128,11 @@ router.post('/any/pages', function(req, res){
     })
   })
 })
-*/
-/*
+
+
 router.post('/any/items', function(req, res){
   const alias = req.body.data.alias;
-  const querySelect = mysql.format("SELECT target_id, target_type, thumb_img_url, first_text, second_text, third_text FROM event_items WHERE alias=?", [alias]);
+  const querySelect = mysql.format("SELECT target_id FROM event_items WHERE alias=? ORDER BY RAND()", [alias]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -82,6 +150,6 @@ router.post('/any/items', function(req, res){
     })
   })
 });
-*/
+
 
 module.exports = router;
