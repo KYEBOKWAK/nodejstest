@@ -446,6 +446,9 @@ app.use('/event', routerEvent);
 let routerCategory = require('./routes/category');
 app.use('/category', routerCategory);
 
+let routerTags = require('./routes/tags');
+app.use('/tag', routerTags);
+
 app.post("/init/user", function(req, res){
   let userInfoQuery = "SELECT age, gender, email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
   // console.log(req.body.data);
@@ -2423,6 +2426,87 @@ function inactiveUserCheck(){
   })
 }
 
+function removeTagHOT(){
+  const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+  db.DELETE("DELETE FROM items_thumb_tags WHERE type=? AND end_date <= ?", [Types.thumb_tags_type.HOT, nowDate], (result) => {
+  }, (error) => {
+    console.log('####ERROR TAG HOT DELETE ' + error);
+  })
+}
+
+function setTagHOT(){
+  const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  const today = moment_timezone(nowDate);
+  const from_date = today.startOf('isoWeek').format('YYYY-MM-DD HH:mm:ss');
+  const to_date = today.endOf('isoWeek').format('YYYY-MM-DD HH:mm:ss');
+
+  const queryThumbTagSelect = mysql.format("SELECT target_id, type FROM items_thumb_tags WHERE type=? AND end_date>=?", [Types.thumb_tags_type.HOT, nowDate]);
+  db.SELECT(queryThumbTagSelect, {}, (result_tag_select) => {
+    // console.log(result_tag_select);
+
+    let isHaveTaglist = [];
+    for(let i = 0 ; i < result_tag_select.length ; i++){
+      const data = result_tag_select[i];
+      isHaveTaglist.push(data.target_id);
+    }
+
+    if(isHaveTaglist.length === 0){
+      isHaveTaglist.push(0);
+    }
+
+    const querySelect = mysql.format("SELECT item_id, COUNT(id) AS count FROM orders_items WHERE state < 99 AND created_at >= ? AND created_at < ? AND item_id NOT IN (?) GROUP BY item_id HAVING COUNT(id) >= 5", [from_date, to_date, isHaveTaglist]);
+
+    db.SELECT(querySelect, {}, (result_select) => {
+      let isHOTItemList = [];
+      for(let i = 0 ; i < result_select.length ; i++){
+        const data = result_select[i];
+        isHOTItemList.push(data.item_id);
+      }
+
+      let _dataInsertQueryArray = [];
+      let _dataInsertOptionArray = [];
+
+      const start_date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+      const end_date = moment_timezone(start_date).add(7, 'days').format('YYYY-MM-DD HH:mm:ss');
+
+
+      for(let i = 0 ; i < isHOTItemList.length ; i++){
+        const data = isHOTItemList[i];
+        let queryObject = {
+          key: i,
+          value: "INSERT INTO items_thumb_tags SET ?;"
+        }
+
+        let data_object = {
+          target_id: data,
+          thumb_tag_id: 1,
+          type: Types.thumb_tags_type.HOT,
+          start_date: start_date,
+          end_date: end_date
+        };
+
+        let insertDataObject = {
+          key: i,
+          value: data_object
+        }
+
+        _dataInsertQueryArray.push(queryObject);
+        _dataInsertOptionArray.push(insertDataObject);
+      }
+
+      if(_dataInsertQueryArray.length > 0){
+        db.INSERT_MULITPLEX(_dataInsertQueryArray, _dataInsertOptionArray, (result) => {
+          // console.log('HOT 태그 추가 성공');
+        }, (error) => {
+          console.log('HOT 태그 추가 실패');
+        })
+      }
+    });
+
+  })
+}
+
 cron.schedule('* * * * *', function(){
   payWaitTimeExpireCheck();
 
@@ -2444,6 +2528,9 @@ cron.schedule('* * * * *', function(){
   storeConfirmAutoOneToOneCheck();
 
   inactiveUserCheck();
+
+  removeTagHOT();
+  setTagHOT();
 });
 
 cron.schedule('0 0 * * Mon', function(){
