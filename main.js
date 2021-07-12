@@ -449,6 +449,9 @@ app.use('/category', routerCategory);
 let routerTags = require('./routes/tags');
 app.use('/tag', routerTags);
 
+let routerViewCount = require('./routes/view_count');
+app.use('/viewcount', routerViewCount);
+
 app.post("/init/user", function(req, res){
   let userInfoQuery = "SELECT age, gender, email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
   // console.log(req.body.data);
