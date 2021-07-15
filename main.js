@@ -28,6 +28,10 @@ const TIME_DUE_WAIT_RELAY_CONTENT_CHECK_DAY = 7;// 승인 후 콘텐츠 전달�
 
 const TIME_DUE_ONE_TO_ONE_PLAYING_WAIT_CHECK_FIRST_DAY = 2; //1:1 승인 후 2일뒤에 진행 요청 알림
 const TIME_DUE_ONE_TO_ONE_PLAYING_WAIT_CHECK_SECOND_DAY = 7;  //1:1 승인 후 7일뒤에 진행 요청 알림
+
+const ALARM_DOWNLOAD_ORDER_CHECK_HOUR = 16;
+const ALARM_DOWNLOAD_ORDER_CHECK_MIN = 37;
+
 var express = require('express');
 var app = express();
 
@@ -2510,6 +2514,51 @@ function setTagHOT(){
   })
 }
 
+function alarmDownloadOrderCheck() {
+  const nowDate = moment_timezone().format(`YYYY-MM-DD ${ALARM_DOWNLOAD_ORDER_CHECK_HOUR}:${ALARM_DOWNLOAD_ORDER_CHECK_MIN}:00`);
+
+  const startDate = moment_timezone(nowDate).add(-1, 'days').format(`YYYY-MM-DD ${ALARM_DOWNLOAD_ORDER_CHECK_HOUR}:${ALARM_DOWNLOAD_ORDER_CHECK_MIN}:00`);
+
+
+  // console.log(nowDate);
+  // console.log(startDate);
+
+  const querySelect = mysql.format("SELECT store.title, store.contact AS store_contact, COUNT(CASE WHEN orders_item.state<99 THEN 1 END) AS order_count, SUM(orders_item.total_price) AS order_total_price FROM stores AS store LEFT JOIN orders_items AS orders_item ON store.id=orders_item.store_id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE item.type_contents=? AND orders_item.state < 99 AND orders_item.created_at >= ? AND orders_item.created_at <= ? GROUP BY store.id HAVING COUNT(CASE WHEN orders_item.state<99 THEN 1 END)>0 AND SUM(orders_item.total_price) > 0", [Types.contents.completed, startDate, nowDate]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return;
+    }
+
+    let _default_url = 'crowdticket.kr';
+    if(process.env.APP_TYPE === 'local'){
+      _default_url = 'localhost:8000';
+    }else if(process.env.APP_TYPE === 'qa'){
+      _default_url = 'qa.crowdticket.kr';
+    }
+
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+      // const content_url = _default_url + `/users/store/`+ data.user_id + '/orders';
+      const store_manager_url = _default_url+"/manager/store";
+
+
+      Global_Func.sendKakaoAlimTalk({
+        templateCode: 'Kalarm14v1',
+        to: data.store_contact,
+        creator_name: data.title,
+        order_count: data.order_count + ' 건',
+        order_total_price: data.order_total_price + '원 1일 기준',
+        store_manager_url: store_manager_url
+      })
+    }
+  })
+
+  // const today = moment_timezone(nowDate);
+  // const from_date = today.startOf('isoWeek').format('YYYY-MM-DD HH:mm:ss');
+  // const to_date = today.endOf('isoWeek').format('YYYY-MM-DD HH:mm:ss');
+}
+
 cron.schedule('* * * * *', function(){
   payWaitTimeExpireCheck();
 
@@ -2544,6 +2593,12 @@ cron.schedule('0 0 * * Mon', function(){
   storeTierSaleCheck();
   storeTierSaleKeepCheck();
   storeTierBreakCheck();
+});
+
+cron.schedule(`${ALARM_DOWNLOAD_ORDER_CHECK_MIN} ${ALARM_DOWNLOAD_ORDER_CHECK_HOUR} * * *`, function(){
+  //특정 시간에 체크한다. 매일 19시 0분에 다운로드 주문이 있을경우 알림을 보내준다.
+  alarmDownloadOrderCheck();
+  
 });
 
 function storeTierCloseCheck(){
