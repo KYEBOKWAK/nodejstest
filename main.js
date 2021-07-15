@@ -30,7 +30,7 @@ const TIME_DUE_ONE_TO_ONE_PLAYING_WAIT_CHECK_FIRST_DAY = 2; //1:1 승인 후 2�
 const TIME_DUE_ONE_TO_ONE_PLAYING_WAIT_CHECK_SECOND_DAY = 7;  //1:1 승인 후 7일뒤에 진행 요청 알림
 
 const ALARM_DOWNLOAD_ORDER_CHECK_HOUR = 19;
-const ALARM_DOWNLOAD_ORDER_CHECK_MIN = 00;
+const ALARM_DOWNLOAD_ORDER_CHECK_MIN = 0;
 
 var express = require('express');
 var app = express();
@@ -2515,9 +2515,9 @@ function setTagHOT(){
 }
 
 function alarmDownloadOrderCheck() {
-  const nowDate = moment_timezone().format(`YYYY-MM-DD ${ALARM_DOWNLOAD_ORDER_CHECK_HOUR}:${ALARM_DOWNLOAD_ORDER_CHECK_MIN}:00`);
+  const nowDate = moment_timezone().format(`YYYY-MM-DD ${ALARM_DOWNLOAD_ORDER_CHECK_HOUR}:00:00`);
 
-  const startDate = moment_timezone(nowDate).add(-1, 'days').format(`YYYY-MM-DD ${ALARM_DOWNLOAD_ORDER_CHECK_HOUR}:${ALARM_DOWNLOAD_ORDER_CHECK_MIN}:00`);
+  const startDate = moment_timezone(nowDate).add(-1, 'days').format(`YYYY-MM-DD ${ALARM_DOWNLOAD_ORDER_CHECK_HOUR}:00:00`);
 
 
   // console.log(nowDate);
