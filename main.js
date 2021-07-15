@@ -29,8 +29,8 @@ const TIME_DUE_WAIT_RELAY_CONTENT_CHECK_DAY = 7;// 승인 후 콘텐츠 전달�
 const TIME_DUE_ONE_TO_ONE_PLAYING_WAIT_CHECK_FIRST_DAY = 2; //1:1 승인 후 2일뒤에 진행 요청 알림
 const TIME_DUE_ONE_TO_ONE_PLAYING_WAIT_CHECK_SECOND_DAY = 7;  //1:1 승인 후 7일뒤에 진행 요청 알림
 
-const ALARM_DOWNLOAD_ORDER_CHECK_HOUR = 16;
-const ALARM_DOWNLOAD_ORDER_CHECK_MIN = 37;
+const ALARM_DOWNLOAD_ORDER_CHECK_HOUR = 17;
+const ALARM_DOWNLOAD_ORDER_CHECK_MIN = 10;
 
 var express = require('express');
 var app = express();
