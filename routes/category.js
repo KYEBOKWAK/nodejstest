@@ -218,4 +218,52 @@ router.post('/any/store/list', function(req, res){
   })
 });
 
+router.post('/any/top/info', function(req, res){
+  const category_top_item_id = req.body.data.category_top_item_id;
+
+  const querySelect = mysql.format('SELECT title FROM category_top_items WHERE id=?', [category_top_item_id]);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: 'top category 조회 오류',
+        result: {}
+      })
+    }
+    
+    const data = result[0];
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        title: data.title
+      }
+    })
+  })
+})
+
+router.post('/any/sub/info', function(req, res){
+  const category_sub_item_id = req.body.data.category_sub_item_id;
+
+  const querySelect = mysql.format('SELECT title FROM category_sub_items WHERE id=?', [category_sub_item_id]);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: 'sub category 조회 오류',
+        result: {}
+      })
+    }
+    
+    const data = result[0];
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        title: data.title
+      }
+    })
+  })
+})
+
 module.exports = router;

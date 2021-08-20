@@ -334,6 +334,29 @@ router.post('/any/list/buyer', function(req, res){
   });    
 })
 
+router.post('/any/list/buyer/v1', function(req, res){
+
+  let commentType = req.body.data.commentType;
+  let target_id = req.body.data.target_id;
+  const item_id = req.body.data.item_id;
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip
+
+  let commentable_type = this.getCommentableType(commentType);
+  
+  let querySelect = mysql.format("SELECT comment.user_id, comment.created_at, comment.id AS comment_id, user.nick_name, user.name, user.profile_photo_url, comment.contents, comment.second_target_id FROM comments AS comment LEFT JOIN orders_items AS orders_item ON orders_item.id=comment.second_target_id LEFT JOIN users AS user ON comment.user_id=user.id WHERE orders_item.item_id=? AND comment.commentable_id=? AND comment.commentable_type=? AND comment.second_target_id IS NOT NULL GROUP BY comment.id ORDER BY comment.id DESC LIMIT ? OFFSET ?", [item_id, target_id, commentable_type, limit, skip]);
+
+  
+  db.SELECT(querySelect, [], function(result){
+    res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    });
+  });    
+})
+
 router.post("/any/allcount", function(req, res){
   let commentType = req.body.data.commentType;
   let target_id = req.body.data.target_id;
@@ -402,5 +425,69 @@ router.post("/any/second/get", function(req, res){
     })
   })
 });
+
+router.post("/second/add/check", function(req, res){
+  const user_id = req.body.data.user_id;
+  if(user_id === undefined || user_id === null || user_id === ''){
+    return res.json({
+      state: res_state.error,
+      message: '유저 ID가 없습니다.',
+      result: {}
+    })
+  }
+
+
+  const second_target_id = req.body.data.second_target_id;
+  const second_target_type = this.getCommentableSecondTargetType(req.body.data.second_target_type);
+
+  const querySelect = mysql.format("SELECT id, contents FROM comments WHERE second_target_id=? AND second_target_type=? AND user_id=? ORDER BY id DESC", [second_target_id, second_target_type, user_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success
+        }
+      })
+    }
+
+    return res.json({
+      state: res_state.error,
+      message: '이미 해당 상품의 후기를 작성했습니다.',
+      result: {}
+    })
+  })
+})
+
+router.post("/order/item/check", function(req, res){
+  const user_id = req.body.data.user_id;
+  const item_id = req.body.data.item_id;
+
+  const querySelect = mysql.format("SELECT id FROM orders_items WHERE user_id=? AND item_id=? AND state>=? AND state<?", [user_id, item_id, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_PAY_END]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.error,
+          store_order_id: null
+        }
+      })
+      // return res.json({
+      //   state: res_state.error,
+      //   message: '상품을 구매해야 후기 작성이 가능합니다.'
+      // })
+    }
+
+    const data = result[0];
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        store_order_id: data.id
+      }
+    })
+  })
+})
 
 module.exports = router;

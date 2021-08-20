@@ -20,6 +20,11 @@ const { Config } = require('aws-sdk');
 const STORE_HOME_ITEM_LIST_TAKE = 4;
 const STORE_HOME_ITEM_LIST_IN_ITEM_TAKE = 3;
 
+getCommentableType = (commentType) => {
+  let commentData = Types.comment.commentable_type.find((value) => {return value.key === commentType});
+  return commentData.value;
+}
+
 router.post('/order', function(req, res){
 
 });
@@ -177,7 +182,7 @@ router.post('/any/info/alias', function(req, res){
 
 router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
-  const querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result:{
@@ -483,6 +488,21 @@ router.post("/item/add", function(req, res){
     category_sub_item_id = null;
   }
 
+  let story = req.body.data.story;
+  if(story === undefined){
+    story = null;
+  }
+
+  let simple_contents = req.body.data.simple_contents;
+  if(simple_contents === undefined){
+    simple_contents = null;
+  }
+
+  let editor_type = req.body.data.editor_type;
+  if(editor_type === undefined){
+    editor_type = 'EDITOR_TYPE_NORMAL'
+  }
+
   let querySelect = mysql.format("SELECT order_number FROM items WHERE store_id=? ORDER BY order_number DESC", store_id);
 
   db.SELECT(querySelect, {}, (result_select) => {
@@ -532,7 +552,11 @@ router.post("/item/add", function(req, res){
       category_top_item_id: category_top_item_id,
       category_sub_item_id: category_sub_item_id,
       created_at: date,
-      updated_at: date
+      updated_at: date,
+
+      story: story,
+      simple_contents: simple_contents,
+      editor_type: editor_type
     }
 
     db.INSERT("INSERT INTO items SET ?", itemData, 
@@ -612,6 +636,21 @@ router.post("/item/update", function(req, res){
     category_sub_item_id = null;
   }
 
+  let story = req.body.data.story;
+  if(story === undefined){
+    story = null;
+  }
+
+  let simple_contents  = req.body.data.simple_contents;
+  if(simple_contents === undefined){
+    simple_contents = null;
+  }
+
+  let editor_type = req.body.data.editor_type;
+  if(editor_type === undefined){
+    editor_type = 'EDITOR_TYPE_NORMAL'
+  }
+
   const updated_at = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let re_set_at = null;
@@ -622,7 +661,7 @@ router.post("/item/update", function(req, res){
 
   if(isChangeLimitCount){
 
-    db.UPDATE("UPDATE items SET category_top_item_id=?, category_sub_item_id=?, type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [category_top_item_id, category_sub_item_id, type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET editor_type=?, simple_contents=?, story=?, category_top_item_id=?, category_sub_item_id=?, type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [editor_type, simple_contents, story, category_top_item_id, category_sub_item_id, type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
     (result_update) => {
 
       this.isSoldOutAllItemCheck(item_id, order_limit_count, (isSoldOut) => {
@@ -656,7 +695,7 @@ router.post("/item/update", function(req, res){
       })
     })
   }else{
-    db.UPDATE("UPDATE items SET category_top_item_id=?, category_sub_item_id=?, type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [category_top_item_id, category_sub_item_id, type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET editor_type=?, simple_contents=?, story=?, category_top_item_id=?, category_sub_item_id=?, type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [editor_type, simple_contents, story, category_top_item_id, category_sub_item_id, type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
     (result_update) => {
       return res.json({
         result: {
@@ -1765,6 +1804,44 @@ router.post("/any/like/count", function(req, res){
   })
 })
 
+router.post("/any/like/count/v1", function(req, res){
+  
+  let commentType = req.body.data.commentType;
+  let target_id = req.body.data.target_id;
+  const item_id = req.body.data.item_id;
+  
+
+  let commentable_type = this.getCommentableType(commentType);
+  
+
+  let selectQuery = mysql.format("SELECT COUNT(comment.id) AS comment_count FROM comments AS comment LEFT JOIN orders_items AS orders_item ON orders_item.id=comment.second_target_id WHERE orders_item.item_id=? AND comment.commentable_id=? AND comment.commentable_type=? AND comment.second_target_id IS NOT NULL", [item_id, target_id, commentable_type]);
+
+  // let selectQuery = mysql.format("SELECT count(comment.id) AS comment_count FROM comments AS comment LEFT JOIN orders_items AS orders_item ON orders_item.id=comment.second_target_id WHERE orders_item.item_id=? AND comment.commentable_id=? AND comment.commentable_type=? AND comment.second_target_id IS NOT NULL GROUP BY comment.id", [item_id, target_id, commentable_type]);
+
+
+  // const selectQuery = mysql.format("SELECT count(id) AS comment_count FROM comments WHERE second_target_id=? AND second_target_type=?", [item_id, second_target_type]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          comment_count: 0
+        }
+      })
+    }
+    
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        comment_count: data.comment_count
+      }
+    })
+  })
+})
+
 router.post("/any/averageday", function(req, res){
   const item_id = req.body.data.item_id;
   const selectQuery = mysql.format("SELECT apporve_at, relay_at FROM orders_items AS orders_item WHERE item_id=? AND relay_at IS NOT NULL ORDER BY id DESC LIMIT ?", [item_id, 5])
@@ -1805,6 +1882,34 @@ router.post("/any/item/other/get", function(req, res){
       }
     })
   })
+});
+
+router.post("/any/item/other/get/v1", function(req, res){
+  const store_id = req.body.data.store_id;
+  const item_id = req.body.data.item_id;
+
+
+  let language_code = req.body.data.language_code;
+  if(language_code === undefined){
+    language_code = 'kr'
+  }
+
+  let currency_code = Types.currency_code.Won;
+  if(language_code === 'kr'){
+    currency_code = Types.currency_code.Won;
+  }else{
+    currency_code = Types.currency_code.US_Dollar;
+  }
+
+  const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id=? AND state=? AND currency_code=?", [store_id, Types.item_state.SALE, currency_code])
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })  
 });
 
 router.post("/any/order/review/get", function(req, res){
@@ -2315,6 +2420,49 @@ router.post("/order/doller/count", function(req, res){
       result: {
         state: res_state.success,
         doller_count: doller_count
+      }
+    })
+  })
+})
+
+router.post("/any/items/otherstore/get", function(req, res){
+  const store_id = req.body.data.store_id;
+  const item_id = req.body.data.item_id;
+  const category_sub_item_id = req.body.data.category_sub_item_id;
+
+  let language_code = req.body.data.language_code;
+  if(language_code === undefined){
+    language_code = 'kr'
+  }
+
+  let currency_code = Types.currency_code.Won;
+  if(language_code === 'kr'){
+    currency_code = Types.currency_code.Won;
+  }else{
+    currency_code = Types.currency_code.US_Dollar;
+  }
+
+  const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id<>? AND id<>? AND category_sub_item_id=? AND state=? AND currency_code=? ORDER BY RAND() LIMIT ?", [store_id, item_id, category_sub_item_id, Types.item_state.SALE, currency_code, 8])
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })  
+});
+
+router.post('/any/download/file/list', function(req, res){
+  const store_item_id = req.body.data.store_item_id;
+
+  const querySelect = mysql.format("SELECT originalname FROM files_downloads WHERE target_id=? AND target_type=?", [store_item_id, Types.file_upload_target_type.download_file]);
+
+  db.SELECT(querySelect, {}, (result) => {    
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
       }
     })
   })
