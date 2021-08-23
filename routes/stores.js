@@ -2471,7 +2471,10 @@ router.post("/any/items/otherstore/get", function(req, res){
     currency_code = Types.currency_code.US_Dollar;
   }
 
-  const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id<>? AND id<>? AND category_sub_item_id=? AND state=? AND currency_code=? ORDER BY RAND() LIMIT ?", [store_id, item_id, category_sub_item_id, Types.item_state.SALE, currency_code, 8])
+  // const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id<>? AND id<>? AND category_sub_item_id=? AND state=? AND currency_code=? ORDER BY RAND() LIMIT ?", [store_id, item_id, category_sub_item_id, Types.item_state.SALE, currency_code, 8])
+
+  const querySelect = mysql.format("SELECT item.id, item.title, item.img_url, item.price, item.price_USD, item.currency_code FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.store_id<>? AND item.id<>? AND store.tier<>? AND item.category_sub_item_id=? AND item.state=? AND item.currency_code=? ORDER BY RAND() LIMIT ?", [store_id, item_id, Types.tier_store.close, category_sub_item_id, Types.item_state.SALE, currency_code, 8])
+
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result: {
