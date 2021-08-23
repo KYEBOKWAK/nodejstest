@@ -184,11 +184,28 @@ router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
   const querySelect = mysql.format("SELECT item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
+
+    if(result.length === 0){
+      return res.json({
+        // state: res_state.error,
+        // message: 'item 정보 없음 id : ' + store_item_id,
+        result: {
+          state: res_state.success,
+          data: {}
+        }
+      })
+    }
+
+    let data = result[0];
+    if(data.img_url === null || data.img_url === ''){
+      data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/real/items/img-thumb-default.png';
+    }
+
     return res.json({
       result:{
         state: res_state.success,
         data: {
-          ...result[0]
+          ...data
         }
       }
     })
@@ -503,6 +520,11 @@ router.post("/item/add", function(req, res){
     editor_type = 'EDITOR_TYPE_NORMAL'
   }
 
+  let notice_user = req.body.data.notice_user;
+  if(notice_user === undefined){
+    notice_user = null;
+  }
+
   let querySelect = mysql.format("SELECT order_number FROM items WHERE store_id=? ORDER BY order_number DESC", store_id);
 
   db.SELECT(querySelect, {}, (result_select) => {
@@ -556,7 +578,9 @@ router.post("/item/add", function(req, res){
 
       story: story,
       simple_contents: simple_contents,
-      editor_type: editor_type
+      editor_type: editor_type,
+
+      notice_user: notice_user
     }
 
     db.INSERT("INSERT INTO items SET ?", itemData, 
@@ -651,6 +675,11 @@ router.post("/item/update", function(req, res){
     editor_type = 'EDITOR_TYPE_NORMAL'
   }
 
+  let notice_user = req.body.data.notice_user;
+  if(notice_user === undefined){
+    notice_user = null;
+  }
+
   const updated_at = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let re_set_at = null;
@@ -661,7 +690,7 @@ router.post("/item/update", function(req, res){
 
   if(isChangeLimitCount){
 
-    db.UPDATE("UPDATE items SET editor_type=?, simple_contents=?, story=?, category_top_item_id=?, category_sub_item_id=?, type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [editor_type, simple_contents, story, category_top_item_id, category_sub_item_id, type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET notice_user=?, editor_type=?, simple_contents=?, story=?, category_top_item_id=?, category_sub_item_id=?, type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [notice_user, editor_type, simple_contents, story, category_top_item_id, category_sub_item_id, type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
     (result_update) => {
 
       this.isSoldOutAllItemCheck(item_id, order_limit_count, (isSoldOut) => {
@@ -695,7 +724,7 @@ router.post("/item/update", function(req, res){
       })
     })
   }else{
-    db.UPDATE("UPDATE items SET editor_type=?, simple_contents=?, story=?, category_top_item_id=?, category_sub_item_id=?, type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [editor_type, simple_contents, story, category_top_item_id, category_sub_item_id, type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET notice_user=?, editor_type=?, simple_contents=?, story=?, category_top_item_id=?, category_sub_item_id=?, type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [notice_user, editor_type, simple_contents, story, category_top_item_id, category_sub_item_id, type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
     (result_update) => {
       return res.json({
         result: {
