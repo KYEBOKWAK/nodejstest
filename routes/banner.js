@@ -21,8 +21,14 @@ router.post('/any/get', function(req, res){
         result: {
           state: res_state.success,
           data: {
-            img_url: null,
-            link_url: null
+            img_url: null, 
+            link_url: null, 
+            title: null, 
+            sub_title: null, 
+            point_title: null, 
+            bg_color: null, 
+            title_color: null, 
+            subtitle_color: null
           }
         }
       })
