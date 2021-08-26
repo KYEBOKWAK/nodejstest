@@ -13,7 +13,7 @@ var mysql = require('mysql');
 router.post('/any/get', function(req, res){
   const type = req.body.data.type;
 
-  const selectQuery = mysql.format('SELECT img_url, link_url FROM banners WHERE type=?', [type]);
+  const selectQuery = mysql.format('SELECT img_url, link_url, title, sub_title, point_title, bg_color, title_color, subtitle_color FROM banners WHERE type=?', [type]);
 
   db.SELECT(selectQuery, {}, (result) => {
     if(result.length === 0){
