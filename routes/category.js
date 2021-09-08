@@ -269,7 +269,7 @@ router.post('/any/sub/info', function(req, res){
 router.post('/any/list/get/item', function(req, res){
   const store_id = req.body.data.store_id;
   
-  const querySelect = mysql.format('SELECT category_sub_item.id, category_sub_item.title FROM items AS item LEFT JOIN category_sub_items AS category_sub_item ON item.category_sub_item_id=category_sub_item.id WHERE item.store_id=? AND item.category_sub_item_id IS NOT NULL GROUP BY item.category_sub_item_id', [store_id]);
+  const querySelect = mysql.format('SELECT category_sub_item.id, category_sub_item.title FROM items AS item LEFT JOIN category_sub_items AS category_sub_item ON item.category_sub_item_id=category_sub_item.id WHERE item.store_id=? AND item.state=? AND item.category_sub_item_id IS NOT NULL GROUP BY item.category_sub_item_id', [store_id, Types.item_state.SALE]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
