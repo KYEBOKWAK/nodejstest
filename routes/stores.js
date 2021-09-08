@@ -117,7 +117,7 @@ router.post('/any/detail/info', function(req, res){
   const store_id = req.body.data.store_id;
   const store_alias = req.body.data.store_alias;
 
-  const querySelect = mysql.format("SELECT store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
+  const querySelect = mysql.format("SELECT store.representative_item_id, store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -167,6 +167,41 @@ router.post('/any/detail/item/list', function(req, res){
   })
 })
 
+router.post('/any/item/list/category', function(req, res){
+  let store_id = req.body.data.store_id;
+  const category_sub_item_id = req.body.data.category_sub_item_id;
+
+  let language_code = req.body.data.language_code;
+  if(language_code === undefined){
+    language_code = 'kr'
+  }
+
+  let currency_code = Types.currency_code.Won;
+  if(language_code === 'kr'){
+    currency_code = Types.currency_code.Won;
+  }else{
+    currency_code = Types.currency_code.US_Dollar;
+  }
+
+  let querySelect = ''
+
+  if(category_sub_item_id === 0){
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL  AND currency_code=? ORDER BY item.order_number", [store_id, Types.item_state.SALE_STOP, currency_code]);
+  }else{
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL AND currency_code=? AND category_sub_item_id=? ORDER BY item.order_number", [store_id, Types.item_state.SALE_STOP, currency_code, category_sub_item_id]);
+  }
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+
+});
+
 router.post('/any/info/alias', function(req, res){
   const store_id = req.body.data.store_id;
   const querySelect = mysql.format("SELECT alias FROM stores WHERE id=?", store_id);
@@ -215,7 +250,7 @@ router.post('/any/item/info', function(req, res){
 router.post('/info/userid', function(req, res){
   // const user_id = req.body.data.user_id;
   const store_user_id = req.body.data.store_user_id;
-  const querySelect = mysql.format("SELECT store.download_file_max, store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name, user.profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", store_user_id);
+  const querySelect = mysql.format("SELECT store.thumb_img_url, store.download_file_max, store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name, user.profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", store_user_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -423,6 +458,44 @@ router.post("/item/delete", function(req, res){
   })
 });
 
+router.post("/item/delete/v1", function(req, res){
+  const item_id = req.body.data.item_id;
+  const store_id = req.body.data.store_id;
+  
+  const querySelect = mysql.format("SELECT id FROM orders_items WHERE item_id=?", item_id);
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length > 0) {
+      return res.json({
+        state: res_state.error,
+        message: '이미 주문이 있는 상품입니다. 수정에서 판매중지 기능을 이용해주세요.',
+        result:{}
+      })
+    }
+
+    db.UPDATE("UPDATE stores SET representative_item_id=? WHERE id=? AND representative_item_id=?", [null, store_id, item_id], (result_update) => {
+      db.DELETE("DELETE FROM items WHERE id=?", item_id, (result_delete) => {
+        return res.json({
+          result:{
+            state: res_state.success
+          }
+        })
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: '상품 제거 실패',
+          result:{}
+        })
+      })
+    }, (error_update) => {
+      return res.json({
+        state: res_state.error,
+        message: '상품 제거 실패 (대표 상품 초기화 실패)',
+        result:{}
+      })
+    })
+  })
+});
+
 router.post("/item/get/typecontents", function(req, res){
   const item_id = req.body.data.item_id;
   const querySelect = mysql.format("SELECT type_contents FROM items WHERE id=?", [item_id]);
@@ -585,12 +658,31 @@ router.post("/item/add", function(req, res){
 
     db.INSERT("INSERT INTO items SET ?", itemData, 
     (result_insert) => {
-      return res.json({
-        result: {
-          state: res_state.success,
-          item_id: result_insert.insertId
-        }
-      })
+      if(_order_number === 0){
+        db.UPDATE("UPDATE stores SET representative_item_id=? WHERE id=?", [result_insert.insertId, store_id], 
+        (result) => {
+          return res.json({
+            result: {
+              state: res_state.success,
+              item_id: result_insert.insertId
+            }
+          })
+        }, (error) => {
+          return res.json({
+            result: {
+              state: res_state.success,
+              item_id: result_insert.insertId
+            }
+          })
+        })
+      }else{
+        return res.json({
+          result: {
+            state: res_state.success,
+            item_id: result_insert.insertId
+          }
+        })
+      }      
     }, (error) => {
       return res.json({
         state: res_state.error,
@@ -1063,7 +1155,7 @@ router.post("/any/info/storeid", function(req, res){
 router.post("/any/info/itemid", function(req, res){
   const store_item_id = req.body.data.store_item_id;
 
-  const querySelect = mysql.format("SELECT store.user_id AS store_user_id, store.alias, store.title, store.content, store.id AS store_id, user.profile_photo_url FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT store.representative_item_id, store.user_id AS store_user_id, store.alias, store.title, store.content, store.id AS store_id, user.profile_photo_url FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
 
   // const querySelect = mysql.format("SELECT * FROM items WHERE id=?", store_item_id);
 
@@ -1089,7 +1181,7 @@ router.post("/any/info/itemid", function(req, res){
 router.post("/any/sns/list", function(req, res){
   const store_user_id = req.body.data.store_user_id;
   
-  const querySelect = mysql.format("SELECT img_store_url, channel.url AS link_url, channel.id FROM channels AS channel LEFT JOIN categories_channels AS categories_channel ON channel.categories_channel_id=categories_channel.id WHERE user_id=?", store_user_id);
+  const querySelect = mysql.format("SELECT categories_channel.id AS categories_channel_id, img_store_url, channel.url AS link_url, channel.id FROM channels AS channel LEFT JOIN categories_channels AS categories_channel ON channel.categories_channel_id=categories_channel.id WHERE user_id=?", store_user_id);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -2496,6 +2588,114 @@ router.post('/any/download/file/list', function(req, res){
         state: res_state.success,
         list: result
       }
+    })
+  })
+})
+
+router.post("/any/item/count", function(req, res){
+  let store_id = req.body.data.store_id;
+
+  let language_code = req.body.data.language_code;
+  if(language_code === undefined){
+    language_code = 'kr'
+  }
+
+  let currency_code = Types.currency_code.Won;
+  if(language_code === 'kr'){
+    currency_code = Types.currency_code.Won;
+  }else{
+    currency_code = Types.currency_code.US_Dollar;
+  }
+
+  const querySelect = mysql.format("SELECT COUNT(item.id) AS item_count FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL AND currency_code=?", [store_id, Types.item_state.SALE_STOP, currency_code]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result:{
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+
+    const data = result[0];
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        count: data.item_count
+      }
+    })
+  })
+})
+
+router.post("/any/review/count", function(req, res){
+  let store_id = req.body.data.store_id;
+  let commentable_type = this.getCommentableType('store');
+
+  const querySelect = mysql.format("SELECT COUNT(comment.id) AS comment_count FROM comments AS comment WHERE comment.commentable_id=? AND comment.commentable_type=? AND second_target_id IS NOT NULL", [store_id, commentable_type]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result:{
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result:{
+        state: res_state.success,
+        count: data.comment_count
+      }
+    })
+  });
+})
+
+router.post("/any/view/count", function(req, res){
+  let store_id = req.body.data.store_id;
+
+  const querySelect = mysql.format("SELECT SUM(item.view_count) AS view_count FROM items AS item WHERE item.store_id=? AND item.state<>?", [store_id, Types.item_state.SALE_STOP]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result:{
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result:{
+        state: res_state.success,
+        count: data.view_count
+      }
+    })
+  })
+})
+
+router.post("/representativeitem/set", function(req, res){
+  let store_id = req.body.data.store_id;
+  let representative_item_id = req.body.data.representative_item_id
+
+  db.UPDATE("UPDATE stores SET representative_item_id=? WHERE id=?", [representative_item_id, store_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '대표 상품 등록 에러'
     })
   })
 })
