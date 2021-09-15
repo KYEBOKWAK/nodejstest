@@ -128,10 +128,10 @@ router.get("/any/reset/form", function(req, res){
             <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
             <title>크티 : 크라우드티켓 - 팬 중심 크리에이터 밋업 플랫폼</title>
             <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-            <link href="https://crowdticket.kr/css/base.css?version=0" rel="stylesheet">
-            <link href="https://crowdticket.kr/css/app.css?version=0')" rel="stylesheet"/>
-            <link href="https://crowdticket.kr/css/main.css?version=0')" rel="stylesheet"/>
-            <link href="https://crowdticket.kr/css/global.css?version=0')" rel="stylesheet"/>
+            <link href="https://ctee.kr/css/base.css?version=0" rel="stylesheet">
+            <link href="https://ctee.kr/css/app.css?version=0')" rel="stylesheet"/>
+            <link href="https://ctee.kr/css/main.css?version=0')" rel="stylesheet"/>
+            <link href="https://ctee.kr/css/global.css?version=0')" rel="stylesheet"/>
           </head>
           <body>
           <style>
@@ -196,7 +196,7 @@ router.get("/any/reset/form", function(req, res){
             </div>
 
             <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-            <script src="https://crowdticket.kr/js/util.js?version=0"></script>
+            <script src="https://ctee.kr/js/util.js?version=0"></script>
             <script>
             $(document).ready(function() {
               var callAjax = function(url, method, data, success, error){

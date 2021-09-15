@@ -1073,11 +1073,11 @@ sendStoreMasterSMSOrder = (store_id, item_title, total_price, name) => {
 
         let _requested_at = moment_timezone().format('YYYY-MM-DD HH:mm');        
 
-        let _order_url = 'crowdticket.kr';
+        let _order_url = 'ctee.kr';
         if(process.env.APP_TYPE === 'local'){
         _order_url = 'localhost:8000';
         }else if(process.env.APP_TYPE === 'qa'){
-        _order_url = 'qa.crowdticket.kr';
+        _order_url = 'qa.ctee.kr';
         }
 
         _order_url = _order_url + `/manager/store`;
@@ -1225,11 +1225,11 @@ sendStoreOrderCompliteKakaoAlim = (store_order_id) => {
       
   
 
-      let _order_url = 'crowdticket.kr';
+      let _order_url = 'ctee.kr';
       if(process.env.APP_TYPE === 'local'){
         _order_url = 'localhost:8000';
       }else if(process.env.APP_TYPE === 'qa'){
-        _order_url = 'qa.crowdticket.kr';
+        _order_url = 'qa.ctee.kr';
       }
 
       _order_url = _order_url + `/users/store/${data.user_id}/orders`;

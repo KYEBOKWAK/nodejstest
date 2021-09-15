@@ -713,264 +713,6 @@ app.post('/any/call/certify/confirm', function(req, res){
   });
 });
 
-/*
-app.post("/call/certify/number", function(req, res){
-  _jwt.READ(req.body.token_uuid, function(result){
-    if(result.state === 'success'){
-      //6자리수 생성
-      let randVal = '';
-      for(i = 0 ; i < 6 ; i++){
-        randVal += String(util.getRandomNumber(0, 9));
-      }
-
-      db_redis.save(result.data.token_uuid, randVal, phoneRandNumExpire, function(_result){
-        if(_result.state === 'success'){
-          //레디스 저장 성공
-          //console.log('redis success');
-          return res.send({
-            ..._result
-          });
-        }
-        else{
-          //레디스 저장 실패
-          //console.log('redis fail');
-          return res.send({
-            ..._result
-          });
-        }
-      });
-    }
-    else{
-      //jwt 인증 실패
-      return res.send({
-        ...result
-      });
-      
-    }
-  })
-});
-*/
-
-/*
-app.post('/call/certify/confirm', function(req, res){
-  new Promise(function(resolve, reject){
-    _jwt.READ(req.body.token_uuid, function(result){
-      if(result.state === 'success'){
-        //6자리수 생성
-        //req.body.certify_number
-        db_redis.load(result.data.token_uuid, function(_result){
-
-          if(_result.state === 'error'){
-            //console.log('없음!!');
-            if(_result.error === 'noData'){
-              return resolve({
-                state: 'error',
-                message: '인증시간이 지났습니다.'
-              });
-            }
-            else{
-              return resolve({
-                state: 'error',
-                message: '알 수 없는 에러'
-              });
-            }
-          }
-          else if(_result.data === req.body.certify_number){
-            //console.log('일치!!');
-            return resolve({
-              state: 'success',
-              phone: req.body.phone
-            });
-          }
-          else{
-            //console.log('불일치!!');
-            return resolve({
-              state: 'error',
-              message: '인증번호가 다릅니다.'
-            });
-          }
-        });
-        //console.log(result.data.token_uuid);
-      }
-      else{
-        //jwt 인증 실패
-        return res.send({
-          ...result
-        });
-      }
-    });
-  }).then(function(result){
-    res.send({
-      ...result
-    })
-  }).catch(function(error){
-    res.send({
-      state: 'error',
-      ...error
-    })
-  });
-});
-*/
-//phone certify check END
-//phone check sms START
-/*
-app.post("/sms/send", function(req, res){
-  axios({
-    headers: 
-    {
-      'Content-Type': 'application/json; charset=utf-8',
-      'x-ncp-auth-key': 'FW9vySa6hapMOgZszYKo',
-      'x-ncp-service-secret': '0d9f3bc215f745cdbcb2c3bba1fb9191'
-    },
-    method: 'post',
-    url: 'https://api-sens.ncloud.com/v1/sms/services/ncp:sms:kr:256960042991:crowdticket_test/messages',
-    data: {
-      type:"SMS",
-      contentType:"COMM",
-      countryCode:"82",
-      from:"01096849880",
-      to:[
-        req.body.phonenumber
-      ],
-      content:"내용테스트"
-    }
-  }).then(function (response) {
-    // console.log(response);
-    //res.data.messages
-  });
-  return res.send({aaa:'aaa'});
-});
-*/
-//phone check sms END
-
-//로그인 START
-/*
-passport.use('local-login', new LocalStrategy({
-  usernameField : 'user_id',
-  passwordField : 'user_password',
-  //session: false, // 세션에 저장 여부
-  passReqToCallback: true,
-  failureFlash: true,
-  badRequestMessage : 'Missing username or password.',
-},
-  function(req, username, password, done) {
-  //function(username, password, done) {
-    const saltRounds = 10 ;   
-    const myPlaintextPassword = password ;   
-    const someOtherPlaintextPassword = ' not_bacon ' ;
-
-    db.SELECT("SELECT * FROM users WHERE email = '"+username+"'", function(result){
-        //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
-        var user = result[0];
-        if(!user)
-        {
-          //return done(err);
-        }
-        var finalNodeGeneratedHash = user.password;
-        if(finalNodeGeneratedHash.indexOf('$2y$') === 0)
-        {
-          finalNodeGeneratedHash = finalNodeGeneratedHash.replace('$2y$', '$2b$');
-        }
-
-        bcrypt.compare(myPlaintextPassword, finalNodeGeneratedHash, function(error, result){
-          console.log('compare : ' + result);
-          if(result){
-            console.log('로그인 성공! in result');
-            jwt.sign({
-              id: user.id,
-              email: user.email
-            }, 
-            process.env.TOKEN_SECRET, 
-            { 
-              expiresIn: '5m',
-              issuer: 'crowdticket.kr',
-              subject: 'userInfo'
-            }, function(err, token){
-              if (err) 
-              {
-                //reject(err)
-                console.log('jwt error : ' + err);
-                
-              }
-              else
-              {
-                user.access_token = token;
-                console.log('token : ' + token);
-                return done(null, user);
-              }
-                            
-            });
-            //req.session.key = user.id;
-
-            //
-          }
-          else{
-            //console.log(JSON.stringify(error));
-            //console.log((error['IncomingMessage']));
-
-
-           //error['test'] = 'aa';
-           console.log('go!');
-           //flash('test', 'aaa');
-           //return done(null, false, req.flash('error', 'aaaa'));
-           //req.flash('testtest', 'Flash is back!');
-           //return done(null, false);
-           return done(null, false, {message: 'Unauthorized user!'});
-          }
-        });
-    });
-  }
-));
-*/
-//로그인 END
-/*
-//회원가입 START
-passport.use('local-join', new LocalStrategy({
-  usernameField : 'user_id',
-  passwordField : 'user_password',
-  passReqToCallback : true
-},
-  function(req, username, password, done) {
-    const saltRounds = 10 ;   
-    const myPlaintextPassword = password ;   
-    const someOtherPlaintextPassword = ' not_bacon ' ;
-
-    bcrypt.hash(myPlaintextPassword, saltRounds, function(err, hash) {
-      // Store hash in your password DB.
-      console.log('make hash!!');
-      var convertToPhpHash = hash;
-      if(convertToPhpHash.indexOf('$2b$') === 0)
-      {
-        convertToPhpHash = convertToPhpHash.replace('$2b$', '$2y$');
-      }
-
-      var post  = {email : username, name : 'name', nick_name : 'nick', password : convertToPhpHash, introduce : 'ㅇㅇㅇ', website : '', bank : '', account : '', account_holder : '', like_meta : ''};
-      db.INSERT('INSERT INTO users SET ?', post, function (error, results, fields) {
-        if (error){
-          console.log('insert error : ' + error);
-          return;
-        }
-
-        console.log(results);
-        // Neat!
-      });
-    });
-  }
-));
-//회원가입 end
-*/
-
-
-/*
-$_param['userid'] = '******';           // [필수] 뿌리오 아이디
-$_param['callback'] = '010********';    // [필수] 발신번호 - 숫자만
-$_param['phone'] = '010********';       // [필수] 수신번호 - 여러명일 경우 |로 구분 '010********|010********|010********'
-$_param['msg'] = '테스트 발송입니다';   // [필수] 문자내용 - 이름(names)값이 있다면 [*이름*]가 치환되서 발송됨
-$_param['names'] = '홍길동';            // [선택] 이름 - 여러명일 경우 |로 구분 '홍길동|이순신|김철수'
-$_param['appdate'] = '20190502093000';  // [선택] 예약발송 (현재시간 기준 10분이후 예약가능)
-$_param['subject'] = '테스트';          // [선택] 제목 (30byte)
-*/
-
 app.post("/token/check", function(req, res){
   /*
   var token = req.body.access_token;
@@ -1855,11 +1597,11 @@ function alarmTalkCTSTORE07CTSTORE12(){
       return;
     }
 
-    let _default_url = 'crowdticket.kr';
+    let _default_url = 'ctee.kr';
     if(process.env.APP_TYPE === 'local'){
       _default_url = 'localhost:8000';
     }else if(process.env.APP_TYPE === 'qa'){
-      _default_url = 'qa.crowdticket.kr';
+      _default_url = 'qa.ctee.kr';
     }
 
     for(let i = 0 ; i < result.length ; i++){
@@ -1901,11 +1643,11 @@ function alarmTalkCTSTORE08c(){
       return;
     }
 
-    let _default_url = 'crowdticket.kr';
+    let _default_url = 'ctee.kr';
     if(process.env.APP_TYPE === 'local'){
       _default_url = 'localhost:8000';
     }else if(process.env.APP_TYPE === 'qa'){
-      _default_url = 'qa.crowdticket.kr';
+      _default_url = 'qa.ctee.kr';
     }
 
     let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
@@ -1941,11 +1683,11 @@ function alarmTalkCTSTORE08b(){
       return;
     }
 
-    let _default_url = 'crowdticket.kr';
+    let _default_url = 'ctee.kr';
     if(process.env.APP_TYPE === 'local'){
       _default_url = 'localhost:8000';
     }else if(process.env.APP_TYPE === 'qa'){
-      _default_url = 'qa.crowdticket.kr';
+      _default_url = 'qa.ctee.kr';
     }
 
     let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
@@ -1981,11 +1723,11 @@ function alarmTalkCTSTORE08b_oneToOneCheck(){
       return;
     }
 
-    let _default_url = 'crowdticket.kr';
+    let _default_url = 'ctee.kr';
     if(process.env.APP_TYPE === 'local'){
       _default_url = 'localhost:8000';
     }else if(process.env.APP_TYPE === 'qa'){
-      _default_url = 'qa.crowdticket.kr';
+      _default_url = 'qa.ctee.kr';
     }
 
     let nowDate = moment_timezone().format("YYYY-MM-DD HH:mm:00");
@@ -2021,11 +1763,11 @@ function alarmTalkCTSTORE09a(){
       return;
     }
 
-    let _default_url = 'crowdticket.kr';
+    let _default_url = 'ctee.kr';
     if(process.env.APP_TYPE === 'local'){
       _default_url = 'localhost:8000';
     }else if(process.env.APP_TYPE === 'qa'){
-      _default_url = 'qa.crowdticket.kr';
+      _default_url = 'qa.ctee.kr';
     }
 
     const store_manager_url = _default_url+"/manager/store";
@@ -2081,11 +1823,11 @@ function alarmTalkCTSTORE11(){
       return;
     }
 
-    let _default_url = 'crowdticket.kr';
+    let _default_url = 'ctee.kr';
     if(process.env.APP_TYPE === 'local'){
       _default_url = 'localhost:8000';
     }else if(process.env.APP_TYPE === 'qa'){
-      _default_url = 'qa.crowdticket.kr';
+      _default_url = 'qa.ctee.kr';
     }
 
     const store_manager_url = _default_url+"/manager/store";
@@ -2124,11 +1866,11 @@ function alarmTalkSsell12v2_oneToOneReminder(){
       return;
     }
 
-    let _default_url = 'crowdticket.kr';
+    let _default_url = 'ctee.kr';
     if(process.env.APP_TYPE === 'local'){
       _default_url = 'localhost:8000';
     }else if(process.env.APP_TYPE === 'qa'){
-      _default_url = 'qa.crowdticket.kr';
+      _default_url = 'qa.ctee.kr';
     }
 
     const store_manager_url = _default_url+"/manager/store";
@@ -2180,11 +1922,11 @@ function expireReturnStoreOrderCheck(){
       return;
     }
 
-    let _default_url = 'crowdticket.kr';
+    let _default_url = 'ctee.kr';
     if(process.env.APP_TYPE === 'local'){
       _default_url = 'localhost:8000';
     }else if(process.env.APP_TYPE === 'qa'){
-      _default_url = 'qa.crowdticket.kr';
+      _default_url = 'qa.ctee.kr';
     }
 
     const store_manager_url = _default_url+"/manager/store";
@@ -2536,11 +2278,11 @@ function alarmDownloadOrderCheck() {
       return;
     }
 
-    let _default_url = 'crowdticket.kr';
+    let _default_url = 'ctee.kr';
     if(process.env.APP_TYPE === 'local'){
       _default_url = 'localhost:8000';
     }else if(process.env.APP_TYPE === 'qa'){
-      _default_url = 'qa.crowdticket.kr';
+      _default_url = 'qa.ctee.kr';
     }
 
     for(let i = 0 ; i < result.length ; i++){
