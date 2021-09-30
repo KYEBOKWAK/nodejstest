@@ -7,7 +7,7 @@ const phoneRandNumExpire = 180;
 const EXPIRE_REFRESH_TOKEN = '365d';
 const EXPIRE_ACCESS_TOKEN = '1h';
 
-const EXPIRE_DOWNLOAD_FILE_TOKEN = 10;
+const EXPIRE_DOWNLOAD_FILE_TOKEN = '2h';
 // const EXPIRE_REFRESH_TOKEN = '5m';
 // const EXPIRE_ACCESS_TOKEN = 10;
 // const REFRESH_TOKEN_RENEW_LAST_DAT_MIL_SEC = 180000; //밀리초 단위 refresh 재갱신 기준값.
