@@ -212,13 +212,28 @@ router.post('/event/feed', function(req, res){
 router.post('/any/thumbnails/popular/list', function(req, res){
   const thumbnails_type = req.body.data.thumbnails_type;
 
-  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url, first_text FROM main_thumbnails WHERE type=?", [thumbnails_type]);
+  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url, first_text, second_text FROM main_thumbnails WHERE type=?", [thumbnails_type]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result: {
         state: res_state.success,
         list: result
+      }
+    })
+  })
+});
+
+router.post('/any/curation/get/bgcolor', function(req, res){
+  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url, first_text, second_text FROM main_thumbnails WHERE type=?", [Types.thumbnails.store_item_popular]);
+
+  db.SELECT(querySelect, {}, (result) => {
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        second_text: data.second_text
       }
     })
   })
