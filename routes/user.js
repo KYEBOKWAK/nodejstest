@@ -2373,4 +2373,36 @@ router.post("/any/certification", function(req, res){
   })
 })
 
+router.post("/any/ismanager", function(req, res){
+  const user_id = req.body.data._user_id;
+
+  if(!user_id){
+    return res.json({
+      result: {
+        state: res_state.success,
+        isManager: false
+      }
+    })
+  }
+  
+  const selectQuery = mysql.format('SELECT id FROM stores WHERE user_id=?', user_id);
+  db.SELECT(selectQuery, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          isManager: false
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        isManager: true
+      }
+    })
+  })
+})
+
 module.exports = router;

@@ -213,7 +213,6 @@ app.use(function (req, res, next) {
         process.env.CROWDTICKET_WEB_REFERER_WEB_QA_R === req.headers.origin ||
         process.env.CROWDTICKET_WEB_REFERER_WEB_QA === req.headers.origin ||
         process.env.CTEE_WEB_REFERER_WEB === req.headers.origin ||
-        process.env.CTEE_WEB_REFERER_WEB_1 === req.headers.origin ||
         process.env.CTEE_WEB_REFERER_WEB_QA_R === req.headers.origin ||
         process.env.CTEE_WEB_REFERER_WEB_QA === req.headers.origin
       ){
