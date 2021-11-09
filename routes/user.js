@@ -68,62 +68,6 @@ function makeAccessToken(id, data, res){
   });
 }
 
-router.post("/any/info/update", function(req, res){
-  const user_id = req.body.data.id;
-  const sns_id = req.body.data.sns_id;
-  const sns_type = req.body.data.sns_type;
-  const email = req.body.data.email;
-
-  const age = req.body.data.age;
-  const gender = req.body.data.gender;
-  const contact = req.body.data.contact;
-
-  let queryString = "";
-  if(sns_type === types.login.facebook){
-    queryString = "UPDATE users SET age=?, gender=?, contact=?, facebook_id=? WHERE id=? AND email=BINARY(?)";
-  }else if(sns_type === types.login.google){
-    queryString = "UPDATE users SET age=?, gender=?, contact=?, google_id=? WHERE id=? AND email=BINARY(?)";
-  }else if(sns_type === types.login.kakao){
-    queryString = "UPDATE users SET age=?, gender=?, contact=?, kakao_id=? WHERE id=? AND email=BINARY(?)";
-  }else if(sns_type === types.login.apple){
-    queryString = "UPDATE users SET age=?, gender=?, contact=?, apple_id=? WHERE id=? AND email=BINARY(?)";
-  }else{
-    queryString = "UPDATE users SET age=?, gender=?, contact=? WHERE id=? AND email=BINARY(?)";
-  }
-
-  if(sns_type === types.login.email){
-    db.UPDATE(queryString, [age, gender, contact, user_id, email], (result_update) => {
-      return res.json({
-        result: {
-          state: res_state.success
-        }
-      })
-    }, (error) => {
-      return res.json({
-        state: res_state.error,
-        message: error.message,
-        result: {
-        }
-      })
-    })
-  }else{
-    db.UPDATE(queryString, [age, gender, contact, sns_id, user_id, email], (result_update) => {
-      return res.json({
-        result: {
-          state: res_state.success
-        }
-      })
-    }, (error) => {
-      return res.json({
-        state: res_state.error,
-        message: error.message,
-        result: {
-        }
-      })
-    })
-  }
-});
-
 //router.post("/any/login/sns", function(req, res){
 router.post("/any/login", function(req, res){
   const user_id = req.body.data.id;
@@ -136,17 +80,6 @@ router.post("/any/login", function(req, res){
   if(req.body.data.push_token !== ""){
     push_token = req.body.data.push_token;
   }
-
-  
-  // if(sns_type === types.login.facebook){
-  //   queryString+="facebook_id=?";
-  // }else if(sns_type === types.login.google){
-  //   queryString+="google_id=?;";
-  // }else if(sns_type === types.login.kakao){
-  //   queryString+="kakao_id=?;";
-  // }else if(sns_type === types.login.apple){
-  //   queryString+="apple_id=?;";
-  // }
 
   let userQuery = mysql.format("SELECT id FROM users WHERE id=?", [user_id]);
 
@@ -235,455 +168,11 @@ router.post("/any/login", function(req, res){
       }
     });
   })
-
-  /*
-  const user_id = req.body.data.id;
-  // const email = req.body.data.id;
-  const sns_id = req.body.data.sns_id;
-  const sns_type = req.body.data.sns_type;
-  const device = req.body.data.device;
-
-  let queryString = "SELECT id FROM users WHERE id=? AND ";
-  if(sns_type === types.login.facebook){
-    queryString+="facebook_id=?";
-  }else if(sns_type === types.login.google){
-    queryString+="google_id=?;";
-  }else if(sns_type === types.login.kakao){
-    queryString+="kakao_id=?;";
-  }else if(sns_type === types.login.apple){
-    queryString+="apple_id=?;";
-  }
-
-  let userQuery = mysql.format(queryString, [user_id, sns_id]);
-
-  db.SELECT(userQuery, {}, (result_select_user) => {
-
-    var data = {
-      state : 'error',
-      message : 'none'
-    };
-
-    if(result_select_user.length === 0){
-      return res.json({
-        state: res_state.error,
-        message: 'SNS 정보 조회 오류',
-        result:{}
-      })
-    }
-
-    var user = result_select_user[0];
-    jwt.sign({
-      id: user.id,
-      type: jwtType.TYPE_JWT_REFRESH_TOKEN
-      // email: user.email
-    }, 
-    process.env.TOKEN_SECRET, 
-    { 
-      // expiresIn: '60m',
-      expiresIn: EXPIRE_REFRESH_TOKEN,
-      issuer: process.env.JWT_TOKEN_ISSUER,
-      //issuer: 'localhost:8000',
-      subject: 'userRefresh'
-    }, function(err, token){
-      if (err) 
-      {
-        // console.log('jwt error : ' + err);
-        data.state = 'error';
-        data.message = err;
-  
-        //return res.send(data);
-        return res.json({
-          result: {
-            ...data
-          }
-        })
-      }
-      else
-      {
-        data.state = 'success';
-        data.refresh_token = token;
-  
-        //insert db start
-        var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-  
-        var refreshTokenObject = {
-          user_id : user.id,
-          refresh_token : token,
-          os : device,
-          created_at : date,
-          updated_at: date
-        };
-  
-        
-        db.INSERT("INSERT INTO devices SET ? ", refreshTokenObject, function(result){
-          // console.log(result);
-          makeAccessToken(user.id, data, res);
-        }, (error) => {
-          return res.json({
-            state: res_state.error,
-            message: error,
-            result:{}
-          })
-        });
-      }
-    });
-  })
-  */
 });
-
-router.post("/any/login/email", function(req, res){
-  var userEmail = req.body.data.user_email;
-  const saltRounds = 10 ;   
-  const myPlaintextPassword = req.body.data.user_p;
-  
-  if(userEmail === ""){
-    return res.json({
-      state: res_state.error,
-      message: "이메일을 입력해주세요",
-      result:{}
-    })
-  }
-
-  if(myPlaintextPassword === ""){
-    return res.json({
-      state: res_state.error,
-      message: "비밀번호를 입력해주세요",
-      result:{}
-    })
-  }
-
-  db.SELECT("SELECT email, password, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact FROM users WHERE email = BINARY(?)", [userEmail], function(result){
-      //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
-      
-      var data = {
-        state : 'error',
-        message : 'none'
-      };
-      
-      if(result.length <= 0)
-      {
-        return res.json({
-          state: res_state.error,
-          message: "아이디가 존재하지 않습니다.",
-          result:{}
-        })
-      }
-
-      var user = result[0];
-
-      var finalNodeGeneratedHash = user.password;
-      if(finalNodeGeneratedHash.indexOf('$2y$') === 0)
-      {
-        finalNodeGeneratedHash = finalNodeGeneratedHash.replace('$2y$', '$2b$');
-      }
-
-      bcrypt.compare(myPlaintextPassword, finalNodeGeneratedHash, function(error, result){
-        if(result){
-          return res.json({
-            result:{
-              state: res_state.success,
-              ...user
-            }
-          });
-        }else{
-          data.state = 'error';
-          data.message = '비밀번호가 틀렸습니다.';
-
-          //혹시 sns로 가입되어 있는지 확인해준다.
-
-          let _message = "";
-          if(user.facebook_id === null && user.google_id === null && user.kakao_id === null && user.apple_id === null){
-            _message = "비밀번호가 틀렸습니다."
-          }else{
-            _message = "비밀번호가 틀렸습니다. 해당 이메일은";
-            if(user.facebook_id){
-              _message+= " 페이스북";
-            }
-  
-            if(user.google_id){
-              _message+= " 구글";
-            }
-  
-            if(user.kakao_id){
-              _message+= " 카카오";
-            }
-  
-            if(user.apple_id){
-              _message+= " 애플";
-            }
-
-            _message+="로 연동되어 있습니다."
-          }
-
-          return res.json({
-            state: res_state.error,
-            message: _message,
-            result:{}
-          })
-          // return res.json({
-          //   result: {
-          //     ...data
-          //   }
-          // });
-        }
-      });
-  });
-});
-
-router.post("/any/register", function(req, res){
-  //
-  let userData = {
-    ...req.body.data
-  }
-
-  var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-
-  let setUserData = {
-    email: userData.email,
-    name: userData.name,
-    nick_name: userData.nick_name,
-    age: userData.age,
-    gender: userData.gender,
-    profile_photo_url: userData.profile_photo_url,
-    contact: userData.contact,
-    introduce: '',
-    bank: '',
-    account: '',
-    account_holder: '',
-    like_meta: '',
-    created_at: date,
-    updated_at: date
-    // password: 
-  }
-
-
-  // let nowDate = new Date();
-  // let snsTempPW = nowDate.getTime() + req.body.data.sns_id;
-  let nowPassword = userData.password;
-
-  if(userData.sns_type === types.login.email){
-    //패스워드 셋팅
-    nowPassword = userData.password;
-  }else{
-    //sns 패스워드는 임시
-    let nowDate = new Date();
-    let snsTempPW = nowDate.getTime() + userData.sns_id;
-    nowPassword = snsTempPW;
-  }
-
-
-  const saltRounds = 10 ;   
-  const myPlaintextPassword = nowPassword ;   
-  const someOtherPlaintextPassword = ' not_bacon ' ;
-
-  bcrypt.hash(myPlaintextPassword, saltRounds, function(err, hash) {
-    // Store hash in your password DB.
-    let convertToPhpHash = hash;
-    if(convertToPhpHash.indexOf('$2b$') === 0)
-    {
-      convertToPhpHash = convertToPhpHash.replace('$2b$', '$2y$');
-    }
-
-    setUserData = {
-      ...setUserData,
-      password: convertToPhpHash
-    }
-    
-    if(userData.sns_type === types.login.email){
-      //email 로 가입
-      setUserData = {
-        ...setUserData
-      }
-    }else{
-      if(userData.sns_email === null){
-        //snsid가 널이면 전용 주소를 만들어준다.
-        let emailString = userData.sns_type+"_"+userData.sns_id+"_crowdticket_app";
-        setUserData.email = emailString;
-      }
-
-      if(userData.sns_type === types.login.facebook){
-        setUserData = {
-          ...setUserData,
-          facebook_id: userData.sns_id
-          // password: 
-        }
-      }else if(userData.sns_type === types.login.google){
-        setUserData = {
-          ...setUserData,
-          google_id: userData.sns_id
-        }
-      }else if(userData.sns_type === types.login.kakao){
-        setUserData = {
-          ...setUserData,
-          kakao_id: userData.sns_id
-        }
-      }else if(userData.sns_type === types.login.apple){
-        setUserData = {
-          ...setUserData,
-          apple_id: userData.sns_id
-        }
-      }
-    }
-    
-    db.INSERT("INSERT INTO users SET ?", setUserData, 
-    (result) => {
-      return res.json({
-        result:{
-          state: res_state.success,
-          user_id: result.insertId
-        }
-      })
-
-    }, (error) => {
-      if(error.error_code === "ER_DUP_ENTRY"){
-        let _message = "";
-        if(userData.sns_type === types.login.email){
-          _message = "이미 가입된 EMIL 입니다.."
-        }else{
-          _message = "중복된 SNS ID가 있습니다. 재시도 해주세요."
-        }
-        return res.json({
-          state: res_state.error,
-          message: _message
-        })
-      }else{
-        return res.json({
-          state: res_state.error,
-          message: error.error_code
-        })
-      }
-    })
-  });
-
-  /*
-  let userData = {
-    ...req.body.data
-  }
-
-  var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-
-  let setUserData = {
-    email: userData.email,
-    name: userData. name,
-    nick_name: userData.nick_name,
-    age: userData.age,
-    gender: userData.gender,
-    profile_photo_url: userData.profile_photo_url,
-    contact: userData.contact,
-    introduce: '',
-    bank: '',
-    account: '',
-    account_holder: '',
-    like_meta: '',
-    created_at: date,
-    updated_at: date
-    // password: 
-  }
-
-
-  // let nowDate = new Date();
-  // let snsTempPW = nowDate.getTime() + req.body.data.sns_id;
-  let nowPassword = userData.password;
-
-  if(userData.sns_type === types.login.email){
-    //패스워드 셋팅
-  }else{
-    //sns 패스워드는 임시
-    let nowDate = new Date();
-    let snsTempPW = nowDate.getTime() + userData.sns_id;
-    nowPassword = snsTempPW;
-  }
-
-  // console.log(userData);
-  // return res.json({
-  //   result:{}
-  // })
-
-  // console.log(snsTempPW);
-
-  const saltRounds = 10 ;   
-  const myPlaintextPassword = nowPassword ;   
-  const someOtherPlaintextPassword = ' not_bacon ' ;
-
-  bcrypt.hash(myPlaintextPassword, saltRounds, function(err, hash) {
-    // Store hash in your password DB.
-    console.log('make hash!!');
-    let convertToPhpHash = hash;
-    if(convertToPhpHash.indexOf('$2b$') === 0)
-    {
-      convertToPhpHash = convertToPhpHash.replace('$2b$', '$2y$');
-    }
-
-    setUserData = {
-      ...setUserData,
-      password: convertToPhpHash
-    }
-    
-    if(userData.sns_type === types.login.email){
-      //email 로 가입
-      setUserData = {
-        ...setUserData
-      }
-    }else if(userData.sns_type === types.login.facebook){
-      
-      setUserData = {
-        ...setUserData,
-        facebook_id: userData.sns_id
-        // password: 
-      }
-    }else if(userData.sns_type === types.login.google){
-      setUserData = {
-        ...setUserData,
-        google_id: userData.sns_id
-      }
-    }else if(userData.sns_type === types.login.kakao){
-      setUserData = {
-        ...setUserData,
-        kakao_id: userData.sns_id
-      }
-    }else if(userData.sns_type === types.login.apple){
-      setUserData = {
-        ...setUserData,
-        apple_id: userData.sns_id
-      }
-    }
-  
-    db.INSERT("INSERT INTO users SET ?", setUserData, 
-    (result) => {
-      // console.log(result.insertId);
-      return res.json({
-        result:{
-          state: res_state.success,
-          user_id: result.insertId
-        }
-      })
-
-    }, (error) => {
-      if(error.error_code === "ER_DUP_ENTRY"){
-        let _message = "";
-        if(userData.sns_type === types.login.email){
-          _message = "중복된 EMIL이 있습니다. 재시도 해주세요."
-        }else{
-          _message = "중복된 SNS ID가 있습니다. 재시도 해주세요."
-        }
-        return res.json({
-          state: res_state.error,
-          message: _message
-        })
-      }else{
-        return res.json({
-          state: res_state.error,
-          message: error.error_code
-        })
-      }
-    })
-  });
-  */
-})
 
 router.post("/info", function(req, res){
   const user_id = req.body.data.user_id;
-  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, gender, age, facebook_id, google_id, kakao_id, contact, is_withdrawal, is_certification, advertising FROM users WHERE id=?", user_id);
+  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, gender, age, facebook_v1_id, google_id, kakao_id, contact, is_withdrawal, is_certification, advertising FROM users WHERE id=?", user_id);
   db.SELECT(queryMyInfo, {}, (result) => {
     return res.json({
       result: {
@@ -819,223 +308,6 @@ router.get("/any/callback/kakaologin", function(req, res){
   })
 })
 
-// router.post("/any/get/info/sns", function(req, res){
-
-// })
-
-router.post("/any/check/email/sns", function(req, res){
-  /*
-  const email = req.body.data.email;
-  const sns_type = req.body.data.sns_type;
-  const sns_id = req.body.data.sns_id;
-
-  if(sns_type !== types.login.facebook && 
-    sns_type !== types.login.google &&
-    sns_type !== types.login.kakao &&
-    sns_type !== types.login.apple){
-      return res.json({
-        state: res_state.error,
-        message: 'sns 타입 에러',
-        result:{}
-      })
-  }
-
-  let queryString = "SELECT email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE ";
-  if(sns_type === types.login.facebook){
-    queryString+="facebook_id=?;";
-  }else if(sns_type === types.login.google){
-    queryString+="google_id=?;";
-  }else if(sns_type === types.login.kakao){
-    queryString+="kakao_id=?;";
-  }else if(sns_type === types.login.apple){
-    queryString+="apple_id=?;";
-  }
-
-  let queryUser = mysql.format(queryString, sns_id);
-
-  db.SELECT(queryUser, {}, (result) => {
-    if(result.length === 0){
-      //없는 email
-      return res.json({
-        result: {
-          state: res_state.success
-        }
-      })
-    }
-
-    let state = types.res.RES_SUCCESS;
-    let message = "";
-
-    const userData = result[0];
-    if(sns_type === types.login.facebook){
-    }
-    if(userData.email !== email){
-      "가입되어 있는 이메일과  이메일이 다릅니다."
-    }
-
-  })
-  */
-
-  
-  const email = req.body.data.email;
-  const sns_type = req.body.data.sns_type;
-  const sns_id = req.body.data.sns_id;
-
-  if(sns_type !== types.login.facebook && 
-    sns_type !== types.login.google &&
-    sns_type !== types.login.kakao &&
-    sns_type !== types.login.apple){
-      return res.json({
-        state: res_state.error,
-        message: 'sns 타입 에러',
-        result:{}
-      })
-    }
-
-  let queryUser = mysql.format("SELECT email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
-  db.SELECT(queryUser, {}, (result) => {
-    if(result.length === 0){
-      //없는 email
-      return res.json({
-        result: {
-          state: res_state.success
-        }
-      })
-    }
-
-    const userData = result[0];
-
-    // let state = res_state.success;
-    let state = types.res.RES_SUCCESS;
-    // let error_type = types.res.RES_ERROR;
-    let message = "";
-
-    if(sns_type === types.login.facebook){
-      if(userData.facebook_id === null){
-        // state = res_state.error;
-        state = types.res.RES_ERROR_ALREADY_EMAIL_REGISTER;
-        // error_type = types.res.RES_ERROR_ALREADY_EMAIL_REGISTER;
-        message = "해당 이메일은 이미 가입되어 있는 이메일 입니다. 이메일로 시작 후 설정에서 SNS 연동 하세요."
-      }else if(userData.facebook_id !== sns_id){
-        state = types.res.RES_ERROR;
-        // error_type = types.res.RES_ERROR;
-        message = "해당 이메일은 이미 페이스북으로 가입되어 있습니다. 로그인 되어있는 페이스북 이메일을 확인해주세요.";
-      }
-      // message = "해당 이메일은 이미 페이스북으로 가입되어 있습니다. 로그인 되어있는 페이스북 이메일을 확인해주세요.";
-    }else if(sns_type === types.login.google){
-      // state = res_state.error;
-      // message = "해당 이메일은 이미 구글로 가입되어 있습니다. 로그인 되어있는 구글 이메일을 확인해주세요.";
-      if(userData.google_id === null){
-        state = types.res.RES_ERROR_ALREADY_EMAIL_REGISTER;
-        // error_type = types.res.RES_ERROR_ALREADY_EMAIL_REGISTER;
-        message = "해당 이메일은 이미 가입되어 있는 이메일 입니다. 이메일로 시작 후 설정에서 SNS 연동 하세요."
-      }else if(userData.google_id !== sns_id){
-        state = types.res.RES_ERROR;
-        // error_type = types.res.RES_ERROR;
-        message = "해당 이메일은 이미 구글로 가입되어 있습니다. 로그인 되어있는 구글 이메일을 확인해주세요.";
-      }
-    }else if(sns_type === types.login.kakao){
-      // state = res_state.error;
-      // message = "해당 이메일은 이미 카카오로 가입되어 있습니다. 로그인 되어있는 카카오 이메일을 확인해주세요.";
-      if(userData.kakao_id === null){
-        state = types.res.RES_ERROR_ALREADY_EMAIL_REGISTER;
-        // error_type = types.res.RES_ERROR_ALREADY_EMAIL_REGISTER;
-        message = "해당 이메일은 이미 가입되어 있는 이메일 입니다. 이메일로 시작 후 설정에서 SNS 연동 하세요."
-      }else if(userData.kakao_id !== sns_id){
-        state = types.res.RES_ERROR;
-        // error_type = types.res.RES_ERROR;
-        message = "해당 이메일은 이미 카카오로 가입되어 있습니다. 로그인 되어있는 카카오 이메일을 확인해주세요.";
-      }
-
-    }else if(sns_type === types.login.apple){
-      // state = res_state.error;
-      // message = "해당 이메일은 이미 애플 가입되어 있습니다. 로그인 되어있는 애플 이메일을 확인해주세요.";
-      if(userData.apple_id === null){
-        state = types.res.RES_ERROR_ALREADY_EMAIL_REGISTER;
-        // error_type = types.res.RES_ERROR_ALREADY_EMAIL_REGISTER;
-        message = "해당 이메일은 이미 가입되어 있는 이메일 입니다. 이메일로 시작 후 설정에서 SNS 연동 하세요."
-      }else if(userData.apple_id !== sns_id){
-        state = types.res.RES_ERROR;
-        // error_type = types.res.RES_ERROR;
-        message = "해당 이메일은 이미 애플로 가입되어 있습니다. 로그인 되어있는 애플 이메일을 확인해주세요.";
-      }
-    }
-    
-
-    /*
-    if(sns_type === types.login.facebook && userData.facebook_id !== null && userData.facebook_id !== sns_id){
-      state = res_state.error;
-      if(userData.facebook_id === null){
-        message = "해당 이메일은 이미 가입되어 있는 이메일 입니다. 이메일로 시작 후 설정에서 SNS 연동 하세요."
-      }else if(userData.facebook_id !== sns_id){
-        message = "해당 이메일은 이미 페이스북으로 가입되어 있습니다. 로그인 되어있는 페이스북 이메일을 확인해주세요.";
-      }else{
-
-      }
-      // message = "해당 이메일은 이미 페이스북으로 가입되어 있습니다. 로그인 되어있는 페이스북 이메일을 확인해주세요.";
-    }else if(sns_type === types.login.google && userData.google_id !== null && userData.google_id !== sns_id){
-      state = res_state.error;
-      message = "해당 이메일은 이미 구글로 가입되어 있습니다. 로그인 되어있는 구글 이메일을 확인해주세요.";
-    }else if(sns_type === types.login.kakao && userData.kakao_id !== null && userData.kakao_id !== sns_id){
-      state = res_state.error;
-      message = "해당 이메일은 이미 카카오로 가입되어 있습니다. 로그인 되어있는 카카오 이메일을 확인해주세요.";
-    }else if(sns_type === types.login.apple && userData.apple_id !== null && userData.apple_id !== sns_id){
-      state = res_state.error;
-      message = "해당 이메일은 이미 애플 가입되어 있습니다. 로그인 되어있는 애플 이메일을 확인해주세요.";
-    }
-    */
-
-    
-
-    return res.json({
-      state: state,
-      message: message,
-      result: {
-        state: state
-      }
-    })
-    /*
-    let state = res_state.success;
-    let message = "";
-    if(userData.facebook_id === null && 
-      userData.google_id === null && 
-      userData.kakao_id === null && 
-      userData.apple_id === null){
-      state = res_state.success;
-      // message = "해당 이메일은 "
-    }else{
-      state = res_state.error;
-      message = "해당 메일은 [";
-      if(userData.facebook_id){
-        message += "페이스북 ";
-      }
-
-      if(userData.google_id){
-        message += "구글 ";
-      }
-
-      if(userData.kakao_id){
-        message += "카카오 ";
-      }
-
-      if(userData.apple_id){
-        message += "애플 ";
-      }
-
-      message+="] 으로 가입되어 있습니다."
-    }
-
-    return res.json({
-      state: state,
-      message: message,
-      result: {
-        state: state
-      }
-    })
-    */
-  })
-});
-
 router.post("/any/email/validator", function(req, res){
   const email = req.body.data.email;
   let validate = validator.validate(email);
@@ -1048,59 +320,11 @@ router.post("/any/email/validator", function(req, res){
   // console.log("bbbbbbb");
 });
 
-router.post("/any/email/check", function(req, res){
-  const email = req.body.data.email;
-
-  let queryUser = mysql.format("SELECT id, email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
-
-  db.SELECT(queryUser, {}, (result) => {
-    if(result.length === 0){
-      return res.json({
-        result: {
-          state: res_state.success
-        }
-      })
-    }
-
-    const userData = result[0];
-    let message = "";
-    if(userData.facebook_id === null && userData.google_id === null && userData.kakao_id === null && userData.apple_id === null){
-      message = "해당 이메일은 이미 가입되어 있습니다."
-    }else{
-      message = "해당 이메일은 이미 가입되어 있으며, SNS ";
-      
-      if(userData.facebook_id){
-        message+=" 페이스북"
-      }
-
-      if(userData.google_id){
-        message+=" 구글"
-      }
-
-      if(userData.kakao_id){
-        message+=" 카카오"
-      }
-
-      if(userData.apple_id){
-        message+=" 애플"
-      }
-
-      message += "로 연동 되어있습니다."
-    }
-
-    return res.json({
-      state: res_state.error,
-      message: message,
-      result: {}
-    })
-  });
-});
-
 router.post("/any/find/email", function(req, res){
   const name = req.body.data.name;
   const contact = req.body.data.contact;
 
-  let queryUser = mysql.format("SELECT email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE name=? AND contact=? AND deleted_at IS NULL", [name, contact]);
+  let queryUser = mysql.format("SELECT email, facebook_v1_id, google_id, kakao_id, apple_id FROM users WHERE name=? AND contact=? AND deleted_at IS NULL", [name, contact]);
   db.SELECT(queryUser, {}, (result) => {
     if(result.length === 0){
       return res.json({
@@ -1118,7 +342,7 @@ router.post("/any/find/email", function(req, res){
     let email = userData.email;
     if(email.indexOf("_crowdticket_app") >= 0){
       type = types.find_email.sns;
-      if(userData.facebook_id){
+      if(userData.facebook_v1_id){
         snsName = "페이스북";
       }else if(userData.google_id){
         snsName = "구글";
@@ -1144,12 +368,6 @@ router.post("/any/find/email", function(req, res){
     })
   });
 });
-
-// router.post("/push_token/check", function(req, res){
-//   const refresh_token = req.body.data.refresh_token;
-//   let queryDevice = mysql.format("SELECT push_token")
-//   db.SELECT("")
-// });
 
 router.post("/push_token/update", function(req, res){
   const user_id = req.body.data.user_id;
@@ -1268,7 +486,7 @@ router.post("/out", function(req, res){
 
       let updateUserData = {
         email: "delete"+user_id,
-        facebook_id: null,
+        facebook_v1_id: null,
         google_id: null,
         kakao_id: null,
         apple_id: null,
@@ -1278,7 +496,7 @@ router.post("/out", function(req, res){
         deleted_at: date
       };
 
-      db.UPDATE("UPDATE users SET email=?, facebook_id=?, google_id=?, kakao_id=?, apple_id=?, name=?, contact=?, deleted_at=?", [updateUserData.email, updateUserData.facebook_id, updateUserData.google_id, updateUserData.kakao_id, updateUserData.apple_id, updateUserData.name, updateUserData.contact, updateUserData.deleted_at], (result_update) => {
+      db.UPDATE("UPDATE users SET email=?, facebook_v1_id=?, google_id=?, kakao_id=?, apple_id=?, name=?, contact=?, deleted_at=?", [updateUserData.email, updateUserData.facebook_v1_id, updateUserData.google_id, updateUserData.kakao_id, updateUserData.apple_id, updateUserData.name, updateUserData.contact, updateUserData.deleted_at], (result_update) => {
         return res.json({
           result:{
             state: res_state.success
@@ -1762,7 +980,7 @@ router.post("/any/login/email/web", function(req, res){
     })
   }
 
-  db.SELECT("SELECT email, password, id, nick_name, name, age, gender, facebook_id, google_id, kakao_id, apple_id, contact, inactive, profile_photo_url FROM users WHERE email = BINARY(?)", [userEmail], function(result){
+  db.SELECT("SELECT email, password, id, nick_name, name, age, gender, facebook_v1_id, google_id, kakao_id, apple_id, contact, inactive, profile_photo_url FROM users WHERE email = BINARY(?)", [userEmail], function(result){
       //var finalNodeGeneratedHash = result[0].password.replace('$2y$', '$2b$');
       
       // var data = {
@@ -1810,7 +1028,7 @@ router.post("/any/login/email/web", function(req, res){
 
           //혹시 sns로 가입되어 있는지 확인해준다.
           let sns_array = [];
-          if(user.facebook_id === null && user.google_id === null && user.kakao_id === null && user.apple_id === null){
+          if(user.facebook_v1_id === null && user.google_id === null && user.kakao_id === null && user.apple_id === null){
             // _message = "비밀번호가 틀렸습니다."
           }else{
             // _message = "비밀번호가 틀렸습니다. 해당 이메일은";
@@ -1823,7 +1041,7 @@ router.post("/any/login/email/web", function(req, res){
               sns_array.push(types.login.google)
             }
 
-            if(user.facebook_id){
+            if(user.facebook_v1_id){
               sns_array.push(types.login.facebook)
             }
   
@@ -1851,7 +1069,7 @@ router.post("/any/login/email/web", function(req, res){
 router.post("/any/email/check/web", function(req, res){
   const email = req.body.data.email;
 
-  let queryUser = mysql.format("SELECT id, email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
+  let queryUser = mysql.format("SELECT id, email, facebook_v1_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
 
   db.SELECT(queryUser, {}, (result) => {
     if(result.length === 0){
@@ -1874,8 +1092,8 @@ router.post("/any/email/check/web", function(req, res){
 
 router.post("/any/check/email/sns/web", function(req, res){  
   const email = req.body.data.email;
-
-  let queryUser = mysql.format("SELECT id, email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
+  //여기 facebook_id 는 이메일이 Null일때 체크 하므로 지우면 안됨
+  let queryUser = mysql.format("SELECT id, email, facebook_id, facebook_v1_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
   db.SELECT(queryUser, {}, (result) => {
     if(result.length === 0){
       //없는 email
@@ -1889,7 +1107,7 @@ router.post("/any/check/email/sns/web", function(req, res){
 
     const userData = result[0];
     let sns_array = [];
-    if(userData.facebook_id){
+    if(userData.facebook_v1_id){
       sns_array.push(types.login.facebook);
     }
 
@@ -1899,6 +1117,18 @@ router.post("/any/check/email/sns/web", function(req, res){
 
     if(userData.kakao_id){
       sns_array.push(types.login.kakao);
+    }
+
+    if(sns_array.length === 0){
+      if(userData.facebook_id){
+        //예전 facebook 가입자면 걍 통과 
+        return res.json({
+          result: {
+            id: null,
+            state: res_state.success
+          }
+        })
+      }
     }
 
     return res.json({
@@ -1918,7 +1148,7 @@ router.post("/any/check/snsid", function(req, res){
 
   let queryUser = '';
   if(sns_type === 'FACEBOOK'){
-    queryUser = mysql.format("SELECT id, inactive FROM users WHERE facebook_id=?", sns_id);
+    queryUser = mysql.format("SELECT id, inactive FROM users WHERE facebook_v1_id=?", sns_id);
   }else if(sns_type === 'GOOGLE'){
     queryUser = mysql.format("SELECT id, inactive FROM users WHERE google_id=?", sns_id);
   }else if(sns_type === 'KAKAO'){
@@ -1960,7 +1190,7 @@ router.post("/any/check/snsid", function(req, res){
 router.post("/any/email/join/check/web", function(req, res){
   const email = req.body.data.email;
 
-  let queryUser = mysql.format("SELECT id, email, facebook_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
+  let queryUser = mysql.format("SELECT id, email, facebook_v1_id, google_id, kakao_id, apple_id FROM users WHERE email=BINARY(?)", email);
 
   db.SELECT(queryUser, {}, (result) => {
     if(result.length === 0){
@@ -1976,7 +1206,7 @@ router.post("/any/email/join/check/web", function(req, res){
     const user = result[0];
 
     let sns_array = [];
-    if(user.facebook_id === null && user.google_id === null && user.kakao_id === null && user.apple_id === null){
+    if(user.facebook_v1_id === null && user.google_id === null && user.kakao_id === null && user.apple_id === null){
       // _message = "비밀번호가 틀렸습니다."
     }else{
       // _message = "비밀번호가 틀렸습니다. 해당 이메일은";
@@ -1989,7 +1219,7 @@ router.post("/any/email/join/check/web", function(req, res){
         sns_array.push(types.login.google)
       }
 
-      if(user.facebook_id){
+      if(user.facebook_v1_id){
         sns_array.push(types.login.facebook)
       }
 
@@ -2164,7 +1394,7 @@ router.post("/update/sns/id/delete", function(req, res){
     target_id = 'google_id';
   }
   else if(sns_type === 'FACEBOOK'){
-    target_id = 'facebook_id';
+    target_id = 'facebook_v1_id';
   }
 
   if(target_id === ''){
@@ -2221,7 +1451,7 @@ router.post("/update/sns/id", function(req, res){
     target_id = 'google_id';
   }
   else if(sns_type === 'FACEBOOK'){
-    target_id = 'facebook_id';
+    target_id = 'facebook_v1_id';
   }
 
   if(target_id === ''){
@@ -2300,6 +1530,7 @@ router.post("/withdrawal", function(req, res){
       const userInfo = {
         email: `delete_${user_id}`,
         facebook_id: null,
+        facebook_v1_id: null,
         google_id: null,
         kakao_id: null,
         apple_id: null,
