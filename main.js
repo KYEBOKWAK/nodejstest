@@ -621,6 +621,12 @@ app.post("/any/call/certify/number", function(req, res){
           })
         }else{
           let content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
+          if(countryCode === '82' || countryCode === 82){
+            content = "[크티] 인증번호 [ " + randVal + " ]를 입력해주세요.";
+          }else{
+            content = `[NINEAM] verification: ${randVal}`;
+          }
+
           Global_Func.sendSMS(contact, countryCode, content, (result) => {
               // console.log(result);
               if(result.status === '200'){
