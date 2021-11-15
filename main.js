@@ -204,7 +204,6 @@ function makeAccessToken(id, data, res){
 app.use(function (req, res, next) {
   // console.log(req.headers.origin);
   // console.log(process.env.CROWDTICKET_WEB_REFERER);
-  console.log(moment_timezone().format('YYYY-MM-DD HH:mm:ss'));
 
   if(req.headers.origin){
     if(
