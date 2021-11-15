@@ -2072,6 +2072,7 @@ function alarmDownloadOrderCheck() {
   // const to_date = today.endOf('isoWeek').format('YYYY-MM-DD HH:mm:ss');
 }
 
+/*
 cron.schedule('* * * * *', function(){
   payWaitTimeExpireCheck();
 
@@ -2097,7 +2098,8 @@ cron.schedule('* * * * *', function(){
   removeTagHOT();
   setTagHOT();
 });
-
+*/
+/*
 cron.schedule('0 0 * * Mon', function(){
   //특정 시간에 체크한다. 월요일 0시 0분
   storeTierCloseCheck();
@@ -2107,12 +2109,13 @@ cron.schedule('0 0 * * Mon', function(){
   storeTierSaleKeepCheck();
   storeTierBreakCheck();
 });
-
+*/
+/*
 cron.schedule(`${ALARM_DOWNLOAD_ORDER_CHECK_MIN} ${ALARM_DOWNLOAD_ORDER_CHECK_HOUR} * * *`, function(){
   //특정 시간에 체크한다. 매일 19시 0분에 다운로드 주문이 있을경우 알림을 보내준다.
   alarmDownloadOrderCheck();
-  
 });
+*/
 
 function storeTierCloseCheck(){
   const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.state, store.tier, store.contact, store.email, store.account_name, store.account_number, store.account_bank, store.view_count FROM stores AS store WHERE store.state<>? AND (store.tier<>? OR store.tier IS NULL)", [Types.store.STATE_APPROVED, Types.tier_store.close]);
