@@ -23,7 +23,7 @@
     "@sendgrid/mail": "^6.4.0",
     "abrequire": "0.0.4",
     "apn": "^2.2.0",
-    "aws-sdk": "^2.686.0",
+    "aws-sdk": "^2.814.0",
     "axios": "^0.19.0",
     "bcrypt": "^3.0.6",
     "connect-flash": "^0.1.1",
