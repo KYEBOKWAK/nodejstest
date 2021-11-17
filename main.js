@@ -465,6 +465,9 @@ app.use('/banner', routerBanner);
 let routerChat = require('./routes/chat');
 app.use('/chat', routerChat);
 
+let routerAd = require('./routes/advertisement');
+app.use('/advertisement', routerAd);
+
 app.post("/init/user", function(req, res){
   let userInfoQuery = "SELECT age, gender, email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
   // console.log(req.body.data);

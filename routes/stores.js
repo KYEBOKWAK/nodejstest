@@ -306,6 +306,31 @@ router.post("/orders/ask/list/get", function(req, res){
   })
 });
 
+router.post("/orders/ask/list/get/v1", function(req, res){
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+
+  let store_id = req.body.data.store_id;
+
+  let sort_state = req.body.data.sort_state;
+
+  let querySelect = '';
+  if(sort_state === null){
+    querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE store_id=? AND state < ? ORDER BY id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_CANCEL, limit, skip]);
+  }else{
+    querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE store_id=? AND state=? ORDER BY id DESC LIMIT ? OFFSET ?", [store_id, sort_state, limit, skip]);
+  }  
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
 //save/info 이거는 이전꺼, 시간 좀 지나면 제거
 router.post('/save/info', function(req, res){
   const store_id = req.body.data.store_id;
@@ -357,6 +382,29 @@ router.post("/item/list/all", function(req, res){
   const store_id = req.body.data.store_id;
 
   let querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post("/item/list/all/v1", function(req, res){
+  const store_id = req.body.data.store_id;
+  const sort_state = req.body.data.sort_state;
+
+  let querySelect = '';
+  if(sort_state === null){
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id]);
+  }else{
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id, sort_state]);
+  }
+
+  // let querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -858,6 +906,35 @@ router.post("/manager/order/list", function(req, res){
   }
 
   // let querySelect = mysql.format("SELECT orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, limit, skip]);
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post("/manager/order/list/v1", function(req, res){
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+
+  const store_id = req.body.data.store_id;
+
+  // const sort_state = req.body.data.sort_state;
+  // const sort_item_id = req.body.data.sort_item_id;
+
+  const state_currency_code = req.body.data.state_currency_code;
+
+  let querySelect = '';
+
+  if(state_currency_code === null){
+    querySelect = mysql.format("SELECT orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+  }else{
+    querySelect = mysql.format("SELECT orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.currency_code=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, state_currency_code, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+  }
+  
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -894,10 +971,74 @@ router.post("/order/all/count", function(req, res){
   })
 })
 
+router.post("/order/all/count/v1", function(req, res){
+  const store_id = req.body.data.store_id;
+  const state_currency_code = req.body.data.state_currency_code;
+
+  let querySelect = '';
+  if(state_currency_code === null){
+    querySelect = mysql.format("SELECT COUNT(id) AS total_buy_count FROM orders_items WHERE store_id=? AND state<=?", [store_id, Types.order.ORDER_STATE_CANCEL]);
+  }else{
+    querySelect = mysql.format("SELECT COUNT(id) AS total_buy_count FROM orders_items WHERE store_id=? AND state<=? AND currency_code=?", [store_id, Types.order.ORDER_STATE_CANCEL, state_currency_code]);
+  }
+
+  // const querySelect = mysql.format("SELECT COUNT(id) AS total_buy_count FROM orders_items WHERE store_id=? AND state<=?", [store_id, Types.order.ORDER_STATE_CANCEL]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+         state: res_state.success,
+         total_buy_count: 0 
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        total_buy_count: data.total_buy_count
+      }
+    })
+  })
+})
+
 router.post("/order/cancelrefund/count", function(req, res){
   const store_id = req.body.data.store_id;
 
   const querySelect = mysql.format("SELECT COUNT(id) AS cancel_refund_total_count FROM orders_items WHERE store_id=? AND state>=? AND state<=?", [store_id, Types.order.ORDER_STATE_PAY_END, Types.order.ORDER_STATE_CANCEL]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+         state: res_state.success,
+         cancel_refund_total_count: 0 
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        cancel_refund_total_count: data.cancel_refund_total_count
+      }
+    })
+  })
+})
+
+router.post("/order/cancelrefund/count/v1", function(req, res){
+  const store_id = req.body.data.store_id;
+  const state_currency_code = req.body.data.state_currency_code;
+
+  let querySelect = '';
+  if(state_currency_code === null){
+    querySelect = mysql.format("SELECT COUNT(id) AS cancel_refund_total_count FROM orders_items WHERE store_id=? AND state>=? AND state<=?", [store_id, Types.order.ORDER_STATE_PAY_END, Types.order.ORDER_STATE_CANCEL]);
+  }else{
+    querySelect = mysql.format("SELECT COUNT(id) AS cancel_refund_total_count FROM orders_items WHERE store_id=? AND state>=? AND state<=? AND currency_code=?", [store_id, Types.order.ORDER_STATE_PAY_END, Types.order.ORDER_STATE_CANCEL, state_currency_code]);
+  }
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -969,12 +1110,74 @@ router.post("/order/saling/count", function(req, res){
   })
 })
 
+router.post("/order/saling/count/v1", function(req, res){
+  const store_id = req.body.data.store_id;
+  const state_currency_code = req.body.data.state_currency_code;
+
+  let querySelect = '';
+  if(state_currency_code === null){
+    querySelect = mysql.format("SELECT COUNT(id) AS ready_total_count FROM orders_items WHERE store_id=? AND (state=? OR state=? OR state=?)", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER, Types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
+  }else{
+    querySelect = mysql.format("SELECT COUNT(id) AS ready_total_count FROM orders_items WHERE store_id=? AND currency_code=? AND (state=? OR state=? OR state=?)", [store_id, state_currency_code, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER, Types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS]);
+  }
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+         state: res_state.success,
+         ready_total_count: 0 
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        ready_total_count: data.ready_total_count
+      }
+    })
+  })
+})
+
 router.post("/order/readysuccess/count", function(req, res){
   const store_id = req.body.data.store_id;
 
-  // const querySelect = mysql.format("SELECT COUNT(id) AS ready_success_total_count FROM orders_items WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER]);
-
   const querySelect = mysql.format("SELECT COUNT(id) AS ready_success_total_count FROM orders_items WHERE (store_id=? AND state=?) OR (store_id=? AND state=?)", [store_id, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER, store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+         state: res_state.success,
+         ready_success_total_count: 0 
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        ready_success_total_count: data.ready_success_total_count
+      }
+    })
+  })
+})
+
+router.post("/order/readysuccess/count/v1", function(req, res){
+  const store_id = req.body.data.store_id;
+  const state_currency_code = req.body.data.state_currency_code;
+
+  let querySelect = '';
+  if(state_currency_code === null){
+    querySelect = mysql.format("SELECT COUNT(id) AS ready_success_total_count FROM orders_items WHERE (store_id=? AND state=?) OR (store_id=? AND state=?)", [store_id, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER, store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE]);
+  }else{
+    querySelect = mysql.format("SELECT COUNT(id) AS ready_success_total_count FROM orders_items WHERE (store_id=? AND currency_code=? AND state=?) OR (store_id=? AND currency_code=? AND state=?)", [store_id, state_currency_code, Types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER, store_id, state_currency_code, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE]);
+  }
+
+  
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1027,6 +1230,47 @@ router.post("/order/total/price", function(req, res){
   const store_id = req.body.data.store_id;
 
   const querySelect = mysql.format("SELECT SUM(total_price) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+         state: res_state.success,
+         total_price: 0 
+        }
+      })
+    }
+
+    const data = result[0];
+
+    let _total_price = data.total_price;
+    if(data.total_price === null){
+      _total_price = 0;
+    }
+    return res.json({
+      result: {
+        state: res_state.success,
+        total_price: _total_price
+      }
+    })
+  })
+})
+
+router.post("/order/total/price/v1", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const state_currency_code = req.body.data.state_currency_code;
+
+  let querySelect = '';
+  if(state_currency_code === null){
+    querySelect = mysql.format("SELECT SUM(total_price) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END]);
+  }
+  else if(state_currency_code === Types.currency_code.Won){
+    querySelect = mysql.format("SELECT SUM(total_price) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END, state_currency_code]);
+  }
+  else{
+    querySelect = mysql.format("SELECT ROUND(SUM(total_price_USD), 2) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END, state_currency_code]);
+  }
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2232,6 +2476,33 @@ router.post("/order/new/list", function(req, res){
   })
 })
 
+router.post("/order/processing/count", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const selectQuery = mysql.format("SELECT COUNT(id) AS count FROM orders_items AS orders_item WHERE orders_item.store_id=? AND orders_item.state=?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+    
+    const data = result[0]
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        count: data.count
+      }
+    })
+  })
+})
+
 const MAX_ALIAS_LENGTH = 32;
 
 router.post("/alias/check", function(req, res){
@@ -2696,6 +2967,114 @@ router.post("/representativeitem/set", function(req, res){
     return res.json({
       state: res_state.error,
       message: '대표 상품 등록 에러'
+    })
+  })
+})
+
+router.post("/item/sale/count", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const selectQuery = mysql.format("SELECT COUNT(id) AS count FROM items WHERE store_id=? AND state=?", [store_id, Types.item_state.SALE]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+    
+    const data = result[0]
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        count: data.count
+      }
+    })
+  })
+})
+
+router.post("/item/pause/count", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const selectQuery = mysql.format("SELECT COUNT(id) AS count FROM items WHERE store_id=? AND state=?", [store_id, Types.item_state.SALE_PAUSE]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+    
+    const data = result[0]
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        count: data.count
+      }
+    })
+  })
+})
+
+router.post("/item/stop/count", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const selectQuery = mysql.format("SELECT COUNT(id) AS count FROM items WHERE store_id=? AND state=?", [store_id, Types.item_state.SALE_STOP]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+    
+    const data = result[0]
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        count: data.count
+      }
+    })
+  })
+})
+
+router.post("/item/soldout/count", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const selectQuery = mysql.format("SELECT COUNT(id) AS count FROM items WHERE store_id=? AND state=?", [store_id, Types.item_state.SALE_LIMIT]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+    
+    const data = result[0]
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        count: data.count
+      }
     })
   })
 })

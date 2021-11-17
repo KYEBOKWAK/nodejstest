@@ -14,6 +14,16 @@ var mysql = require('mysql');
 const Util = use('lib/util.js');
 
 const global = use('lib/global_const.js');
+
+//slack
+var Slack = require('slack-node');
+const { Types } = require('aws-sdk/clients/acm');
+ 
+webhookUri = process.env.CROWDTICKET_SLACK_WEBHOOK_URI;
+ 
+slack = new Slack();
+slack.setWebhook(webhookUri);
+////////////
 // const util = require('./lib/util.js');
 
 router.post("/mainthumb/list", function(req, res){
@@ -1992,6 +2002,193 @@ router.post("/any/ticket/showdate", function(req, res){
         list: result
       }
     })
+  })
+})
+
+router.post("/register", function(req, res){
+  
+  const name = req.body.data.name;
+  const email = req.body.data.email;
+  const contact = req.body.data.contact;
+  const category = req.body.data.select_value;
+  const user_id = req.body.data.user_id;
+  var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  let event_applys = {
+    user_id: user_id,
+    name: name,
+    email: email,
+    contact: contact,
+    category: category,
+    created_at: date
+  }
+
+  db.INSERT("INSERT INTO event_applys SET ?;", event_applys, function(result){
+
+    const list= [
+      {
+        value: 'meeting',
+        show_value: '팬미팅'
+      },
+      {
+        value: 'festival',
+        show_value: '팬페스티벌'
+      },
+      {
+        value: 'autograph',
+        show_value: '팬사인회'
+      },
+      {
+        value: 'lecture',
+        show_value: '강의/강연'
+      },
+      {
+        value: 'show',
+        show_value: '공연'
+      },
+      {
+        value: 'screening',
+        show_value: '상영회'
+      },
+      {
+        value: 'Raffle',
+        show_value: '선물 나눔/추첨 이벤트'
+      },
+      {
+        value: 'online',
+        show_value: '온라인 이벤트 (비대면)'
+      },
+      {
+        value: 'etc',
+        show_value: '기타'
+      }
+    ];
+
+    const data = list.find((value) => {
+      return value.value === category;
+    })
+
+    let _category = ''
+
+    if(data === undefined || data === null){
+      _category = category;
+    }else{
+      _category = data.show_value;
+    }
+
+    slack.webhook({
+      channel: "#팬이벤트신청",
+      username: "신청bot",
+      text: `[팬이벤트]\n이름: ${name}\nemail: ${email}\n종류: ${_category}`
+    }, function(err, response) {
+      console.log(err);
+    });
+
+    return res.json({
+      result: {
+        state: res_state.success,
+      }
+    });
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: error,
+      result:{}
+    })
+  })
+
+})
+
+router.post('/manager/myprojects', function(req, res){
+  // let limit = req.body.data.limit;
+  // let skip = req.body.data.skip;
+  const user_id = req.body.data._user_id;
+  const sort_state = req.body.data.sort_state;
+
+  var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+
+  let querySelect = '';
+  if(sort_state === null){
+    querySelect = mysql.format("SELECT project.id AS project_id FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.user_id=? GROUP BY project.id ORDER BY project.funding_closing_at DESC", [user_id]);
+  }
+  else if(sort_state === 'sale_end'){
+    querySelect = mysql.format("SELECT project.id AS project_id FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.user_id=? AND project.state=? AND project.funding_closing_at <= ? GROUP BY project.id ORDER BY project.funding_closing_at DESC", [user_id, types.project.STATE_APPROVED, nowDate]);
+  }
+  else if(Number(sort_state) === types.project.STATE_APPROVED){
+    querySelect = mysql.format("SELECT project.id AS project_id FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.user_id=? AND project.state=? AND project.funding_closing_at > ? GROUP BY project.id ORDER BY project.funding_closing_at DESC", [user_id, sort_state, nowDate]);
+  }
+  else{
+    querySelect = mysql.format("SELECT project.id AS project_id FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.user_id=? AND project.state=? GROUP BY project.id ORDER BY project.funding_closing_at DESC", [user_id, sort_state]);
+  }
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post('/manager/proceeding/count', function(req, res){
+  const place_user_id = req.body.data.place_user_id;
+  const user_id = place_user_id;
+
+  var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  let querySelect = mysql.format("SELECT COUNT(id) AS count FROM projects AS project WHERE project.user_id=? AND project.state=? AND project.funding_closing_at > ?", [user_id, types.project.STATE_APPROVED, nowDate]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+    
+    const data = result[0]
+    return res.json({
+      result: {
+        state: res_state.success,
+        count: data.count
+      }
+    })
+
+  })
+})
+
+router.post('/manager/end/count', function(req, res){
+  const place_user_id = req.body.data.place_user_id;
+  const user_id = place_user_id;
+
+  var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  let querySelect = mysql.format("SELECT COUNT(id) AS count FROM projects AS project WHERE project.user_id=? AND project.state=? AND project.funding_closing_at <= ?", [user_id, types.project.STATE_APPROVED, nowDate]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    
+    if(result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+    
+    const data = result[0]
+    return res.json({
+      result: {
+        state: res_state.success,
+        count: data.count
+      }
+    })
+
   })
 })
 

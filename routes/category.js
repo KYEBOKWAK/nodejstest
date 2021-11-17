@@ -281,4 +281,17 @@ router.post('/any/list/get/item', function(req, res){
   })
 });
 
+router.post('/ad/list', function(req, res){
+  const querySelect = mysql.format('SELECT id, title FROM categories_ads ORDER BY order_number ASC')
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
 module.exports = router;
