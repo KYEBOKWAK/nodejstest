@@ -732,7 +732,6 @@ router.post("/contact", function(req, res){
 
 
   const msg = {
-    // to: 'cyan@crowdticket.kr',
     to: process.env.EMAIL_FROM,
     from: from,
     subject: '크티 앱 문의 메일',

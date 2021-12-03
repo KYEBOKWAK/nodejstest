@@ -1137,8 +1137,8 @@ sendStoreOrderNineAMEvent = (store_order_id) => {
                     `
 
         const msg = {
-            to: '크라우드티켓<event@crowdticket.kr>',
-            from: 'contact@crowdticket.kr',
+            to: '크라우드티켓<event@ctee.kr>',
+            from: 'contact@ctee.kr',
             subject: `콘텐츠 상점 주문 [${item_title}]`,
             html: _html,
         };
@@ -1178,7 +1178,7 @@ sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, creat
         
         const mailMSG = {
             to: toEmail,
-            from: '크티<contact@crowdticket.kr>',
+            from: '크티<contact@ctee.kr>',
             subject: Templite_email.email_store_creator_order.subject,
             html: Templite_email.email_store_creator_order.html(store_manager_name, order_name, item_title, item_price, created_at, _requestContents)
         }
@@ -1195,7 +1195,7 @@ sendStoreOrderCompliteEmail = (user_id, to_email, item_title, item_price, order_
 
     const mailMSG = {
         to: to_email,
-        from: '크티<contact@crowdticket.kr>',
+        from: '크티<contact@ctee.kr>',
         subject: Templite_email.email_store_order_requested.subject,
         html: Templite_email.email_store_order_requested.html(user_id, order_name, item_title, item_price, created_at, _requestContents)
     }

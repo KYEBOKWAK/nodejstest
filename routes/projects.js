@@ -2077,9 +2077,9 @@ router.post("/register", function(req, res){
     }
 
     slack.webhook({
-      channel: "#팬이벤트신청",
+      channel: "#bot-팬이벤트신청",
       username: "신청bot",
-      text: `[팬이벤트]\n이름: ${name}\nemail: ${email}\n종류: ${_category}`
+      text: `[팬이벤트]\n이름: ${name}\nemail: ${email}\n연락처: ${contact}\n종류: ${_category}`
     }, function(err, response) {
       console.log(err);
     });

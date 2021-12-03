@@ -1783,7 +1783,7 @@ sendStoreRefundEmail = (store_order_id, refund_reason) => {
       
       const mailMSG = {
           to: toEmail,
-          from: '크티<contact@crowdticket.kr>',
+          from: '크티<contact@ctee.kr>',
           subject: Templite_email.email_store_order_rejected.subject,
           html: Templite_email.email_store_order_rejected.html(store_manager_name, data.order_name, data.item_title, refund_reason)
       }
@@ -1882,7 +1882,7 @@ sendStoreApproveEmail = (store_order_id) => {
       
       const mailMSG = {
           to: toEmail,
-          from: '크티<contact@crowdticket.kr>',
+          from: '크티<contact@ctee.kr>',
           subject: Templite_email.email_store_order_approved.subject,
           html: Templite_email.email_store_order_approved.html(store_manager_name, data.order_name, data.item_title, data.order_user_id)
       }
@@ -1959,7 +1959,7 @@ sendStoreRelayCustomerEmailOrderUser = (store_order_id) => {
       
       const mailMSG = {
           to: toEmail,
-          from: '크티<contact@crowdticket.kr>',
+          from: '크티<contact@ctee.kr>',
           subject: Templite_email.email_store_arrive_product.subject,
           html: Templite_email.email_store_arrive_product.html(store_manager_name, data.order_name, data.item_title, data.requestContent, store_order_id)
       }

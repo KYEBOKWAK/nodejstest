@@ -83,6 +83,13 @@ router.post('/save', function(req, res){
   const updated_at = date;
   const consulting_at = date;
 
+  const category_text_array = req.body.data.category_text_array.toString();
+
+  let tier_is_discussion_text = '가능'
+  if(!tier_is_discussion){
+    tier_is_discussion_text = '불가능'
+  }
+
 
   const querySelect = mysql.format("SELECT id FROM ad_consultings WHERE store_id=?", [store_id]);
   db.SELECT(querySelect, {}, (result) => {
@@ -122,9 +129,9 @@ router.post('/save', function(req, res){
         }
 
         slack.webhook({
-          channel: "#광고신청-업데이트",
+          channel: "#bot-광고신청",
           username: "신청bot",
-          text: `[광고-신규]\n이름: ${name}\nemail: ${email}`
+          text: `[광고-신규]\n채널: ${channel}\n이름: ${name}\nemail: ${email}\n연락처: ${contact}\n단가: ${tier}\n협의: ${tier_is_discussion_text}\n활동카테고리: ${category_text_array}\n추가의견: ${opinion}`
         }, function(err, response) {
           console.log(err);
         });
@@ -163,9 +170,9 @@ router.post('/save', function(req, res){
       db.UPDATE("UPDATE ad_consultings SET ? WHERE id=?", [ad_consultings, data.id], function(result_update){
 
         slack.webhook({
-          channel: "#광고신청-업데이트",
+          channel: "#bot-광고신청",
           username: "업데이트bot",
-          text: `[광고-업데이트]\n이름: ${name}\nemail: ${email}`
+          text: `[광고-업데이트]\n채널: ${channel}\n이름: ${name}\nemail: ${email}\n연락처: ${contact}\n단가: ${tier}\n협의: ${tier_is_discussion_text}\n활동카테고리: ${category_text_array}\n추가의견: ${opinion}`
         }, function(err, response) {
           console.log(err);
         });
