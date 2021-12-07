@@ -43,11 +43,14 @@ router.post('/get', function(req, res){
       })
     }
 
+    let data = result[0];
+    data.updated_at = moment_timezone(data.updated_at).format('YYYY. MM. DD. HH:mm');
+
     return res.json({
       result: {
         state: res_state.success,
         data: {
-          ...result[0]
+          ...data
         }
       }
     })
