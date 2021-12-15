@@ -49,7 +49,7 @@ router.post('/create', function(req, res){
 
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
-    const state = Types.store.STATE_READY;
+    const state = Types.store.STATE_APPROVED;
     const tier = Types.tier_store.enter;
     const title = req.body.data.name;
     const email = req.body.data.email;
