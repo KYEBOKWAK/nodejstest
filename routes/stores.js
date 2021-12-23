@@ -4,6 +4,7 @@ const use = require('abrequire');
 var db = use('lib/db_sql.js');
 
 var Types = use('lib/types.js');
+const Types_Sort = use('lib/Types_Sort.js');
 const res_state = use('lib/res_state.js');
 const moment_timezone = require('moment-timezone');
 moment_timezone.tz.setDefault("Asia/Seoul");
@@ -646,6 +647,10 @@ router.post("/item/add", function(req, res){
     notice_user = null;
   }
 
+  if(type_contents === Types.contents.completed){
+    product_category_type = 'download';
+  }
+
   let querySelect = mysql.format("SELECT order_number FROM items WHERE store_id=? ORDER BY order_number DESC", store_id);
 
   db.SELECT(querySelect, {}, (result_select) => {
@@ -820,6 +825,10 @@ router.post("/item/update", function(req, res){
     notice_user = null;
   }
 
+  if(type_contents === Types.contents.completed){
+    product_category_type = 'download';
+  }
+
   const updated_at = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let re_set_at = null;
@@ -930,9 +939,9 @@ router.post("/manager/order/list/v1", function(req, res){
   let querySelect = '';
 
   if(state_currency_code === null){
-    querySelect = mysql.format("SELECT orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+    querySelect = mysql.format("SELECT orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
   }else{
-    querySelect = mysql.format("SELECT orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.currency_code=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, state_currency_code, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+    querySelect = mysql.format("SELECT orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.currency_code=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, state_currency_code, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
   }
   
 
@@ -1297,6 +1306,47 @@ router.post("/order/total/price/v1", function(req, res){
   })
 })
 
+router.post("/order/total/price/v2", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const state_currency_code = req.body.data.state_currency_code;
+
+  let querySelect = '';
+  if(state_currency_code === null){
+    querySelect = mysql.format("SELECT SUM(price) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END]);
+  }
+  else if(state_currency_code === Types.currency_code.Won){
+    querySelect = mysql.format("SELECT SUM(price) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END, state_currency_code]);
+  }
+  else{
+    querySelect = mysql.format("SELECT ROUND(SUM(price_USD), 2) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END, state_currency_code]);
+  }
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result: {
+         state: res_state.success,
+         total_price: 0 
+        }
+      })
+    }
+
+    const data = result[0];
+
+    let _total_price = data.total_price;
+    if(data.total_price === null){
+      _total_price = 0;
+    }
+    return res.json({
+      result: {
+        state: res_state.success,
+        total_price: _total_price
+      }
+    })
+  })
+})
+
 router.post("/item/list/sort", function(req, res){
   const store_id = req.body.data.store_id;
 
@@ -1374,7 +1424,7 @@ router.post("/manager/account/info/set", function(req, res){
 router.post("/any/info/storeid", function(req, res){
   const store_id = req.body.data.store_id;
 
-  const querySelect = mysql.format("SELECT user_id AS store_user_id FROM stores WHERE id=?", store_id);
+  const querySelect = mysql.format("SELECT user_id AS store_user_id, title FROM stores WHERE id=?", store_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2124,6 +2174,120 @@ router.post("/manager/payment/info", function(req, res){
         list: result
       }
     })
+  })
+});
+
+const COMMISION_DONATION_PERCENTAGE = 3.5;
+router.post("/manager/payment/info/v1", function(req, res){
+  const store_id = req.body.data.store_id;
+  const sort_state = req.body.data.sort_state;
+
+  const nowDate = moment_timezone();
+  // const nowDate = moment_timezone('2022-01-02 00:00:00');
+  //범위 구하기
+  let startDate = '';
+  let endDate = '';
+  let paymentDate = '';
+  if(nowDate.date() === 1){
+    //전달 1일 ~ 16일 전달
+    startDate = moment_timezone(nowDate).add(-1, 'months').format("YYYY-MM-01 00:00:00");
+    endDate = moment_timezone(nowDate).add(-1, 'months').format("YYYY-MM-15 23:59:59");
+
+    paymentDate = moment_timezone(nowDate).format("YYYY-MM-01 00:00:00");
+    
+  }
+  else if(nowDate.date() <= 16){
+    startDate = moment_timezone(nowDate).add(-1, 'months').format("YYYY-MM-16 00:00:00");
+    let endDays = moment_timezone(startDate).daysInMonth();
+
+    endDate = moment_timezone(startDate).format("YYYY-MM-"+endDays+" 23:59:59");
+
+    paymentDate = moment_timezone(nowDate).format("YYYY-MM-16 00:00:00");
+  }
+  else if(nowDate.date() > 16){
+    startDate = moment_timezone(nowDate).format("YYYY-MM-01 00:00:00");
+    endDate = moment_timezone(nowDate).format("YYYY-MM-15 23:59:59");
+
+    paymentDate = moment_timezone(nowDate).add(1, 'months').format("YYYY-MM-01 00:00:00");
+  }
+
+  let selectQuery = '';
+  if(sort_state === Types_Sort.account.donation) {
+    //도네이션만 일때는 해당 쿼리
+    selectQuery = mysql.format("SELECT id, price, total_price, price_USD, total_price_USD, currency_code, created_at FROM orders_donations WHERE store_id=? AND state=? AND created_at>=? AND created_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, startDate, endDate]);
+  }else{
+    //상점, 전체 일때는 해당 쿼리
+    selectQuery = mysql.format("SELECT orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND orders_item.currency_code=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate, Types.currency_code.Won]);
+  }
+
+  
+
+  db.SELECT(selectQuery, {}, (result) => {
+
+    if(sort_state === Types_Sort.account.donation){
+      for(let i = 0 ; i < result.length ; i++){
+        result[i].confirm_at = moment_timezone(result[i].created_at).format("YYYY-MM-DD");
+        result[i].commission = Math.floor(result[i].total_price * (COMMISION_DONATION_PERCENTAGE/100));
+        result[i].payment_price = result[i].total_price - result[i].commission;
+      }
+  
+      return res.json({
+        result: {
+          state: res_state.success,
+          next_deposit_date: paymentDate,
+          standard_payment_date_start: startDate,
+          standard_payment_date_end: endDate,
+          list: result
+        }
+      })
+    }
+    else if(sort_state === Types_Sort.account.stores){
+      for(let i = 0 ; i < result.length ; i++){
+        result[i].total_price = result[i].price;  //정산시에는 실 상품 구매 가격이 나와야함. 도네이션 작업 했으므로 total_price를 쓸 수 없음. 프론트에서 total_price를 쓰고 있어서 값 교체
+        result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
+        result[i].commission = result[i].total_price * (COMMISION_PERCENTAGE/100);
+        result[i].payment_price = result[i].total_price - result[i].commission;
+      }
+  
+      return res.json({
+        result: {
+          state: res_state.success,
+          next_deposit_date: paymentDate,
+          standard_payment_date_start: startDate,
+          standard_payment_date_end: endDate,
+          list: result
+        }
+      })
+    }else{
+      //전체 일 경우 도네이션까지 조회
+      for(let i = 0 ; i < result.length ; i++){
+        result[i].total_price = result[i].price;  //정산시에는 실 상품 구매 가격이 나와야함. 도네이션 작업 했으므로 total_price를 쓸 수 없음. 프론트에서 total_price를 쓰고 있어서 값 교체
+        result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
+        result[i].commission = result[i].total_price * (COMMISION_PERCENTAGE/100);
+        result[i].payment_price = result[i].total_price - result[i].commission;
+      }
+
+      const selectDonationQuery = mysql.format("SELECT id, price, total_price, price_USD, total_price_USD, currency_code, created_at FROM orders_donations WHERE store_id=? AND state=? AND created_at>=? AND created_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, startDate, endDate]);
+
+      db.SELECT(selectDonationQuery, {}, (result_donation) => {
+        for(let i = 0 ; i < result_donation.length ; i++){
+          result_donation[i].confirm_at = moment_timezone(result_donation[i].created_at).format("YYYY-MM-DD");
+          result_donation[i].commission = Math.floor(result_donation[i].total_price * (COMMISION_DONATION_PERCENTAGE/100));
+          result_donation[i].payment_price = result_donation[i].total_price - result_donation[i].commission;
+        }
+
+        return res.json({
+          result: {
+            state: res_state.success,
+            next_deposit_date: paymentDate,
+            standard_payment_date_start: startDate,
+            standard_payment_date_end: endDate,
+            list: result,
+            donation_list: result_donation
+          }
+        })
+      });
+    }
   })
 });
 
