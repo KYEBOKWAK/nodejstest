@@ -475,7 +475,7 @@ payISPComplite = (req, res, serializer_uid) => {
 
     let orderQuery = '';
     if(pay_isp_type === types.pay_isp_type.isp_donation){
-      orderQuery = "SELECT orders_item_id, orders_donation.state, orders_donation.id, orders_donation.total_price, orders_item.total_price AS orders_item_total_price FROM orders_donations AS orders_donation LEFT JOIN orders_items AS orders_item ON orders_donation.orders_item_id=orders_item.id WHERE orders_donation.id=? AND orders_donation.merchant_uid=?";
+      orderQuery = "SELECT orders_donation.name, store.title AS place_title, orders_item_id, orders_donation.state, orders_donation.id, orders_donation.total_price, orders_item.total_price AS orders_item_total_price FROM orders_donations AS orders_donation LEFT JOIN orders_items AS orders_item ON orders_donation.orders_item_id=orders_item.id LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.id=? AND orders_donation.merchant_uid=?";
         // orderQuery = "SELECT _order.state, _order.id, _order.total_price FROM orders_donations AS _order WHERE _order.id=? AND _order.merchant_uid=?";
     }else{
         return res.json({
@@ -551,6 +551,20 @@ payISPComplite = (req, res, serializer_uid) => {
                             }
                         })
                     }
+                    
+                    if(process.env.APP_TYPE === 'local'){
+                    }else{
+                      if(pay_isp_type === types.pay_isp_type.isp_donation){
+                        slack.webhook({
+                          channel: "#결제알림",
+                          username: "알림bot",
+                          text: `(후원)\n플레이스: ${orderData.place_title}\n후원: ${orderData.total_price}\n주문자명: ${orderData.name}`
+                        }, function(err, response) {
+                          console.log(err);
+                        });
+                      }
+                    }
+                    
 
                     return  res.json({
                         result:{
@@ -1454,7 +1468,7 @@ function senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_
 }
 
 sendSlackAlim = (item_order_id) => {
-    const querySelect = mysql.format("SELECT orders_item.total_price_USD, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", item_order_id);
+    const querySelect = mysql.format("SELECT orders_item.total_price AS total_price, orders_donation.count AS donation_count, orders_donation.total_price AS donation_total_price, orders_item.orders_donation_id, item.price_USD AS item_price_usd, orders_item.total_price_USD, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN orders_donations AS orders_donation ON orders_item.orders_donation_id=orders_donation.id WHERE orders_item.id=?", item_order_id);
   
     db.SELECT(querySelect, {}, (result) => {
       if(!result || result.length === 0){
@@ -1464,16 +1478,26 @@ sendSlackAlim = (item_order_id) => {
       const data = result[0];
 
       let priceText = '';
+      let total_price_text = '';
       if(data.total_price_USD > 0){
-          priceText = '$'+ data.total_price_USD;
+          priceText = '$'+ data.item_price_usd;
+          total_price_text = '$'+ data.total_price_USD;
       }else{
         priceText = data.item_price;
+        total_price_text = data.total_price;
+      }
+
+      let donation_count = 0;
+      let donation_total_price = 0;
+      if(data.orders_donation_id !== null){
+        donation_count = data.donation_count;
+        donation_total_price = data.donation_total_price;
       }
       
       slack.webhook({
         channel: "#결제알림",
         username: "알림bot",
-        text: `점주명: ${data.creator_name}\n상품명: ${data.item_title}\n금액: ${priceText}\n주문자명: ${data.customer_name}`
+        text: `(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}`
       }, function(err, response) {
         console.log(err);
       });

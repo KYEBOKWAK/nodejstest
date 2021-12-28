@@ -390,7 +390,7 @@ router.post('/my/list/get', function(req, res){
   let limit = req.body.data.limit;
   let skip = req.body.data.skip;
   
-  const querySelect = mysql.format("SELECT orders_donation.id, orders_donation.state, orders_donation.created_at, orders_donation.count, store.user_id AS place_user_id, store.title FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.user_id=? ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [user_id, limit, skip]);
+  const querySelect = mysql.format("SELECT orders_donation.id, orders_donation.state, orders_donation.created_at, orders_donation.count, store.user_id AS place_user_id, store.title FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.user_id=? AND (orders_donation.state=? OR orders_donation.state=?) ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [user_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, Types.order.ORDER_STATE_CANCEL, limit, skip]);
   
   db.SELECT(querySelect, {}, (result) => {
     // if(result.length === 0){
