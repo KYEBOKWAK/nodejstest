@@ -1876,7 +1876,7 @@ router.post('/store/send/message', function(req, res){
 //?imp_uid=xxxxxxx&merchant_uid=yyyyyyy
 //iamport webhook verify
 router.post('/any/payments/complete', function(req, res){
-  console.log(req);
+  
     let yourIP = getUserIP(req);
     let webHookIPList = [];
     if(process.env.APP_TYPE === 'local'){
@@ -1897,7 +1897,9 @@ router.post('/any/payments/complete', function(req, res){
         }
     }
 
-    console.log(yourIP);
+    // console.log(yourIP);
+    console.log(req.headers['x-forwarded-for']);
+    console.log(req.connection.remoteAddress);
     console.log(webHookIPList);
 
     if(!isWebHookPass){
