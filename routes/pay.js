@@ -1882,12 +1882,19 @@ router.post('/any/payments/complete', function(req, res){
     if(process.env.APP_TYPE === 'local'){
         // let ip = process.env.IAMPORT_WEB_HOOK_IP_TEST;
         // webHookIPList.push(ip);
-        webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_1);
-        webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_2);
-    }else{
-        webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_1);
-        webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_2);
+        // webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_1);
+        // webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_2);
     }
+    else if(process.env.APP_TYPE === 'qa'){
+      yourIP = process.env.IAMPORT_WEB_HOOK_IP_1;  
+    }
+    else{
+        // webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_1);
+        // webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_2);
+    }
+
+    webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_1);
+    webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_2);
 
     let isWebHookPass = false;
     for(let i = 0 ; i < webHookIPList.length ; i++){
@@ -1896,11 +1903,6 @@ router.post('/any/payments/complete', function(req, res){
             isWebHookPass = true;
         }
     }
-
-    // console.log(yourIP);
-    console.log(req.headers['x-forwarded-for']);
-    console.log(req.connection.remoteAddress);
-    console.log(webHookIPList);
 
     if(!isWebHookPass){
         return res.json({
