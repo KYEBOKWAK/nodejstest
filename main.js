@@ -471,6 +471,10 @@ app.use('/advertisement', routerAd);
 let routerPlace = require('./routes/place');
 app.use('/place', routerPlace);
 
+
+let routerDonation = require('./routes/donation');
+app.use('/donation', routerDonation);
+
 app.post("/init/user", function(req, res){
   let userInfoQuery = "SELECT age, gender, email, name, contact, id, nick_name, profile_photo_url FROM users WHERE id=?";
   // console.log(req.body.data);

@@ -40,10 +40,8 @@ slack.setWebhook(webhookUri);
 ////////////
 
 
-const PAY_SERIALIZER_ONETIME = "onetime";
-const PAY_SERIALIZER_SCHEDULE = "scheduled";
-
-const DEFAULT_DONATION_PRICE = 3000;
+const PAY_SERIALIZER_ONETIME = "onetime"
+const PAY_SERIALIZER_SCHEDULE = "scheduled"
 
 function getUserIP(req) {
     const addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
@@ -114,10 +112,179 @@ function getStoreOrderStateCheckIamportState(iamport_state, type_contents){
 
         return types.order.ORDER_STATE_APP_STORE_PAYMENT;
     }
+
+    /*
+        if(iamport_state === 'paid'){
+            // return types.order.ORDER_STATE_APP_PAY_COMPLITE;
+            return types.order.ORDER_STATE_APP_PAY_COMPLITE;
+        }else if(iamport_state === 'ready'){
+            return types.order.ORDER_STATE_APP_PAY_WAIT_VBANK;
+        }else if(iamport_state === 'failed'){
+            return types.order.ORDER_STATE_PAY_SCHEDULE_RESULT_FAIL;
+        }else if(iamport_state === 'cancelled'){
+            return types.order.ORDER_STATE_CANCEL;
+        }else if(iamport_state === 'scheduled'){
+            // return types.order.ORDER_STATE_PAY_SCHEDULE;
+            return types.order.ORDER_STATE_APP_STORE_READY;
+        }
+        else{
+            return types.order.ORDER_STATE_ERROR_IAMPORT_WEBHOOK_NONE;
+        }
+        */
 }
 
 // app.set('view engine', 'ejs');
 // app.engine('html', require('ejs').renderFile);
+
+/*
+function templateHTML(basicURL){
+    // console.log(process.env.IAMPORT_IMP);
+    const iamport_IMP = process.env.IAMPORT_IMP;
+    const iamport_app_scheme = process.env.IAMPORT_APP_SCHEME;
+    const redirect_url = basicURL + "/pay/any/payments/complete";
+    console.log(redirect_url);
+    return `
+    <!DOCTYPE html>
+    <html>
+        <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8">
+        <script type="text/javascript" src="https://code.jquery.com/jquery-1.12.4.min.js" ></script>
+        <script type="text/javascript" src="https://cdn.iamport.kr/js/iamport.payment-1.1.5.js" ></script>
+            <title>크티-결제</title>
+        </head>
+        <body>
+        
+        </body>
+
+        <script type="text/javascript">
+
+        var IMP = window.IMP; // 생략가능
+        IMP.init("${iamport_IMP}"); // 'iamport' 대신 부여받은 "가맹점 식별코드"를 사용
+
+        callIamPortPay = function(pay_method){
+            //onclick, onload 등 원하는 이벤트에 호출합니다
+            IMP.request_pay({
+                pg : 'nice', // version 1.1.0부터 지원.
+                pay_method : pay_method,
+                merchant_uid : 'merchant_' + new Date().getTime(),
+                name : '주문명:결제테스트',
+                amount : 100,
+                buyer_email : 'bogame@naver.com',
+                buyer_name : '곽계보',
+                buyer_tel : '01096849880',    //(필수항목) 누락되거나 blank일 때 일부 PG사에서 오류 발생
+                // buyer_addr : '',
+                // buyer_postcode : '123-456',
+                m_redirect_url : '${redirect_url}',
+                app_scheme : '${iamport_app_scheme}',
+                display : {
+                    card_quota: []
+                },
+                digital: true //	결제상품이 컨텐츠인지 여부
+            }, function(rsp) {
+                // window.ReactNativeWebView.postMessage(rsp);
+                //모바일은 m_redirect_url 을 통해서 처리한다.
+                
+                if ( rsp.success ) {
+                    var msg = '결제가 완료되었습니다.';
+                    msg += '고유ID : ' + rsp.imp_uid;
+                    msg += '상점 거래ID : ' + rsp.merchant_uid;
+                    msg += '결제 금액 : ' + rsp.paid_amount;
+                    msg += '카드 승인번호 : ' + rsp.apply_num;
+                } else {
+                    var msg = '결제에 실패하였습니다.';
+                    msg += '에러내용 : ' + rsp.error_msg;
+                }
+                
+
+                //alert(msg);
+            });
+
+            return true;
+        }
+        alert("aaaaaa");
+        </script>
+
+    </html>
+    `
+}
+*/
+
+/*
+function payComplite(req, res, serializer_uid){
+    const order_id = req.body.data.order_id;
+    const merchant_uid = req.body.data.merchant_uid;
+    const imp_uid = req.body.data.imp_uid;
+
+    console.log(order_id+"/"+merchant_uid+"/"+imp_uid);
+    let orderQuery = "SELECT state, id, total_price FROM orders AS _order WHERE _order.id=? AND _order.merchant_uid=?";
+    orderQuery = mysql.format(orderQuery, [order_id, merchant_uid]);
+    // console.log(orderQuery);
+    db.SELECT(orderQuery, [], (result_order) => {
+        if(result_order.length === 0){
+            return  res.json({
+                result:{
+                    state: res_state.error,
+                    message: '주문 결과가 없습니다.'
+                }
+            })
+        }
+
+        const orderData = result_order[0];
+
+        iamport.payment.getByImpUid({
+            imp_uid: imp_uid  
+          }).then(function(result_import){
+            // To do
+            const status = result_import.status;
+            if(result_import.amount === orderData.total_price){
+                const orderState = getOrderStateCheckIamportState(status);
+
+                let _imp_meta = {
+                    serializer_uid: serializer_uid,
+                    imp_uid: imp_uid,
+                    merchant_uid: merchant_uid
+                }
+                db.UPDATE("UPDATE orders AS _order SET state=?, imp_uid=?, imp_meta=? WHERE id=?", [orderState, imp_uid, _imp_meta, orderData.id], 
+                (result_order_update) => {
+                    console.log(result_order_update);
+                    if(!result_order_update){
+                        return  res.json({
+                            result:{
+                                state: res_state.error,
+                                message: '주문정보 업데이트 실패'
+                            }
+                        })
+                    }
+
+                    return  res.json({
+                        result:{
+                            state: res_state.success,
+                            order_id: orderData.id
+                        }
+                    })            
+                });
+            }else{
+                return  res.json({
+                    result:{
+                        state: res_state.error,
+                        message: '결제 금액이 다릅니다.'
+                    }
+                });
+            }
+          }).catch(function(error){
+            // handle error
+            return  res.json({
+                result:{
+                    state: res_state.error,
+                    message: '결제정보가 없습니다.'
+                }
+            });
+          });
+    })
+}
+*/
 
 payComplite = (req, res, serializer_uid) => {
     const order_id = req.body.data.order_id;
@@ -285,10 +452,6 @@ payStoreComplite = (req, res, serializer_uid) => {
     const user_id = req.body.data.user_id;
     const customer_uid = Util.getPayNewCustom_uid(user_id);
     const pay_method = req.body.data.pay_method;
-    let donation_order_id = req.body.data.donation_order_id;
-    if(donation_order_id === undefined){
-      donation_order_id = null;
-    }
 
     
     // let orderQuery = "SELECT state, id, total_price FROM orders_items AS _order WHERE _order.id=? AND _order.merchant_uid=?";
@@ -400,20 +563,8 @@ payStoreComplite = (req, res, serializer_uid) => {
                         };
     
                         _imp_meta = JSON.stringify(_imp_meta);
-
-                        let orders_item_data = {
-                          confirm_at: confirm_at,
-                          product_answer: product_answer,
-                          down_expired_at: down_expired_at,
-                          state: orderState,
-                          imp_uid: imp_uid,
-                          imp_meta: _imp_meta,
-                          serializer_uid: serializer_uid,
-                          pay_method: pay_method,
-                          orders_donation_id: donation_order_id
-                        }
         
-                        db.UPDATE("UPDATE orders_items AS _order SET ? WHERE id=?", [orders_item_data, orderData.id], 
+                        db.UPDATE("UPDATE orders_items AS _order SET confirm_at=?, product_answer=?, down_expired_at=?, state=?, imp_uid=?, imp_meta=?, serializer_uid=?, pay_method=? WHERE id=?", [confirm_at, product_answer, down_expired_at, orderState, imp_uid, _imp_meta, serializer_uid, pay_method, orderData.id], 
                         (result_order_update) => {
                             // console.log(result_order_update);
                             if(!result_order_update){
@@ -475,8 +626,7 @@ payISPComplite = (req, res, serializer_uid) => {
 
     let orderQuery = '';
     if(pay_isp_type === types.pay_isp_type.isp_donation){
-      orderQuery = "SELECT orders_item_id, orders_donation.state, orders_donation.id, orders_donation.total_price, orders_item.total_price AS orders_item_total_price FROM orders_donations AS orders_donation LEFT JOIN orders_items AS orders_item ON orders_donation.orders_item_id=orders_item.id WHERE orders_donation.id=? AND orders_donation.merchant_uid=?";
-        // orderQuery = "SELECT _order.state, _order.id, _order.total_price FROM orders_donations AS _order WHERE _order.id=? AND _order.merchant_uid=?";
+        orderQuery = "SELECT _order.state, _order.id, _order.total_price FROM orders_donations AS _order WHERE _order.id=? AND _order.merchant_uid=?";
     }else{
         return res.json({
             result:{
@@ -510,79 +660,78 @@ payISPComplite = (req, res, serializer_uid) => {
                 }
             })
         }else{
-          let checkTotalPrice = orderData.total_price
-          if(orderData.orders_item_id !== null){
-            checkTotalPrice = orderData.orders_item_total_price
-          }
             
-          iamport.payment.getByImpUid({
-            imp_uid: imp_uid  
-            }).then(function(result_import){
-            // To do
-            const status = result_import.status;
-            if(result_import.amount === checkTotalPrice){
-                const orderState = getOrderStateCheckIamportState(status, pay_isp_type);
+            iamport.payment.getByImpUid({
+                imp_uid: imp_uid  
+                }).then(function(result_import){
+                // To do
+                const status = result_import.status;
+                if(result_import.amount === orderData.total_price){
+                    const orderState = getOrderStateCheckIamportState(status, pay_isp_type);
 
-                let _imp_meta = {
-                    serializer_uid: serializer_uid,
-                    imp_uid: imp_uid,
-                    merchant_uid: merchant_uid,
-                    customer_uid: customer_uid
-                };
+                    let _imp_meta = {
+                        serializer_uid: serializer_uid,
+                        imp_uid: imp_uid,
+                        merchant_uid: merchant_uid,
+                        customer_uid: customer_uid
+                    };
 
-                _imp_meta = JSON.stringify(_imp_meta);
+                    _imp_meta = JSON.stringify(_imp_meta);
 
-                let orders_donations = {
-                    state: orderState,
-                    imp_uid: imp_uid,
-                    imp_meta: _imp_meta,
-                    serializer_uid: serializer_uid,
-                    pay_method: pay_method
-                }
+                    let orders_donations = {
+                        state: orderState,
+                        imp_uid: imp_uid,
+                        imp_meta: _imp_meta,
+                        serializer_uid: serializer_uid,
+                        pay_method: pay_method
+                    }
 
-                db.UPDATE("UPDATE orders_donations SET ? WHERE id=?", [orders_donations, orderData.id], 
-                (result_order_update) => {
-                    // console.log(result_order_update);
-                    if(!result_order_update){
+                    db.UPDATE("UPDATE orders_donations SET ? WHERE id=?", [orders_donations, orderData.id], 
+                    (result_order_update) => {
+                        // console.log(result_order_update);
+                        if(!result_order_update){
+                            return  res.json({
+                                result:{
+                                    state: res_state.error,
+                                    message: '주문정보 업데이트 실패'
+                                }
+                            })
+                        }
+
+                        return  res.json({
+                            result:{
+                                state: res_state.success,
+                                order_id: orderData.id
+                            }
+                        })            
+                    }, (error) => {
                         return  res.json({
                             result:{
                                 state: res_state.error,
                                 message: '주문정보 업데이트 실패'
                             }
                         })
-                    }
-
-                    return  res.json({
-                        result:{
-                            state: res_state.success,
-                            order_id: orderData.id
-                        }
-                    })            
-                }, (error) => {
+                    });
+                }else{
                     return  res.json({
                         result:{
                             state: res_state.error,
-                            message: '주문정보 업데이트 실패'
+                            message: '결제 금액이 다릅니다.'
                         }
-                    })
+                    });
+                }
+                }).catch(function(error){
+                // handle error
+                    return  res.json({
+                        state: res_state.error,
+                        message: '결제정보가 없습니다.',
+                        result:{
+                        }
+                    });
                 });
-            }else{
-                return  res.json({
-                  state: res_state.error,
-                  message: '결제 금액이 다릅니다.',
-                  result:{}
-                });
-            }
-            }).catch(function(error){
-            // handle error
-                return  res.json({
-                    state: res_state.error,
-                    message: '결제정보가 없습니다.',
-                    result:{
-                    }
-                });
-            });
-          }        
+        }
+
+        
     })
 }
 
@@ -1244,24 +1393,23 @@ router.post('/store/onetime', function(req, res){
     const total_price = _data.total_price;
 
     const item_title = _data.title;
-    const item_price = _data.item_price;
 
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
     const merchant_uid = Util.getPayStoreNewMerchant_uid(store_id, user_id);
 
     let total_price_usd = _data.total_price_usd;
     if(total_price_usd === undefined || total_price_usd === null){
-      total_price_usd = 0;
+        total_price_usd = 0;
     }
 
     let price_usd = _data.price_usd;
     if(price_usd === undefined || price_usd === null){
-      price_usd = 0;
+        price_usd = 0;
     }
 
     let currency_code = _data.currency_code;
     if(currency_code === undefined){
-      currency_code = types.currency_code.Won;
+        currency_code = types.currency_code.Won;
     }
 
     // const item_price = _data.item_price;
@@ -1272,7 +1420,7 @@ router.post('/store/onetime', function(req, res){
         user_id: user_id,
         state: types.order.ORDER_STATE_STAY,
         count: 1,
-        price: item_price,
+        price: total_price,
         price_USD: price_usd,
         total_price: total_price,
         total_price_USD: total_price_usd,
@@ -1339,6 +1487,20 @@ router.post('/store/onetime', function(req, res){
                         message: '해당 상품은 품절되었습니다.(상태 업데이트 에러)',
                     })
                 })
+                /*
+                db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_ERROR_TICKET_OVER_COUNT, item_order_id], (result) => {
+                    
+                    return res.json({
+                        state: res_state.error,
+                        message: '해당 상품은 품절되었습니다.',
+                    })
+                }, (error) => {
+                    return res.json({
+                        state: res_state.error,
+                        message: '해당 상품은 품절되었습니다.(상태 업데이트 에러)',
+                    })
+                })
+                */
 
                 return;
             }
@@ -1361,7 +1523,19 @@ router.post('/store/onetime', function(req, res){
             if(_data.total_price === 0){
                 //0원이면 iamport 안함.
                 if(process.env.APP_TYPE !== 'local'){
-                  senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
+
+                    senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
+                    /*
+                    this.sendStoreOrderNineAMEvent(item_order_id);
+
+                    this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+                    this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
+
+                    this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+
+                    this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+                    */
                 }                
     
                 req.body.data.merchant_uid = merchant_uid;
@@ -1369,58 +1543,61 @@ router.post('/store/onetime', function(req, res){
                 this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
     
             }else{
-              iamport.subscribe.onetime({
-                  ...paymentData
-              }).then((result) => {
-                  // To do
-                  // console.log(result);
-                  //status: 'paid',
-                  if(result.status === 'paid'){
-                      //결제 성공
-                      if(process.env.APP_TYPE !== 'local'){
-                        senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
-                      }
-  
-                      req.body.data.merchant_uid = result.merchant_uid;
-                      req.body.data.imp_uid = result.imp_uid;
+                iamport.subscribe.onetime({
+                    ...paymentData
+                }).then((result) => {
+                    // To do
+                    // console.log(result);
+                    //status: 'paid',
+                    if(result.status === 'paid'){
+                        //결제 성공
+                        if(process.env.APP_TYPE !== 'local'){
 
-                      req.body.data.pay_isp_type = types.pay_isp_type.onetime_donation;
-                      // req.body.data.pay_method = result.pay_method;
+                            senderOrderCompleteAlarm(item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
+                            /*
+                            this.sendStoreOrderNineAMEvent(item_order_id);
 
-                      this.setDonation(req, res, (donation_order_id) => {
-                        req.body.data.donation_order_id = donation_order_id;
+                            this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+
+                            this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
+
+                            this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+
+                            this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+                            */
+                        }
+    
+                        req.body.data.merchant_uid = result.merchant_uid;
+                        req.body.data.imp_uid = result.imp_uid;
+                        // req.body.data.pay_method = result.pay_method;
                         this.payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
-                      }, (error) => {
-
-                      })
-                      
-                  }else{
-                      // console.log("success");
-                      return res.json({
-                          state: res_state.error,
-                          message: result.fail_reason,
-                      });
-                  }
-                  // console.log(result);
-              }).catch((error) => {
-                  // handle error
-                  // console.log(error);
-                  //ORDER_STATE_ERROR_PAY
-                  
-                  db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_ERROR_PAY, req.body.data.order_id], (result) => {
-                    return res.json({
-                        state: res_state.error,
-                        message: error.message,
+                    }else{
+                        // console.log("success");
+                        return res.json({
+                            state: res_state.error,
+                            message: result.fail_reason,
+                        });
+                    }
+                    // console.log(result);
+                }).catch((error) => {
+                    // handle error
+                    // console.log(error);
+                    //ORDER_STATE_ERROR_PAY
+                    
+                    db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_ERROR_PAY, req.body.data.order_id], (result) => {
+                        return res.json({
+                            state: res_state.error,
+                            message: error.message,
+                        })
+                    }, (error) => {
+                        return res.json({
+                            state: res_state.error,
+                            message: error.message,
+                        })
                     })
-                  }, (error) => {
-                    return res.json({
-                        state: res_state.error,
-                        message: error.message,
-                    })
-                  })
-                  
-                  // console.log(error);
-              });
+                    
+                    // console.log(error);
+                });
             }
         });
         /////////////////////////////////////
@@ -1480,96 +1657,6 @@ sendSlackAlim = (item_order_id) => {
     })
 }
 
-setDonation = (req, res, successCallBack, errorCallBack) => {
-    const _data = req.body.data;
-    const user_id = _data.user_id;
-    const store_id = _data.store_id;
-    const item_id = _data.item_id;
-
-    const order_id = _data.order_id;
-
-    const name = _data.name;
-    const contact = _data.contact;
-    const email = _data.email;
-
-    const pay_method = _data.pay_method;
-
-    const coffee_count = _data.coffee_count;
-    const donation_total_price = _data.donation_total_price;
-
-    const pay_isp_type = _data.pay_isp_type;
-
-    if(coffee_count === 0){
-      return successCallBack(null);
-    }
-
-    const created_at = _data.created_at;
-
-    if(order_id === undefined || order_id === null){
-        return errorCallBack();
-    }
-
-    let currency_code = _data.currency_code;
-    if(currency_code === undefined){
-        currency_code = types.currency_code.Won;
-    }
-
-    const merchant_uid = _data.merchant_uid;
-
-    let insertDonationData = {
-      store_id: store_id,
-      user_id: user_id,
-      item_id: item_id,
-      orders_item_id: order_id,
-      state: types.order.ORDER_STATE_APP_STORE_STANBY,
-      count: coffee_count,
-      price: DEFAULT_DONATION_PRICE,
-      total_price: donation_total_price,
-      price_USD: 0,
-      total_price_USD: 0,
-      name: name,
-      contact: contact,
-      email: email,
-      currency_code: currency_code,
-      merchant_uid: merchant_uid,
-      pay_method: pay_method,
-      // imp_uid: imp_uid,
-      currency_code: currency_code,
-      created_at: created_at,
-      updated_at: created_at
-    }
-
-    if(pay_isp_type === types.pay_isp_type.onetime_donation){
-      const imp_uid = _data.imp_uid;
-      const customer_uid = Util.getPayNewCustom_uid(user_id);
-
-      let _imp_meta = {
-        serializer_uid: PAY_SERIALIZER_ONETIME,
-        imp_uid: imp_uid,
-        merchant_uid: merchant_uid,
-        customer_uid: customer_uid
-      };
-
-      _imp_meta = JSON.stringify(_imp_meta);
-
-      insertDonationData = {
-        ...insertDonationData,
-        state: types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION,
-        imp_uid: imp_uid,
-        imp_meta: _imp_meta,
-        serializer_uid: PAY_SERIALIZER_ONETIME,
-      }
-    }
-
-    db.INSERT("INSERT INTO orders_donations SET ?", insertDonationData, (result_insert_orders_donations) => {
-      const donation_order_id = result_insert_orders_donations.insertId;
-
-      return successCallBack(donation_order_id);
-    }, (error) => {
-        return errorCallBack();
-    })
-}
-
 router.post("/store/isp/iamport", function(req, res){
     const _data = req.body.data;
     const user_id = req.body.data.user_id;
@@ -1590,10 +1677,8 @@ router.post("/store/isp/iamport", function(req, res){
     const total_price = _data.total_price;
 
     const item_title = _data.title;
-    const item_price = _data.item_price;
 
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-    req.body.data.created_at = date;
 
     const merchant_uid = _data.merchant_uid;
 
@@ -1618,7 +1703,7 @@ router.post("/store/isp/iamport", function(req, res){
         user_id: user_id,
         state: types.order.ORDER_STATE_APP_STORE_STANBY,
         count: 1,
-        price: item_price,
+        price: total_price,
         price_USD: price_usd,
         total_price: total_price,
         total_price_USD: total_price_usd,
@@ -1709,24 +1794,14 @@ router.post("/store/isp/iamport", function(req, res){
                     
                 })
                 return;
-            }else{
-                this.setDonation(req, res, (donation_order_id) => {
-                  // console.log(donation_order_id);
-                  return res.json({
-                    result:{
-                        state: res_state.success,
-                        order_id: item_order_id,
-                        donation_order_id: donation_order_id
-                    }
-                  })
-                }, (error) => {
-                    return res.json({
-                        state: res_state.error,
-                        message: '후원 셋팅 에러 (isp pay donation)',
-                    })
-                })
-                
-            }            
+            }
+
+            return res.json({
+                result:{
+                    state: res_state.success,
+                    order_id: item_order_id
+                }
+            })
         });
         /////////////////////////////////////
     })
@@ -1879,10 +1954,10 @@ router.post('/any/payments/complete', function(req, res){
     let yourIP = getUserIP(req);
     let webHookIPList = [];
     if(process.env.APP_TYPE === 'local'){
-        // let ip = process.env.IAMPORT_WEB_HOOK_IP_TEST;
-        // webHookIPList.push(ip);
-        webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_1);
-        webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_2);
+        let ip = process.env.IAMPORT_WEB_HOOK_IP_TEST;
+        webHookIPList.push(ip);
+        // webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_1);
+        // webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_2);
     }else{
         webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_1);
         webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_2);
@@ -1904,171 +1979,71 @@ router.post('/any/payments/complete', function(req, res){
     }
 
     const imp_uid = req.body.imp_uid;
-    // const merchant_uid = req.body.merchant_uid;
-    // const status = req.body.status;
+    const merchant_uid = req.body.merchant_uid;
+    const status = req.body.status;
 
-    iamport.payment.getByImpUid({
-      imp_uid: imp_uid  
-    }).then(function(result_import){
-      // To do
-      req.body.amount = result_import.amount;
-
-      this.webhookOrderCheck(req, res, (isComplite) => {
-        if(isComplite){
-          return res.json({
-            state: 'success'
-          })
+    let orderQuery = "SELECT total_price, state, id FROM orders AS _order WHERE _order.imp_uid=? AND _order.merchant_uid=?"
+    orderQuery = mysql.format(orderQuery, [imp_uid, merchant_uid]);
+    db.SELECT(orderQuery, [], (result_order) => {
+        if(!result_order || result_order.length === 0){
+            return  res.json({
+                result:{
+                    state: res_state.error,
+                    message: '주문 결과가 없습니다.'
+                }
+            });
         }
-  
-        this.webhookOrderItemCheck(req, res, (isComplite) => {
 
-          this.webhookDonationCheck(req, res, (isComplite) => {
-            return res.json({
-              state: 'success'
-            })
-          }, (error_message) => {
-            return res.json({
-              state: 'error',
-              message: error_message
-            })
-          })
-        }, (error_message) => {
-          return res.json({
-            state: 'error',
-            message: error_message
-          })
-        })
-      }, (error_message) => {
-        return res.json({
-          state: 'error',
-          message: error_message
-        })
-      })
-      
-    }).catch(function(error){
-      // handle error
-      return res.json({
-        state: 'error',
-        message: '결제정보가 없습니다.'
-      })
-    });
+        const orderData = result_order[0];
+        iamport.payment.getByImpUid({
+            imp_uid: imp_uid  
+          }).then(function(result_import){
+            // To do
+            if(result_import.amount === orderData.total_price){
+                const orderState = getOrderStateCheckIamportState(status);
+                db.UPDATE("UPDATE orders AS _order SET state=? WHERE id=?", [orderState, orderData.id], 
+                (result_order_update) => {
+                    if(!result_order_update){
+                        return  res.json({
+                            result:{
+                                state: res_state.error,
+                                message: '주문정보 업데이트 실패'
+                            }
+                        })
+                    }
+    
+                    return  res.json({
+                        result:{
+                            state: res_state.success
+                        }
+                    })            
+                }, (error) => {
+                    return  res.json({
+                        result:{
+                            state: res_state.error,
+                            message: '주문정보 업데이트 실패'
+                        }
+                    })
+                });
+            }else{
+                return  res.json({
+                    result:{
+                        state: res_state.error,
+                        message: '결제 금액이 다릅니다.'
+                    }
+                });
+            }
+          }).catch(function(error){
+            // handle error
+            return  res.json({
+                result:{
+                    state: res_state.error,
+                    message: '결제정보가 없습니다.'
+                }
+            });
+          });
+    })    
 });
-
-webhookOrderCheck = (req, res, successCallBack, errorCallBack) => {
-  const imp_uid = req.body.imp_uid;
-  const merchant_uid = req.body.merchant_uid;
-  const status = req.body.status;
-  const amount = req.body.amount;
-
-  let orderQuery = "SELECT total_price, state, id FROM orders AS _order WHERE _order.merchant_uid=?"
-  orderQuery = mysql.format(orderQuery, [merchant_uid]);
-  db.SELECT(orderQuery, [], (result_order) => {
-    if(!result_order || result_order.length === 0){
-      successCallBack(false);
-      return;
-    }
-
-    const orderData = result_order[0];
-    if(amount === orderData.total_price){
-      const orderState = getOrderStateCheckIamportState(status);
-      let orderData = {
-        imp_uid: imp_uid,
-        state: orderState
-      }
-      db.UPDATE("UPDATE orders SET ? WHERE merchant_uid=?", [orderData, merchant_uid], 
-      (result_order_update) => {
-          successCallBack(true);
-      }, (error) => {
-        errorCallBack('주문정보 업데이트 실패');
-      });
-    }else{
-      errorCallBack('결제 금액이 다릅니다.');
-    }
-  })    
-}
-
-webhookOrderItemCheck = (req, res, successCallBack, ErrorCallBack) => {
-  const imp_uid = req.body.imp_uid;
-  const merchant_uid = req.body.merchant_uid;
-  const status = req.body.status;
-  const amount = req.body.amount;
-
-  let orderQuery = "SELECT orders_item.total_price, orders_item.state, orders_item.id, item.type_contents FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE merchant_uid=?"
-  orderQuery = mysql.format(orderQuery, [merchant_uid]);
-  db.SELECT(orderQuery, [], (result_order) => {
-    if(!result_order || result_order.length === 0){
-      successCallBack(false);
-      return;
-    }
-
-    const data = result_order[0];
-    if(amount === data.total_price){
-      // const orderState = getOrderStateCheckIamportState(status);
-      let orderState = ''; 
-      if(status === 'paid'){
-        if(data.type_contents === types.contents.completed){
-          orderState = types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE;
-        }else{
-          orderState = types.order.ORDER_STATE_APP_STORE_PAYMENT;
-        }
-      }else{
-        orderState = getOrderStateCheckIamportState(status);
-      }
-
-      let orderData = {
-        imp_uid: imp_uid,
-        state: orderState,
-        serializer_uid: PAY_SERIALIZER_ONETIME
-      }
-
-      db.UPDATE("UPDATE orders_items SET ? WHERE merchant_uid=?", [orderData, merchant_uid], 
-      (result_order_update) => {
-          successCallBack(true);
-      }, (error) => {
-        errorCallBack('주문정보 업데이트 실패');
-        return;
-      });
-    }else{
-      errorCallBack('결제 금액이 다릅니다.');
-      return;
-    }
-  })
-}
-
-webhookDonationCheck = (req, res, successCallBack, ErrorCallBack) => { 
-  const imp_uid = req.body.imp_uid;
-  const merchant_uid = req.body.merchant_uid;
-  const status = req.body.status;
-  const amount = req.body.amount;
-
-  let orderQuery = "SELECT total_price, state, id FROM orders_donations WHERE merchant_uid=?"
-  orderQuery = mysql.format(orderQuery, [merchant_uid]);
-  db.SELECT(orderQuery, [], (result_order) => {
-    if(!result_order || result_order.length === 0){
-      successCallBack(false);
-      return;
-    }
-
-    const data = result_order[0];
-    const orderState = getOrderStateCheckIamportState(status, types.pay_isp_type.isp_donation);
-    let orderData = {
-      imp_uid: imp_uid,
-      state: orderState,
-      serializer_uid: PAY_SERIALIZER_ONETIME
-    }
-    
-    db.UPDATE("UPDATE orders_donations SET ? WHERE merchant_uid=?", [orderData, merchant_uid], 
-    (result_order_update) => {
-        successCallBack(true);
-    }, (error) => {
-      errorCallBack('주문정보 업데이트 실패');
-      return;
-    });
-    
-  })
-}
-
-
 
 router.post("/cancel", function(req, res){
     const order_id = req.body.data.order_id;

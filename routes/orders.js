@@ -1522,7 +1522,7 @@ function getRefundPolicyStoreContent(type_contents){
 router.post("/store/info", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
-  const querySelect = mysql.format('SELECT orders_item.pay_method, orders_item.total_price_USD, item.price_USD, item.currency_code, item.type_contents, item.file_upload_state, item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE orders_item.id=?', store_order_id);
+  const querySelect = mysql.format('SELECT orders_item.orders_donation_id, orders_item.pay_method, orders_item.total_price_USD, item.price_USD, item.currency_code, item.type_contents, item.file_upload_state, item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE orders_item.id=?', store_order_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1593,6 +1593,80 @@ router.post("/store/info", function(req, res){
   })
 });
 
+router.post("/store/info/v1", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  const querySelect = mysql.format('SELECT orders_donation.total_price AS donation_total_price, orders_item.pay_method, orders_item.total_price_USD, item.price_USD, item.currency_code, item.type_contents, item.file_upload_state, item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN orders_donations AS orders_donation ON orders_item.orders_donation_id=orders_donation.id WHERE orders_item.id=?', store_order_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '주문 정보 조회 오류',
+        result: {}
+      })
+    }
+
+    let data = result[0];
+
+    const _state_string = getStateStringAttribute(data.state, null, null, null, null, null);
+    let refundButtonText = '';
+    let isRefund = false;
+    // let refundPolicyText = getRefundPolicyStoreContent(data.type_contents);
+    
+    let _card_state_text = '';
+    if(data.total_price === 0){
+      _card_state_text = '';
+    }else{
+      _card_state_text = getStorePayState(data.state);
+    }
+
+    if(data.state === types.order.ORDER_STATE_APP_STORE_PAYMENT){
+      refundButtonText = "주문 취소";
+      isRefund = true;
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_READY){
+      refundButtonText = "콘텐츠 준비중";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_SUCCESS){
+      refundButtonText = "콘텐츠 제공 완료";
+    }else if(data.state === types.order.ORDER_STATE_CANCEL_STORE_RETURN){
+      refundButtonText = "반려됨";
+    }else if(data.state === types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER){
+      refundButtonText = "승인기간 만료(주문취소)";
+    }else if(data.state === types.order.ORDER_STATE_CANCEL){
+      refundButtonText = "취소됨";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER){
+      refundButtonText = "고객 전달 완료";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE){
+      refundButtonText = "고객 확인 완료";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_STANBY){
+      refundButtonText = "결제 대기중(결제 실패인 경우 1시간 안으로 취소처리 됩니다)";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_STANBY_FAIL){
+      refundButtonText = "결제 에러(결제 실패로 인한 결제 에러)";
+    }else if(data.state === types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS){
+      refundButtonText = "콘텐츠 진행완료";
+    }
+    else{
+      refundButtonText = '주문정보에러(크티에문의주세요!)';
+    }
+
+
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data,
+          state_string: _state_string,
+          card_state_text: _card_state_text,
+          refundButtonText: refundButtonText,
+          isRefund: isRefund,
+          // refundPolicyText: refundPolicyText
+        }
+      }
+    })
+  })
+});
+
 router.post('/store/item/list', function(req, res){
   const user_id = req.body.data.user_id;
   
@@ -1642,12 +1716,25 @@ router.post('/store/item/list/get', function(req, res){
   })
 })
 
+cancelDonation = (orders_donation_id, successCallBack, errorCallBack) => {
+  if(orders_donation_id === undefined || orders_donation_id === null){
+    return successCallBack();
+  }
+
+  db.UPDATE("UPDATE orders_donations SET state=? WHERE id=?", [types.order.ORDER_STATE_CANCEL, orders_donation_id], 
+  (result) => {
+      return successCallBack();
+  }, (error) => {
+      return errorCallBack();
+  })
+}
+
 router.post("/store/cancel", function(req, res){
   const store_order_id = req.body.data.store_order_id;
   const user_id = req.body.data.user_id;
   const order_user_id = req.body.data.order_user_id;
   
-  const querySelect = mysql.format("SELECT orders_item.total_price_USD, orders_item.currency_code, serializer_uid, merchant_uid, orders_item.user_id, orders_item.total_price, orders_item.state FROM orders_items AS orders_item WHERE orders_item.id=?", [store_order_id]);
+  const querySelect = mysql.format("SELECT orders_item.orders_donation_id, orders_item.total_price_USD, orders_item.currency_code, serializer_uid, merchant_uid, orders_item.user_id, orders_item.total_price, orders_item.state FROM orders_items AS orders_item WHERE orders_item.id=?", [store_order_id]);
 
   // const querySelect = mysql.format("SELECT merchant_uid, user_id, total_price FROM orders AS _order WHERE _order.id=?", [order_id]);
   db.SELECT(querySelect, {}, (result_select_order) => {
@@ -1720,13 +1807,23 @@ router.post("/store/cancel", function(req, res){
           merchant_uid: merchant_uid,
           amount: amount
         }).then(function(result_iamport){
-          db.UPDATE("UPDATE orders_items AS orders_item SET orders_item.state=? WHERE orders_item.id=?", [types.order.ORDER_STATE_CANCEL, store_order_id], 
-          (result_order_update) => {
-            return res.json({
-              result:{
-                state: res_state.success,
-                order_state: types.order.ORDER_STATE_CANCEL
-              }
+          
+          this.cancelDonation(orderData.orders_donation_id, 
+          (success) => {
+            db.UPDATE("UPDATE orders_items AS orders_item SET orders_item.state=? WHERE orders_item.id=?", [types.order.ORDER_STATE_CANCEL, store_order_id], 
+            (result_order_update) => {
+              return res.json({
+                result:{
+                  state: res_state.success,
+                  order_state: types.order.ORDER_STATE_CANCEL
+                }
+              })
+            }, (error) => {
+              return res.json({
+                state: res_state.error,
+                message: '취소 실패. 계속 실패할 경우 크티에 문의 바랍니다.',
+                result:{}
+              })
             })
           }, (error) => {
             return res.json({
@@ -1734,7 +1831,8 @@ router.post("/store/cancel", function(req, res){
               message: '취소 실패. 계속 실패할 경우 크티에 문의 바랍니다.',
               result:{}
             })
-          })
+          });
+          
         }).catch(function(error){
           return res.json({
             state: res_state.error,
@@ -2407,6 +2505,35 @@ router.post("/any/item/info", function(req, res){
       }
     })
   })
+})
+
+router.post("/donation/complite/check", function(req, res){
+  const donation_order_id = req.body.data.order_id;
+  const user_id = req.body.data.user_id;
+  // const imp_uid = req.body.data.imp_uid;
+  const merchant_uid = req.body.data.merchant_uid;
+
+  // const querySelect = mysql.format("SELECT state FROM orders_items WHERE id=? AND user_id=? AND imp_uid=? AND merchant_uid=? AND state=?", [store_order_id, user_id, imp_uid, merchant_uid, types.order.ORDER_STATE_APP_STORE_STANBY]);
+
+  const querySelect = mysql.format("SELECT state FROM orders_donations WHERE id=? AND user_id=? AND merchant_uid=? AND state=?", [donation_order_id, user_id, merchant_uid, types.order.ORDER_STATE_APP_STORE_STANBY]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(result === null || result === undefined || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          is_complite: false
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        is_complite: true
+      }
+    })
+  });
 })
 
 
