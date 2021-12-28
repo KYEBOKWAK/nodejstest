@@ -2400,7 +2400,7 @@ router.post("/store/complite/check", function(req, res){
 
   // const querySelect = mysql.format("SELECT state FROM orders_items WHERE id=? AND user_id=? AND imp_uid=? AND merchant_uid=? AND state=?", [store_order_id, user_id, imp_uid, merchant_uid, types.order.ORDER_STATE_APP_STORE_STANBY]);
 
-  const querySelect = mysql.format("SELECT state FROM orders_items WHERE id=? AND user_id=? AND merchant_uid=? AND state=?", [store_order_id, user_id, merchant_uid, types.order.ORDER_STATE_APP_STORE_STANBY]);
+  const querySelect = mysql.format("SELECT state FROM orders_items WHERE id=? AND user_id=? AND merchant_uid=?", [store_order_id, user_id, merchant_uid]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result === null || result === undefined || result.length === 0){
@@ -2515,7 +2515,7 @@ router.post("/donation/complite/check", function(req, res){
 
   // const querySelect = mysql.format("SELECT state FROM orders_items WHERE id=? AND user_id=? AND imp_uid=? AND merchant_uid=? AND state=?", [store_order_id, user_id, imp_uid, merchant_uid, types.order.ORDER_STATE_APP_STORE_STANBY]);
 
-  const querySelect = mysql.format("SELECT state FROM orders_donations WHERE id=? AND user_id=? AND merchant_uid=? AND state=?", [donation_order_id, user_id, merchant_uid, types.order.ORDER_STATE_APP_STORE_STANBY]);
+  const querySelect = mysql.format("SELECT state FROM orders_donations WHERE id=? AND user_id=? AND merchant_uid=?", [donation_order_id, user_id, merchant_uid]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result === null || result === undefined || result.length === 0){
