@@ -647,7 +647,9 @@ router.post('/info', function(req, res){
     const data = result[0];
     let created_at = moment_timezone(data.created_at).format('YYYY.MM.DD');
 
-    const nowDateMoment = moment_timezone();
+    //날짜 강제 셋팅
+    // const nowDateMoment = moment_timezone();
+    const nowDateMoment = moment_timezone('2022-01-04 00:00:00');
     const nowDateMiliSec = nowDateMoment.format("x");
 
     const expireDay = moment_timezone(data.created_at).format("YYYY-MM-DD 23:59:59");
