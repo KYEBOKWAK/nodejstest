@@ -1288,6 +1288,7 @@ router.post('/store/onetime', function(req, res){
                       req.body.data.imp_uid = result.imp_uid;
 
                       req.body.data.pay_isp_type = types.pay_isp_type.onetime_donation;
+                      req.body.data.created_at = date;
                       // req.body.data.pay_method = result.pay_method;
 
                       this.setDonation(req, res, (donation_order_id) => {
