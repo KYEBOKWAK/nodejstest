@@ -2354,6 +2354,61 @@ router.post("/store/state/confirm/ok", function(req, res){
   });
 })
 
+router.post("/store/state/confirm/ok/v1", function(req, res){
+  const store_order_id = req.body.data.store_order_id;
+
+  const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  db.UPDATE("UPDATE orders_items SET state=?, updated_at=?, confirm_at=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, nowDate, nowDate, store_order_id], 
+  (result) => {
+
+    if(process.env.APP_TYPE !== 'local'){
+      sendSMSStoreConfirmStoreManager(store_order_id);
+    }
+
+    let donationData = {
+      state: types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION,
+      confirm_at: nowDate,
+      updated_at: nowDate
+    }
+    db.UPDATE("UPDATE orders_donations SET ? WHERE orders_item_id=?", [donationData, store_order_id], (result_donation_update) => {
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: {
+            state: types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE
+          }
+        }
+      })
+
+    }, (error_donation_update) => {
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: {
+            state: types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE
+          }
+        }
+      })
+    })
+
+    // return res.json({
+    //   result: {
+    //     state: res_state.success,
+    //     data: {
+    //       state: types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE
+    //     }
+    //   }
+    // })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '주문 업데이트 실패',
+      result: {}
+    })
+  });
+})
+
 router.post("/store/owner/check", function(req, res){
   const store_order_id = req.body.data.store_order_id;
   const user_id = req.body.data.user_id;

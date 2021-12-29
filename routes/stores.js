@@ -2214,7 +2214,7 @@ router.post("/manager/payment/info/v1", function(req, res){
   let selectQuery = '';
   if(sort_state === Types_Sort.account.donation) {
     //도네이션만 일때는 해당 쿼리
-    selectQuery = mysql.format("SELECT id, price, total_price, price_USD, total_price_USD, currency_code, created_at FROM orders_donations WHERE store_id=? AND state=? AND created_at>=? AND created_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, startDate, endDate]);
+    selectQuery = mysql.format("SELECT id, price, total_price, price_USD, total_price_USD, currency_code, created_at, confirm_at FROM orders_donations WHERE store_id=? AND state=? AND confirm_at IS NOT NULL AND confirm_at>=? AND confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, startDate, endDate]);
   }else{
     //상점, 전체 일때는 해당 쿼리
     selectQuery = mysql.format("SELECT orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND orders_item.currency_code=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate, Types.currency_code.Won]);
@@ -2268,19 +2268,20 @@ router.post("/manager/payment/info/v1", function(req, res){
         result[i].payment_price = result[i].total_price - result[i].commission;
         result[i].sort_at = moment_timezone(result[i].ori_confirm_at).format('x');
 
-        result[i].sort_test = moment_timezone(result[i].ori_confirm_at).format('YYYY-MM-DD HH:mm:ss');
+        // result[i].sort_test = moment_timezone(result[i].ori_confirm_at).format('YYYY-MM-DD HH:mm:ss');
       }
 
-      const selectDonationQuery = mysql.format("SELECT orders_item_id, id, price, total_price, price_USD, total_price_USD, currency_code, created_at FROM orders_donations WHERE store_id=? AND state=? AND created_at>=? AND created_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, startDate, endDate]);
+      const selectDonationQuery = mysql.format("SELECT orders_item_id, id, price, total_price, price_USD, total_price_USD, currency_code, created_at, confirm_at FROM orders_donations WHERE store_id=? AND state=? AND confirm_at IS NOT NULL AND confirm_at>=? AND confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, startDate, endDate]);
 
       db.SELECT(selectDonationQuery, {}, (result_donation) => {
         for(let i = 0 ; i < result_donation.length ; i++){
-          result_donation[i].confirm_at = moment_timezone(result_donation[i].created_at).format("YYYY-MM-DD");
+          result_donation[i].ori_confirm_at = result_donation[i].confirm_at;
+          result_donation[i].confirm_at = moment_timezone(result_donation[i].ori_confirm_at).format("YYYY-MM-DD");
           result_donation[i].commission = Math.floor(result_donation[i].total_price * (COMMISION_DONATION_PERCENTAGE/100));
           result_donation[i].payment_price = result_donation[i].total_price - result_donation[i].commission;
-          result_donation[i].sort_at = moment_timezone(result_donation[i].created_at).format('x');
+          result_donation[i].sort_at = moment_timezone(result_donation[i].ori_confirm_at).format('x');
 
-          result_donation[i].sort_test = moment_timezone(result_donation[i].created_at).format('YYYY-MM-DD HH:mm:ss');
+          // result_donation[i].sort_test = moment_timezone(result_donation[i].ori_confirm_at).format('YYYY-MM-DD HH:mm:ss');
         }
 
         return res.json({

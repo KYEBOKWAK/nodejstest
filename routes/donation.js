@@ -20,12 +20,12 @@ var iamport = new Iamport({
 });
 
 //slack
-// var Slack = require('slack-node');
+var Slack = require('slack-node');
  
-// webhookUri = process.env.CROWDTICKET_SLACK_WEBHOOK_URI;
+webhookUri = process.env.CROWDTICKET_SLACK_WEBHOOK_URI;
  
-// slack = new Slack();
-// slack.setWebhook(webhookUri);
+slack = new Slack();
+slack.setWebhook(webhookUri);
 ////////////
 
 const DEFAULT_DONATION_PRICE = 3000;
@@ -84,7 +84,8 @@ router.post('/pay/isp', function(req, res){
     pay_method: pay_method,
     // imp_uid: imp_uid,
     created_at: date,
-    updated_at: date
+    updated_at: date,
+    confirm_at: date
   }
 
   db.INSERT("INSERT INTO orders_donations SET ?", insertDonationData, (result_insert_orders_donations) => {
@@ -203,12 +204,21 @@ router.post('/pay/onetime', function(req, res){
           serializer_uid: serializer_uid,
           imp_meta: _imp_meta,
           created_at: date,
-          updated_at: date
+          updated_at: date,
+          confirm_at: date
         }
 
         db.INSERT("INSERT INTO orders_donations SET ?", insertDonationData, (result_insert_orders_donations) => {
           const donation_order_id = result_insert_orders_donations.insertId;
       
+          slack.webhook({
+            channel: "#결제알림",
+            username: "알림bot",
+            text: `(후원)\n플레이스: ${_data.title}\n후원: ${_data.total_price}\n주문자명: ${_data.name}`
+          }, function(err, response) {
+            console.log(err);
+          });
+
           return res.json({
             result:{
                 state: res_state.success,
@@ -263,7 +273,7 @@ router.post('/total/count', function(req, res){
 router.post('/any/total/count', function(req, res){
   const store_id = req.body.data.store_id;
 
-  const querySelect = mysql.format("SELECT SUM(count) AS total_count FROM orders_donations WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION]);
+  const querySelect = mysql.format("SELECT SUM(count) AS total_count FROM orders_donations WHERE store_id=? AND (state=? OR state=?)", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, Types.order.ORDER_STATE_APP_STORE_PAYMENT]);
 
   db.SELECT(querySelect, {}, (result) => {
     const data = result[0];
@@ -284,7 +294,7 @@ router.post('/any/total/count', function(req, res){
 router.post('/any/list/rank', function(req, res){
   const store_id = req.body.data.store_id;
 
-  const querySelect = mysql.format("SELECT MAX(id) AS id, user_id, SUM(count) AS count, name FROM orders_donations WHERE store_id=? AND state=? GROUP BY user_id ORDER BY count DESC, id DESC LIMIT ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, 5]);
+  const querySelect = mysql.format("SELECT MAX(id) AS id, user_id, SUM(count) AS count, name FROM orders_donations WHERE store_id=? AND (state=? OR state=?) GROUP BY user_id ORDER BY count DESC, id DESC LIMIT ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, Types.order.ORDER_STATE_APP_STORE_PAYMENT, 5]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -390,7 +400,7 @@ router.post('/my/list/get', function(req, res){
   let limit = req.body.data.limit;
   let skip = req.body.data.skip;
   
-  const querySelect = mysql.format("SELECT orders_donation.id, orders_donation.state, orders_donation.created_at, orders_donation.count, store.user_id AS place_user_id, store.title FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.user_id=? AND (orders_donation.state=? OR orders_donation.state=?) ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [user_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, Types.order.ORDER_STATE_CANCEL, limit, skip]);
+  const querySelect = mysql.format("SELECT orders_donation.id, orders_donation.state, orders_donation.created_at, orders_donation.count, store.user_id AS place_user_id, store.title FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.user_id=? AND (orders_donation.state=? OR orders_donation.state=? OR orders_donation.state=?) ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [user_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, Types.order.ORDER_STATE_CANCEL, Types.order.ORDER_STATE_APP_STORE_PAYMENT, limit, skip]);
   
   db.SELECT(querySelect, {}, (result) => {
     // if(result.length === 0){
