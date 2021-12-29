@@ -2182,8 +2182,7 @@ router.post("/manager/payment/info/v1", function(req, res){
   const store_id = req.body.data.store_id;
   const sort_state = req.body.data.sort_state;
 
-  // const nowDate = moment_timezone();
-  const nowDate = moment_timezone('2022-01-02 00:00:00');
+  const nowDate = moment_timezone();
   //범위 구하기
   let startDate = '';
   let endDate = '';
