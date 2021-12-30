@@ -10,6 +10,7 @@ const moment_timezone = require('moment-timezone');
 moment_timezone.tz.setDefault("Asia/Seoul");
 
 const Util = use('lib/util.js');
+const Global_Func = use("lib/global_func.js");
 
 var mysql = require('mysql');
 
@@ -126,6 +127,9 @@ router.post('/pay/onetime', function(req, res){
 
   const customer_uid = Util.getPayNewCustom_uid(user_id);
 
+  const store_title = req.body.data.store_title;
+  const store_contact = req.body.data.store_contact;
+
   const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   if(store_id === undefined || store_id === null || store_id === ''){
@@ -211,13 +215,24 @@ router.post('/pay/onetime', function(req, res){
         db.INSERT("INSERT INTO orders_donations SET ?", insertDonationData, (result_insert_orders_donations) => {
           const donation_order_id = result_insert_orders_donations.insertId;
       
-          slack.webhook({
-            channel: "#결제알림",
-            username: "알림bot",
-            text: `(후원)\n플레이스: ${_data.title}\n후원: ${_data.total_price}\n주문자명: ${_data.name}`
-          }, function(err, response) {
-            console.log(err);
-          });
+          if(process.env.APP_TYPE !== 'local'){
+            slack.webhook({
+              channel: "#결제알림",
+              username: "알림bot",
+              text: `(후원)\n플레이스: ${_data.title}\n후원: ${_data.total_price}\n주문자명: ${_data.name}`
+            }, function(err, response) {
+              console.log(err);
+            });
+
+            Global_Func.sendKakaoAlimTalk({
+              templateCode: 'Kalarm16v1',
+              to: store_contact,
+              donation_user_name: name,
+              creator_name: store_title,
+              coffee_count: count,
+              place_manager_url: 'ctee.kr/manager/place'
+            })
+          }
 
           return res.json({
             result:{

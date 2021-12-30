@@ -474,7 +474,7 @@ payISPComplite = (req, res, serializer_uid) => {
 
     let orderQuery = '';
     if(pay_isp_type === types.pay_isp_type.isp_donation){
-      orderQuery = "SELECT item.type_contents, orders_donation.item_id, orders_donation.name, store.title AS place_title, orders_item_id, orders_donation.state, orders_donation.id, orders_donation.total_price, orders_item.total_price AS orders_item_total_price FROM orders_donations AS orders_donation LEFT JOIN orders_items AS orders_item ON orders_donation.orders_item_id=orders_item.id LEFT JOIN items AS item ON orders_donation.item_id=item.id LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.id=? AND orders_donation.merchant_uid=?";
+      orderQuery = "SELECT store.contact AS place_contact, orders_donation.count, item.type_contents, orders_donation.item_id, orders_donation.name, store.title AS place_title, orders_item_id, orders_donation.state, orders_donation.id, orders_donation.total_price, orders_item.total_price AS orders_item_total_price FROM orders_donations AS orders_donation LEFT JOIN orders_items AS orders_item ON orders_donation.orders_item_id=orders_item.id LEFT JOIN items AS item ON orders_donation.item_id=item.id LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.id=? AND orders_donation.merchant_uid=?";
         // orderQuery = "SELECT _order.state, _order.id, _order.total_price FROM orders_donations AS _order WHERE _order.id=? AND _order.merchant_uid=?";
     }else{
         return res.json({
@@ -565,6 +565,7 @@ payISPComplite = (req, res, serializer_uid) => {
                   }
                   
                   if(process.env.APP_TYPE === 'local'){
+                    
                   }else{
                     if(pay_isp_type === types.pay_isp_type.isp_donation){
                       if(orderData.orders_item_id === null){
@@ -576,6 +577,15 @@ payISPComplite = (req, res, serializer_uid) => {
                           console.log(err);
                         });
                       }
+
+                      Global_Func.sendKakaoAlimTalk({
+                        templateCode: 'Kalarm16v1',
+                        to: orderData.place_contact,
+                        donation_user_name: orderData.name,
+                        creator_name: orderData.place_title,
+                        coffee_count: orderData.count,
+                        place_manager_url: 'ctee.kr/manager/place'
+                      })                      
                     }
                   }
                   
@@ -1383,6 +1393,10 @@ sendSlackAlim = (req, item_order_id, _donation_total_price=null) => {
       }else{
         donation_total_price = _donation_total_price;
       }
+
+      if(donation_total_price === undefined){
+        donation_total_price = 0;
+      }
       
       slack.webhook({
         channel: "#결제알림",
@@ -1412,6 +1426,9 @@ setDonation = (req, res, successCallBack, errorCallBack) => {
     const donation_total_price = _data.donation_total_price;
 
     const pay_isp_type = _data.pay_isp_type;
+
+    const store_title = _data.store_title;
+    const store_contact = _data.store_contact;
 
     if(coffee_count === 0){
       return successCallBack(null);
@@ -1491,6 +1508,15 @@ setDonation = (req, res, successCallBack, errorCallBack) => {
           serializer_uid: PAY_SERIALIZER_ONETIME,
           confirm_at: confirm_at
         }
+
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'Kalarm16v1',
+          to: store_contact,
+          donation_user_name: name,
+          creator_name: store_title,
+          coffee_count: coffee_count,
+          place_manager_url: 'ctee.kr/manager/place'
+        })
       }else{
         if(itemData.type_contents === types.contents.completed){
           confirm_at = created_at;
@@ -1499,14 +1525,7 @@ setDonation = (req, res, successCallBack, errorCallBack) => {
         }
         
         state = types.order.ORDER_STATE_APP_STORE_STANBY;
-        // if(itemData.type_contents === types.contents.completed){
-        //   confirm_at = created_at;
-        //   state = types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION;
-        // }else{
-        //   confirm_at = null;
-        //   state = types.order.ORDER_STATE_APP_STORE_STANBY;
-        // }
-
+        
         insertDonationData = {
           ...insertDonationData,
           state: state,
