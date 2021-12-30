@@ -1387,7 +1387,7 @@ sendSlackAlim = (req, item_order_id, _donation_total_price=null) => {
       }
 
       let donation_total_price = 0;
-      if(_donation_total_price === null){
+      if(_donation_total_price === undefined || _donation_total_price === null){
         const _data = req.body.data;
         donation_total_price = _data.donation_total_price;      
       }else{
