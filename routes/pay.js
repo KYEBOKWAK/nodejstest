@@ -578,14 +578,16 @@ payISPComplite = (req, res, serializer_uid) => {
                         });
                       }
 
-                      Global_Func.sendKakaoAlimTalk({
-                        templateCode: 'Kalarm16v1',
-                        to: orderData.place_contact,
-                        donation_user_name: orderData.name,
-                        creator_name: orderData.place_title,
-                        coffee_count: orderData.count,
-                        place_manager_url: 'ctee.kr/manager/place'
-                      })                      
+                      if(orderData.type_contents === types.contents.completed){
+                        Global_Func.sendKakaoAlimTalk({
+                          templateCode: 'Kalarm16v1',
+                          to: orderData.place_contact,
+                          donation_user_name: orderData.name,
+                          creator_name: orderData.place_title,
+                          coffee_count: orderData.count,
+                          place_manager_url: 'ctee.kr/manager/place'
+                        })   
+                      }            
                     }
                   }
                   
@@ -1509,14 +1511,16 @@ setDonation = (req, res, successCallBack, errorCallBack) => {
           confirm_at: confirm_at
         }
 
-        Global_Func.sendKakaoAlimTalk({
-          templateCode: 'Kalarm16v1',
-          to: store_contact,
-          donation_user_name: name,
-          creator_name: store_title,
-          coffee_count: coffee_count,
-          place_manager_url: 'ctee.kr/manager/place'
-        })
+        if(itemData.type_contents === types.contents.completed){
+          Global_Func.sendKakaoAlimTalk({
+            templateCode: 'Kalarm16v1',
+            to: store_contact,
+            donation_user_name: name,
+            creator_name: store_title,
+            coffee_count: coffee_count,
+            place_manager_url: 'ctee.kr/manager/place'
+          })
+        }        
       }else{
         if(itemData.type_contents === types.contents.completed){
           confirm_at = created_at;
