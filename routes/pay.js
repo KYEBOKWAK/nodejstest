@@ -1990,7 +1990,7 @@ webhookOrderItemCheck = (req, res, successCallBack, ErrorCallBack) => {
   const status = req.body.status;
   const amount = req.body.amount;
 
-  let orderQuery = "SELECT orders_item.total_price, orders_item.state, orders_item.id, item.type_contents FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE merchant_uid=?"
+  let orderQuery = "SELECT orders_item.down_expired_at, orders_item.product_answer, orders_item.created_at, orders_item.confirm_at, item.completed_type_product_answer, orders_item.total_price, orders_item.state, orders_item.id, item.type_contents FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE merchant_uid=?"
   orderQuery = mysql.format(orderQuery, [merchant_uid]);
   db.SELECT(orderQuery, [], (result_order) => {
     if(!result_order || result_order.length === 0){
@@ -2002,9 +2002,20 @@ webhookOrderItemCheck = (req, res, successCallBack, ErrorCallBack) => {
     if(amount === data.total_price){
       // const orderState = getOrderStateCheckIamportState(status);
       let orderState = ''; 
+
+      
+      let down_expired_at = data.down_expired_at;
+      let product_answer = data.completed_type_product_answer;
+      let confirm_at = data.confirm_at;
       if(status === 'paid'){
         if(data.type_contents === types.contents.completed){
           orderState = types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE;
+
+          if(confirm_at === undefined || confirm_at === null || confirm_at === ''){
+            down_expired_at = moment_timezone(data.created_at).add(59, 'days').format('YYYY-MM-DD 23:59:59');
+            product_answer = data.completed_type_product_answer;
+            confirm_at = moment_timezone(data.created_at).format('YYYY-MM-DD HH:mm:ss');
+          }          
         }else{
           orderState = types.order.ORDER_STATE_APP_STORE_PAYMENT;
         }
@@ -2015,7 +2026,11 @@ webhookOrderItemCheck = (req, res, successCallBack, ErrorCallBack) => {
       let orderData = {
         imp_uid: imp_uid,
         state: orderState,
-        serializer_uid: PAY_SERIALIZER_ONETIME
+        serializer_uid: PAY_SERIALIZER_ONETIME,
+
+        down_expired_at: down_expired_at,
+        product_answer: product_answer,
+        confirm_at: confirm_at
       }
 
       db.UPDATE("UPDATE orders_items SET ? WHERE merchant_uid=?", [orderData, merchant_uid], 
