@@ -253,7 +253,6 @@ router.post('/any/recommand/creator', function(req, res){
 })
 
 router.post('/any/thumbnails/attention/list', function(req, res){
-  
   const querySelect = mysql.format("SELECT store.id AS store_id, store.id, store.title, store.alias, store.state FROM (SELECT store.id, store.title, store.alias, store.state FROM stores AS store LEFT JOIN items AS item ON item.store_id=store.id GROUP BY store.id HAVING COUNT(CASE WHEN item.state=? THEN 1 END)>0 ) AS store WHERE store.state=? GROUP BY store.id ORDER BY store.id DESC LIMIT ?", [Types.item_state.SALE, Types.store.STATE_APPROVED, 8]); //open
 
   db.SELECT(querySelect, {}, (result) => {

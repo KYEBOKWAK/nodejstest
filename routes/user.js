@@ -11,7 +11,7 @@ const res_state = use('lib/res_state.js');
 const moment_timezone = require('moment-timezone');
 moment_timezone.tz.setDefault("Asia/Seoul");
 
-const moment = require('moment');
+// const moment = require('moment');
 
 const Util = use('lib/util.js');
 
@@ -28,6 +28,12 @@ var validator = require("email-validator");
 const sgMail = require('@sendgrid/mail');
 const { default: Axios } = require('axios');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+var Iamport = require('iamport');
+var iamport = new Iamport({
+  impKey: process.env.IAMPORT_API_KEY,
+  impSecret: process.env.IAMPORT_SECRET_KEY
+});
 
 const EXPIRE_REFRESH_TOKEN = '365d';
 const EXPIRE_ACCESS_TOKEN = '1h';
@@ -172,7 +178,7 @@ router.post("/any/login", function(req, res){
 
 router.post("/info", function(req, res){
   const user_id = req.body.data.user_id;
-  let queryMyInfo = mysql.format("SELECT id AS user_id, email, name, nick_name, profile_photo_url, gender, age, facebook_v1_id, google_id, kakao_id, contact, is_withdrawal, is_certification, advertising FROM users WHERE id=?", user_id);
+  let queryMyInfo = mysql.format("SELECT is_adult_certification, id AS user_id, email, name, nick_name, profile_photo_url, gender, age, facebook_v1_id, google_id, kakao_id, contact, is_withdrawal, is_certification, advertising FROM users WHERE id=?", user_id);
   db.SELECT(queryMyInfo, {}, (result) => {
     return res.json({
       result: {
@@ -1634,5 +1640,110 @@ router.post("/any/ismanager", function(req, res){
     })
   })
 })
+
+router.post('/is_adult_certification', function(req, res){
+  const user_id = req.body.data.user_id;
+
+  if(user_id === undefined || user_id === null || user_id === '' || user_id === 0){
+    return res.json({
+      state: res_state.error,
+      message: '유저 정보 조회 에러(cerification)',
+      result: {}
+    })
+  }
+
+  const querySelect = mysql.format('SELECT id, is_adult_certification, inactive_at FROM users WHERE id=?', user_id);
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '유저 정보 조회 에러(cerification)',
+        result: {}
+      })
+    }
+
+    const data = result[0];
+
+    let isExpired = true;
+    if(data.inactive_at){
+      isExpired = Util.isExpireTime(data.inactive_at);
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        user_id: data.id,
+        is_adult_certification: data.is_adult_certification,
+        inactive_at: data.inactive_at,
+        isExpired: isExpired
+      }
+    })
+  })
+})
+
+router.post('/certification/set', function(req, res){
+  const user_id = req.body.data.user_id;
+  const imp_uid = req.body.data.imp_uid;
+  const merchant_uid = req.body.data.merchant_uid;
+  var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+  let adult_expired_at = moment_timezone(date).add(1, 'years').format('YYYY-MM-DD HH:mm:ss'); 
+
+  const adult_certification_data = {
+    user_id: user_id,
+    imp_uid: imp_uid,
+    merchant_uid: merchant_uid,
+    created_at: date
+  }
+  db.INSERT("INSERT INTO adult_certifications SET ?", adult_certification_data, (result_insert_certification) => {
+    
+    iamport.certification.get({
+      imp_uid: imp_uid
+    }).then((result) => {
+      // result.response
+      const birthday_array = result.birthday.split('-');
+      const age = birthday_array[0];
+  
+      let gender = 'm';
+      if(result.gender === 'male'){
+        gender = 'm';
+      }else{
+        gender = 'f';
+      }
+
+      const update_user_data = {
+        is_adult_certification: true,
+        adult_expired_at: adult_expired_at,
+        gender: gender,
+        age: age
+      }
+
+      db.UPDATE("UPDATE users SET ? WHERE id=?", [update_user_data, user_id], (result) => {
+        return res.json({
+          result: {
+            state: res_state.success
+          }
+        })
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: '유저 정보 업데이트 에러(인증)',
+          result:{}
+        })
+      })
+    }).catch((error) => {
+      return res.json({
+        state: res_state.error,
+        message: '인증 겲과를 찾을 수 없음.',
+        result:{}
+      })
+    })
+  }, (error_insert_certification) => {
+    return res.json({
+      state: res_state.error,
+      message: '인증 정보 추가 에러',
+      result:{}
+    })
+  })
+});
 
 module.exports = router;

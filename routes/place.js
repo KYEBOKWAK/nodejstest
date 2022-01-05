@@ -124,5 +124,29 @@ router.post('/create', function(req, res){
   });
 });
 
+router.post('/any/item/isadult', function(req, res){
+  const item_id = req.body.data.item_id;
+  const selectQuery = mysql.format('SELECT item.is_adult, item.store_id, store.alias FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.id=?', item_id);
+
+  db.SELECT(selectQuery, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '상품 ID 조회 오류(is_adult)'
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        is_adult: data.is_adult,
+        store_id: data.store_id,
+        store_alias: data.alias
+      }
+    })
+  })
+});
+
 
 module.exports = router;

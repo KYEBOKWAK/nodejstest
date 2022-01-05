@@ -231,9 +231,12 @@ app.use(function (req, res, next) {
     //any가 없으면 무조건 token 체크를 한다.
     if(req.body.data === undefined){
       return res.json({
+        state: 'error',
+        message: '토큰 정보가 없음. 다시 로그인 해주세요.',
+
         result: {
           state: 'error',
-          message: '토큰 정보가 없음.'
+          message: '토큰 정보가 없음. 다시 로그인 해주세요.'
         }
       })
     }
@@ -388,12 +391,25 @@ app.use(function (req, res, next) {
     ////console.log(req.body.data.access_token);
     // next();
   }else{
-    next();
-  }
-  // //console.log(indexAnyString);
+    //any가 붙은 url 이지만 로그인을 했으면, 로그인 정보를 넘겨준다.
+    if(req.body.data && req.body.data.access_token && req.body.data.access_token !== ''){
+      _jwt.READ(req.body.data.access_token, function(result){
+        //console.log(result);
+        if(result.state === 'success'){
+          if(result.iss === process.env.JWT_TOKEN_ISSUER){
 
-  // //console.log('Time:', Date.now());
-  
+            //지금까진 any에 user_id를 체크 하진 않았지만, 어딘가에서 user_id를 보낼수도 있으므로, any를 붙여준다.
+            req.body.data.user_id_any = result.id;
+            next();
+          }
+        }else{
+          next();    
+        }
+      });
+    }else{
+      next();
+    }
+  }  
 });
 
 let main = require('./routes/main');

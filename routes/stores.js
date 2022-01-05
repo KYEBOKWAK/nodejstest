@@ -218,7 +218,7 @@ router.post('/any/info/alias', function(req, res){
 
 router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
-  const querySelect = mysql.format("SELECT store.contact AS store_contact, item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+  const querySelect = mysql.format("SELECT item.is_adult, store.contact AS store_contact, item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
   db.SELECT(querySelect, {}, (result) => {
 
     if(result.length === 0){
@@ -237,14 +237,62 @@ router.post('/any/item/info', function(req, res){
       data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/real/items/img-thumb-default.png';
     }
 
-    return res.json({
-      result:{
-        state: res_state.success,
-        data: {
-          ...data
-        }
+    if(data.is_adult){
+      //원래 /any에는 user_id가 없었음.
+      const user_id_any = req.body.data.user_id_any;
+      let temp_img_url = data.img_url;
+      data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult2.png';
+      // let default_adult_thumb_img_url = '';
+      if(user_id_any === undefined || user_id_any === null || user_id_any === 0 || user_id_any === '') {
+        return res.json({
+          result:{
+            state: res_state.success,
+            data: {
+              ...data
+            }
+          }
+        })
+      }else{
+        //로그인을 했다면, 성인 인증을 했는지 확인한다.
+        const querySelectUser = mysql.format("SELECT is_adult_certification FROM users WHERE id=?", [user_id_any]);
+        db.SELECT(querySelectUser, {}, (result_user) => {
+           if(!result_user || result_user.length === 0){
+            return res.json({
+              result:{
+                state: res_state.success,
+                data: {
+                  ...data
+                }
+              }
+            })
+           }
+
+           const userData = result_user[0];
+           if(userData.is_adult_certification){
+              data.img_url = temp_img_url;
+           }
+
+           return res.json({
+            result:{
+              state: res_state.success,
+              data: {
+                ...data
+              }
+            }
+          })
+        })
       }
-    })
+      
+    }else{
+      return res.json({
+        result:{
+          state: res_state.success,
+          data: {
+            ...data
+          }
+        }
+      })
+    }
   })
 })
 
@@ -651,6 +699,11 @@ router.post("/item/add", function(req, res){
     product_category_type = 'download';
   }
 
+  let is_adult = req.body.data.is_adult;
+  if(is_adult === undefined){
+    is_adult = false;
+  }
+
   let querySelect = mysql.format("SELECT order_number FROM items WHERE store_id=? ORDER BY order_number DESC", store_id);
 
   db.SELECT(querySelect, {}, (result_select) => {
@@ -706,7 +759,9 @@ router.post("/item/add", function(req, res){
       simple_contents: simple_contents,
       editor_type: editor_type,
 
-      notice_user: notice_user
+      notice_user: notice_user,
+
+      is_adult: is_adult
     }
 
     db.INSERT("INSERT INTO items SET ?", itemData, 
@@ -829,6 +884,11 @@ router.post("/item/update", function(req, res){
     product_category_type = 'download';
   }
 
+  let is_adult = req.body.data.is_adult;
+  if(is_adult === undefined){
+    is_adult = false;
+  }
+
   const updated_at = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let re_set_at = null;
@@ -837,9 +897,35 @@ router.post("/item/update", function(req, res){
     re_set_at = moment_timezone().add(1, 'weeks').startOf('isoWeek').format("YYYY-MM-DD HH:mm:ss");
   }
 
+  let itemUpdateData = {
+    is_adult: is_adult, 
+    notice_user: notice_user, 
+    editor_type: editor_type, 
+    simple_contents: simple_contents, 
+    story: story, 
+    category_top_item_id: category_top_item_id, 
+    category_sub_item_id: category_sub_item_id, 
+    type_contents: type_contents, 
+    completed_type_product_answer: completed_type_product_answer, 
+    youtube_url: youtube_url, 
+    notice: item_notice, 
+    product_category_type: product_category_type, 
+    ask_play_time: ask_play_time, 
+    product_state: product_state, 
+    file_upload_state: file_upload_state, 
+    updated_at: updated_at, 
+    re_set_at: re_set_at, 
+    state: state, 
+    title: title, 
+    price: price, 
+    content: content, 
+    ask: ask, 
+    order_limit_count: order_limit_count
+  }
+
   if(isChangeLimitCount){
 
-    db.UPDATE("UPDATE items SET notice_user=?, editor_type=?, simple_contents=?, story=?, category_top_item_id=?, category_sub_item_id=?, type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [notice_user, editor_type, simple_contents, story, category_top_item_id, category_sub_item_id, type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET ? WHERE id=?", [itemUpdateData, item_id], 
     (result_update) => {
 
       this.isSoldOutAllItemCheck(item_id, order_limit_count, (isSoldOut) => {
@@ -873,7 +959,7 @@ router.post("/item/update", function(req, res){
       })
     })
   }else{
-    db.UPDATE("UPDATE items SET notice_user=?, editor_type=?, simple_contents=?, story=?, category_top_item_id=?, category_sub_item_id=?, type_contents=?, completed_type_product_answer=?, youtube_url=?, notice=?, product_category_type=?, ask_play_time=?, product_state=?, file_upload_state=?, updated_at=?, re_set_at=?, state=?, title=?, price=?, content=?, ask=?, order_limit_count=? WHERE id=?", [notice_user, editor_type, simple_contents, story, category_top_item_id, category_sub_item_id, type_contents, completed_type_product_answer, youtube_url, item_notice, product_category_type, ask_play_time, product_state, file_upload_state, updated_at, re_set_at, state, title, price, content, ask, order_limit_count, item_id], 
+    db.UPDATE("UPDATE items SET ? WHERE id=?", [itemUpdateData, item_id], 
     (result_update) => {
       return res.json({
         result: {
@@ -2773,7 +2859,7 @@ router.post('/any/viewcount/item/add', function(req, res){
 router.post('/any/item/info/first', function(req, res){
   const store_id = req.body.data.store_id;
 
-  const selectQuery = mysql.format("SELECT title, price, img_url, id, currency_code, price_USD FROM items AS item WHERE item.store_id=? AND item.state=? ORDER BY item.order_number", [store_id, Types.item_state.SALE]);
+  const selectQuery = mysql.format("SELECT is_adult, title, price, img_url, id, currency_code, price_USD FROM items AS item WHERE item.store_id=? AND item.state=? ORDER BY item.order_number", [store_id, Types.item_state.SALE]);
 
   db.SELECT(selectQuery, {}, (result) => {
     if(result.length === 0){
@@ -2784,12 +2870,74 @@ router.post('/any/item/info/first', function(req, res){
       })
     }
 
-    return res.json({
-      result: {
-        state: res_state.success,
-        data: result[0]
+    let data = result[0];
+    if(data.img_url === null || data.img_url === ''){
+      data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/real/items/img-thumb-default.png';
+    }
+
+    if(data.is_adult){
+      //원래 /any에는 user_id가 없었음.
+      const user_id_any = req.body.data.user_id_any;
+      let temp_img_url = data.img_url;
+      data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult2.png';
+      // let default_adult_thumb_img_url = '';
+      if(user_id_any === undefined || user_id_any === null || user_id_any === 0 || user_id_any === '') {
+        return res.json({
+          result:{
+            state: res_state.success,
+            data: {
+              ...data
+            }
+          }
+        })
+      }else{
+        //로그인을 했다면, 성인 인증을 했는지 확인한다.
+        const querySelectUser = mysql.format("SELECT is_adult_certification FROM users WHERE id=?", [user_id_any]);
+        db.SELECT(querySelectUser, {}, (result_user) => {
+           if(!result_user || result_user.length === 0){
+            return res.json({
+              result:{
+                state: res_state.success,
+                data: {
+                  ...data
+                }
+              }
+            })
+           }
+
+           const userData = result_user[0];
+           if(userData.is_adult_certification){
+              data.img_url = temp_img_url;
+           }
+
+           return res.json({
+            result:{
+              state: res_state.success,
+              data: {
+                ...data
+              }
+            }
+          })
+        })
       }
-    })
+      
+    }else{
+      return res.json({
+        result:{
+          state: res_state.success,
+          data: {
+            ...data
+          }
+        }
+      })
+    }
+
+    // return res.json({
+    //   result: {
+    //     state: res_state.success,
+    //     data: data
+    //   }
+    // })
   })
 });
 
