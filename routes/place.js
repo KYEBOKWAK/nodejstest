@@ -59,6 +59,11 @@ router.post('/create', function(req, res){
     const collect_channel = req.body.data.collect_channel;
     const collect_category = req.body.data.collect_category;
 
+    let channel_url = req.body.data.channel_url;
+    if(channel_url === undefined){
+      channel_url = '이전버전에서 신청함';
+    }
+
     const created_at = date;
     const updated_at = date;
 
@@ -86,7 +91,7 @@ router.post('/create', function(req, res){
       slack.webhook({
         channel: "#bot-플레이스신청",
         username: "신청bot",
-        text: `[플레이스신청]\n플레이스명: ${title}\n이메일: ${email}\n연락처: ${contact}\n가입경로: ${collect_join_path}\n활동채널: ${collect_channel}\n카테고리: ${collect_category}\nalias: https://ctee.kr/place/${alias}`
+        text: `[플레이스신청]\n플레이스명: ${title}\n이메일: ${email}\n연락처: ${contact}\n가입경로: ${collect_join_path}\n활동채널: ${collect_channel}\n채널주소: ${channel_url}\n카테고리: ${collect_category}\nalias: https://ctee.kr/place/${alias}`
       }, function(err, response) {
         console.log(err);
       });
