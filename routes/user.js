@@ -23,7 +23,7 @@ const jwtType = use('lib/jwt_type.js');
 
 var validator = require("email-validator");
 
-// const axios = require('axios');
+const axios = require('axios');
 // const Global_Func = use("lib/global_func.js");
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -1751,11 +1751,43 @@ function getUserIP(req) {
 }
 
 router.post('/any/location/get', function(req, res){
-  console.log(getUserIP(req));
-  return res.json({
-    result: {
-      state: res_state.success
+  // console.log(getUserIP(req));
+  let myIp = getUserIP(req);
+
+  axios.get(`http://whois.kisa.or.kr/openapi/ipascc.jsp?query=${myIp}&key=${process.env.WHOIS_API_KEY}&answer=json`).then((result) => {
+    
+    console.log(result.data.whois.countryCode);
+
+    if(result.status === 200){
+      let countryCode = result.data.whois.countryCode;
+      if(countryCode === 'none'){
+        countryCode = 'KR';
+      }
+
+      console.log(countryCode);
+
+      return res.json({
+        result: {
+          state: res_state.success,
+          countryCode: countryCode
+        }
+      })
+    }else{
+      return res.json({
+        result: {
+          state: res_state.success,
+          countryCode: 'KR'
+        }
+      })
     }
+    
+  }, (error) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        countryCode: 'KR'
+      }
+    })
   })
 });
 
