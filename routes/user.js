@@ -26,7 +26,6 @@ var validator = require("email-validator");
 // const axios = require('axios');
 // const Global_Func = use("lib/global_func.js");
 const sgMail = require('@sendgrid/mail');
-const { default: Axios } = require('axios');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 var Iamport = require('iamport');
@@ -1743,6 +1742,20 @@ router.post('/certification/set', function(req, res){
       message: '인증 정보 추가 에러',
       result:{}
     })
+  })
+});
+
+function getUserIP(req) {
+  const addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  return addr;
+}
+
+router.post('/any/location/get', function(req, res){
+  console.log(getUserIP(req));
+  return res.json({
+    result: {
+      state: res_state.success
+    }
   })
 });
 

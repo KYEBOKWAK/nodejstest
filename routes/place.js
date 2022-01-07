@@ -15,7 +15,6 @@ var mysql = require('mysql');
 
 // const global = use('lib/global_const.js');
 // const axios = require('axios');
-// const { Config } = require('aws-sdk');
 
 const Templite_email = use('lib/templite_email');
 
@@ -30,6 +29,15 @@ webhookUri = process.env.CROWDTICKET_SLACK_WEBHOOK_URI;
 slack = new Slack();
 slack.setWebhook(webhookUri);
 ////////////
+
+/*
+var aws = require('aws-sdk');
+var s3 = new aws.S3({ 
+  accessKeyId: process.env.AWS_S3_KEY,
+  secretAccessKey: process.env.AWS_S3_SECRET,
+  region: process.env.AWS_S3_REGION,
+});
+*/
 
 const Global_Func = use("lib/global_func.js");
 
@@ -152,6 +160,35 @@ router.post('/any/item/isadult', function(req, res){
     })
   })
 });
+
+/*
+router.post('/file/size/s3', function(req, res){
+
+  s3.headObject({Key: 'banner/img-innerpiece-tarot@2x.png',
+  Bucket: process.env.AWS_S3_BUCKET}, (err, metadata) => {
+    // console.log('check' + files_downloads_id + '/' + file_s3_key);
+    if (err && err.code === 'NotFound') {  
+      // Handle no object on cloud here
+      // console.log(err);
+      
+      return res.json({
+        result: {
+          state: res_state.success,
+          size: 0
+        }
+      });
+    } else {
+      // console.log(metadata.ContentLength);
+      return res.json({
+        result: {
+          state: res_state.success,
+          size: metadata.ContentLength
+        }
+      });
+    }
+  });
+})
+*/
 
 
 module.exports = router;

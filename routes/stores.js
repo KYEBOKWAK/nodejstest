@@ -16,7 +16,6 @@ const Util = use('lib/util.js');
 
 const global = use('lib/global_const.js');
 const axios = require('axios');
-const { Config } = require('aws-sdk');
 
 const STORE_HOME_ITEM_LIST_TAKE = 4;
 const STORE_HOME_ITEM_LIST_IN_ITEM_TAKE = 3;

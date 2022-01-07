@@ -15,7 +15,6 @@ const Util = use('lib/util.js');
 
 // const global = use('lib/global_const.js');
 // const axios = require('axios');
-// const { Config } = require('aws-sdk');
 
 const TAKE_NOTICE = 5; //공지 한번에 불러오는 양
 

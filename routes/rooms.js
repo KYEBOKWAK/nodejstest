@@ -15,7 +15,6 @@ const Util = use('lib/util.js');
 
 const global = use('lib/global_const.js');
 const axios = require('axios');
-const { Config } = require('aws-sdk');
 
 var redis = require('redis');
 var client = redis.createClient(process.env.REDIS_CHATTING_PORT, process.env.REDIS_CHATTING_URL);

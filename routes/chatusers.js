@@ -15,7 +15,6 @@ const Util = use('lib/util.js');
 
 const global = use('lib/global_const.js');
 const axios = require('axios');
-const { Config } = require('aws-sdk');
 
 
 router.post("/list", function(req, res){
