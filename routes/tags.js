@@ -15,7 +15,7 @@ router.post('/any/etc', function(req, res){
 
   var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
-  const querySelect = mysql.format("SELECT thumb_tag.title, thumb_tag.bg_color FROM items_thumb_tags AS items_thumb_tag LEFT JOIN thumb_tags AS thumb_tag ON items_thumb_tag.thumb_tag_id=thumb_tag.id WHERE items_thumb_tag.target_id=? AND items_thumb_tag.type <> ? AND items_thumb_tag.start_date <= ? AND items_thumb_tag.end_date > ? ORDER BY items_thumb_tag.thumb_tag_id DESC LIMIT 1", [item_id, Types.thumb_tags_type.EVENT, nowDate, nowDate]);
+  const querySelect = mysql.format("SELECT thumb_tag.title_eng, thumb_tag.title, thumb_tag.bg_color FROM items_thumb_tags AS items_thumb_tag LEFT JOIN thumb_tags AS thumb_tag ON items_thumb_tag.thumb_tag_id=thumb_tag.id WHERE items_thumb_tag.target_id=? AND items_thumb_tag.type <> ? AND items_thumb_tag.start_date <= ? AND items_thumb_tag.end_date > ? ORDER BY items_thumb_tag.thumb_tag_id DESC LIMIT 1", [item_id, Types.thumb_tags_type.EVENT, nowDate, nowDate]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -41,7 +41,7 @@ router.post('/any/event', function(req, res){
 
   var nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
-  const querySelect = mysql.format("SELECT thumb_tag.title, thumb_tag.bg_color FROM items_thumb_tags AS items_thumb_tag LEFT JOIN thumb_tags AS thumb_tag ON items_thumb_tag.thumb_tag_id=thumb_tag.id WHERE items_thumb_tag.target_id=? AND items_thumb_tag.type = ? AND items_thumb_tag.start_date <= ? AND items_thumb_tag.end_date > ? ORDER BY items_thumb_tag.thumb_tag_id DESC LIMIT 1", [item_id, Types.thumb_tags_type.EVENT, nowDate, nowDate]);
+  const querySelect = mysql.format("SELECT thumb_tag.title_eng, thumb_tag.title, thumb_tag.bg_color FROM items_thumb_tags AS items_thumb_tag LEFT JOIN thumb_tags AS thumb_tag ON items_thumb_tag.thumb_tag_id=thumb_tag.id WHERE items_thumb_tag.target_id=? AND items_thumb_tag.type = ? AND items_thumb_tag.start_date <= ? AND items_thumb_tag.end_date > ? ORDER BY items_thumb_tag.thumb_tag_id DESC LIMIT 1", [item_id, Types.thumb_tags_type.EVENT, nowDate, nowDate]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){

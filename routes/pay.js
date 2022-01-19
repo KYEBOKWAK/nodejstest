@@ -44,6 +44,7 @@ const PAY_SERIALIZER_ONETIME = "onetime";
 const PAY_SERIALIZER_SCHEDULE = "scheduled";
 
 const DEFAULT_DONATION_PRICE = 3000;
+const DEFAULT_DONATION_PRICE_USD = 3;
 
 function getUserIP(req) {
     const addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
@@ -284,15 +285,9 @@ payStoreComplite = (req, res, serializer_uid) => {
     const imp_uid = req.body.data.imp_uid;
     const user_id = req.body.data.user_id;
     const customer_uid = Util.getPayNewCustom_uid(user_id);
-    // const pay_method = req.body.data.pay_method;
-    // let donation_order_id = req.body.data.donation_order_id;
-    // if(donation_order_id === undefined){
-    //   donation_order_id = null;
-    // }
-
     
-    // let orderQuery = "SELECT state, id, total_price FROM orders_items AS _order WHERE _order.id=? AND _order.merchant_uid=?";
-    let orderQuery = "SELECT _order.state, _order.id, _order.total_price, item.type_contents, item.completed_type_product_answer FROM orders_items AS _order LEFT JOIN items AS item ON _order.item_id=item.id WHERE _order.id=? AND _order.merchant_uid=?";
+
+    let orderQuery = "SELECT _order.currency_code, _order.total_price_USD, _order.state, _order.id, _order.total_price, item.type_contents, item.completed_type_product_answer FROM orders_items AS _order LEFT JOIN items AS item ON _order.item_id=item.id WHERE _order.id=? AND _order.merchant_uid=?";
     
     orderQuery = mysql.format(orderQuery, [order_id, merchant_uid]);
     db.SELECT(orderQuery, [], (result_order) => {
@@ -316,7 +311,13 @@ payStoreComplite = (req, res, serializer_uid) => {
             confirm_at = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
         }
 
-        if(orderData.total_price === 0){
+        let total_price = orderData.total_price;
+
+        if(orderData.currency_code === types.currency_code.US_Dollar){
+          total_price = orderData.total_price_USD;
+        }
+
+        if(total_price === 0){
             //결제금액 0원
             const orderState = getStoreOrderStateCheckIamportState('paid', orderData.type_contents);
 
@@ -389,7 +390,8 @@ payStoreComplite = (req, res, serializer_uid) => {
                   }).then(function(result_import){
                     // To do
                     const status = result_import.status;
-                    if(result_import.amount === orderData.total_price){
+                    //이곳의 결제 금액이 다름
+                    if(result_import.amount === total_price){
                         const orderState = getStoreOrderStateCheckIamportState(status, orderData.type_contents);
         
                         let _imp_meta = {
@@ -439,12 +441,17 @@ payStoreComplite = (req, res, serializer_uid) => {
                             })
                         });
                     }else{
-                        return  res.json({
-                            result:{
-                                state: res_state.error,
-                                message: '결제 금액이 다릅니다.'
-                            }
-                        });
+                      return res.json({
+                        state: res_state.error,
+                        message: '결제 금액이 다릅니다.',
+                        result:{}
+                      })
+                        // return  res.json({
+                        //     result:{
+                        //         state: res_state.error,
+                        //         message: '결제 금액이 다릅니다.'
+                        //     }
+                        // });
                     }
                   }).catch(function(error){
                     // handle error
@@ -474,7 +481,7 @@ payISPComplite = (req, res, serializer_uid) => {
 
     let orderQuery = '';
     if(pay_isp_type === types.pay_isp_type.isp_donation){
-      orderQuery = "SELECT store.contact AS place_contact, orders_donation.count, item.type_contents, orders_donation.item_id, orders_donation.name, store.title AS place_title, orders_item_id, orders_donation.state, orders_donation.id, orders_donation.total_price, orders_item.total_price AS orders_item_total_price FROM orders_donations AS orders_donation LEFT JOIN orders_items AS orders_item ON orders_donation.orders_item_id=orders_item.id LEFT JOIN items AS item ON orders_donation.item_id=item.id LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.id=? AND orders_donation.merchant_uid=?";
+      orderQuery = "SELECT orders_item.total_price_USD AS orders_item_total_price_USD, orders_donation.currency_code, orders_donation.total_price_USD, store.contact AS place_contact, orders_donation.count, item.type_contents, orders_donation.item_id, orders_donation.name, store.title AS place_title, orders_item_id, orders_donation.state, orders_donation.id, orders_donation.total_price, orders_item.total_price AS orders_item_total_price FROM orders_donations AS orders_donation LEFT JOIN orders_items AS orders_item ON orders_donation.orders_item_id=orders_item.id LEFT JOIN items AS item ON orders_donation.item_id=item.id LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.id=? AND orders_donation.merchant_uid=?";
         // orderQuery = "SELECT _order.state, _order.id, _order.total_price FROM orders_donations AS _order WHERE _order.id=? AND _order.merchant_uid=?";
     }else{
         return res.json({
@@ -498,20 +505,36 @@ payISPComplite = (req, res, serializer_uid) => {
             })
         }
 
-        const orderData = result_order[0];        
+        const orderData = result_order[0];
 
-        if(orderData.total_price === 0){
+        let total_price = orderData.total_price;
+        if(orderData.currency_code === types.currency_code.Won){
+          total_price = orderData.total_price;
+        }else{
+          total_price = orderData.total_price_USD;
+        }
+
+        if(total_price === 0){
             //결제금액 0원
             return  res.json({
-                result:{
-                    state: res_state.error,
-                    message: '금액 0원 오류'
-                }
+                state: res_state.error,
+                message: '금액 0원 오류',
+                result:{}
             })
         }else{
-          let checkTotalPrice = orderData.total_price
+          let checkTotalPrice = orderData.total_price;
+          if(orderData.currency_code === types.currency_code.Won){
+          }else{
+            checkTotalPrice = orderData.total_price_USD;
+          }
+
           if(orderData.orders_item_id !== null){
             checkTotalPrice = orderData.orders_item_total_price
+
+            if(orderData.currency_code === types.currency_code.Won){
+            }else{
+              checkTotalPrice = orderData.orders_item_total_price_USD;
+            }
           }
             
           iamport.payment.getByImpUid({
@@ -1164,6 +1187,8 @@ router.post('/store/onetime', function(req, res){
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
     const merchant_uid = Util.getPayStoreNewMerchant_uid(store_id, user_id);
 
+    let pg = _data.pg;
+
     let total_price_usd = _data.total_price_usd;
     if(total_price_usd === undefined || total_price_usd === null){
       total_price_usd = 0;
@@ -1177,6 +1202,10 @@ router.post('/store/onetime', function(req, res){
     let currency_code = _data.currency_code;
     if(currency_code === undefined){
       currency_code = types.currency_code.Won;
+    }
+
+    if(pg === undefined){
+      pg = null;
     }
 
     // const item_price = _data.item_price;
@@ -1199,7 +1228,8 @@ router.post('/store/onetime', function(req, res){
         merchant_uid: merchant_uid,
         pay_method: pay_method,
         created_at: date,
-        updated_at: date
+        updated_at: date,
+        pg: pg
     }
     
     db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
@@ -1426,11 +1456,14 @@ setDonation = (req, res, successCallBack, errorCallBack) => {
 
     const coffee_count = _data.coffee_count;
     const donation_total_price = _data.donation_total_price;
+    const donation_total_price_usd = _data.donation_total_price_usd;
 
     const pay_isp_type = _data.pay_isp_type;
 
     const store_title = _data.store_title;
     const store_contact = _data.store_contact;
+
+    let pg = _data.pg;
 
     if(coffee_count === 0){
       return successCallBack(null);
@@ -1445,6 +1478,10 @@ setDonation = (req, res, successCallBack, errorCallBack) => {
     let currency_code = _data.currency_code;
     if(currency_code === undefined){
         currency_code = types.currency_code.Won;
+    }
+
+    if(pg === undefined){
+      pg = null;
     }
 
     const merchant_uid = _data.merchant_uid;
@@ -1462,8 +1499,8 @@ setDonation = (req, res, successCallBack, errorCallBack) => {
         count: coffee_count,
         price: DEFAULT_DONATION_PRICE,
         total_price: donation_total_price,
-        price_USD: 0,
-        total_price_USD: 0,
+        price_USD: DEFAULT_DONATION_PRICE_USD,
+        total_price_USD: donation_total_price_usd,
         name: name,
         contact: contact,
         email: email,
@@ -1471,10 +1508,12 @@ setDonation = (req, res, successCallBack, errorCallBack) => {
         merchant_uid: merchant_uid,
         pay_method: pay_method,
         // imp_uid: imp_uid,
-        currency_code: currency_code,
+        // currency_code: currency_code,
         created_at: created_at,
         updated_at: created_at,
-        confirm_at: null
+        confirm_at: null,
+
+        pg: pg
       }
 
       let confirm_at = null;
@@ -1571,10 +1610,10 @@ router.post("/store/isp/iamport", function(req, res){
 
     const requestContent = _data.requestContent;
 
-    const total_price = _data.total_price;
+    let total_price = _data.total_price;
 
     const item_title = _data.title;
-    const item_price = _data.item_price;
+    let item_price = _data.item_price;
 
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
     req.body.data.created_at = date;
@@ -1596,6 +1635,17 @@ router.post("/store/isp/iamport", function(req, res){
         price_usd = 0;
     }
 
+    if(currency_code === types.currency_code.US_Dollar){
+      //달러일 경우 total_price 와 item_price를 0으로 만들어준다.
+      total_price = 0;
+      item_price = 0;
+    }
+
+    let pg = _data.pg;
+    if(pg === undefined){
+      pg = null;
+    }
+
     const insertOrderItemData = {
         store_id: store_id,
         item_id: item_id,
@@ -1615,7 +1665,9 @@ router.post("/store/isp/iamport", function(req, res){
         // imp_uid: imp_uid,
         currency_code: currency_code,
         created_at: date,
-        updated_at: date
+        updated_at: date,
+
+        pg: pg
     }
 
     db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
@@ -1660,27 +1712,33 @@ router.post("/store/isp/iamport", function(req, res){
 
                 db.UPDATE_MULITPLEX(_updateQueryArray, _updateOptionArray, 
                 (result_update) => {
-                    if(total_price === 0){
-                        return res.json({
-                            state: res_state.error,
-                            message: '해당 상품은 품절되었습니다.',
-                        })
-                    }
 
-                    iamport.payment.cancel({
-                        merchant_uid: merchant_uid,
-                        amount: total_price
-                    }).then(function(result_iamport){
-                        return res.json({
-                            state: res_state.error,
-                            message: '해당 상품은 품절되었습니다.',
-                        })
-                    }).catch(function(error){
-                        return res.json({
-                            state: res_state.error,
-                            message: '해당 상품은 품절되었습니다.' + error.message,
-                        })
-                    })
+                  return res.json({
+                    state: res_state.error,
+                    message: '해당 상품은 품절되었습니다.',
+                  })
+
+                    // if(total_price === 0){
+                    //     return res.json({
+                    //         state: res_state.error,
+                    //         message: '해당 상품은 품절되었습니다.',
+                    //     })
+                    // }
+
+                    // iamport.payment.cancel({
+                    //     merchant_uid: merchant_uid,
+                    //     amount: total_price
+                    // }).then(function(result_iamport){
+                    //     return res.json({
+                    //         state: res_state.error,
+                    //         message: '해당 상품은 품절되었습니다.',
+                    //     })
+                    // }).catch(function(error){
+                    //     return res.json({
+                    //         state: res_state.error,
+                    //         message: '해당 상품은 품절되었습니다.' + error.message,
+                    //     })
+                    // })
 
                     
                 }, (error_update) => {
@@ -1984,13 +2042,13 @@ webhookOrderCheck = (req, res, successCallBack, errorCallBack) => {
   })    
 }
 
-webhookOrderItemCheck = (req, res, successCallBack, ErrorCallBack) => {
+webhookOrderItemCheck = (req, res, successCallBack, errorCallBack) => {
   const imp_uid = req.body.imp_uid;
   const merchant_uid = req.body.merchant_uid;
   const status = req.body.status;
   const amount = req.body.amount;
 
-  let orderQuery = "SELECT orders_item.down_expired_at, orders_item.product_answer, orders_item.created_at, orders_item.confirm_at, item.completed_type_product_answer, orders_item.total_price, orders_item.state, orders_item.id, item.type_contents FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE merchant_uid=?"
+  let orderQuery = "SELECT orders_item.currency_code, orders_item.total_price_USD, orders_item.down_expired_at, orders_item.product_answer, orders_item.created_at, orders_item.confirm_at, item.completed_type_product_answer, orders_item.total_price, orders_item.state, orders_item.id, item.type_contents FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE merchant_uid=?"
   orderQuery = mysql.format(orderQuery, [merchant_uid]);
   db.SELECT(orderQuery, [], (result_order) => {
     if(!result_order || result_order.length === 0){
@@ -1999,7 +2057,15 @@ webhookOrderItemCheck = (req, res, successCallBack, ErrorCallBack) => {
     }
 
     const data = result_order[0];
-    if(amount === data.total_price){
+
+    let total_price = data.total_price;
+    if(data.currency_code === types.currency_code.Won){
+      total_price = data.total_price;
+    }else{
+      total_price = data.total_price_USD;
+    }
+
+    if(amount === total_price){
       // const orderState = getOrderStateCheckIamportState(status);
       let orderState = ''; 
 
@@ -2047,13 +2113,13 @@ webhookOrderItemCheck = (req, res, successCallBack, ErrorCallBack) => {
   })
 }
 
-webhookDonationCheck = (req, res, successCallBack, ErrorCallBack) => { 
+webhookDonationCheck = (req, res, successCallBack, errorCallBack) => { 
   const imp_uid = req.body.imp_uid;
   const merchant_uid = req.body.merchant_uid;
   const status = req.body.status;
   const amount = req.body.amount;
 
-  let orderQuery = "SELECT orders_donation.total_price, orders_donation.state, orders_donation.id, orders_donation.item_id, item.type_contents FROM orders_donations AS orders_donation LEFT JOIN items AS item ON orders_donation.item_id=item.id WHERE merchant_uid=?"
+  let orderQuery = "SELECT orders_donation.currency_code, orders_donation.total_price_USD, orders_donation.total_price, orders_donation.state, orders_donation.id, orders_donation.item_id, item.type_contents FROM orders_donations AS orders_donation LEFT JOIN items AS item ON orders_donation.item_id=item.id WHERE merchant_uid=?"
   orderQuery = mysql.format(orderQuery, [merchant_uid]);
   db.SELECT(orderQuery, [], (result_order) => {
     if(!result_order || result_order.length === 0){

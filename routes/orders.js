@@ -775,7 +775,7 @@ function isPick(state){
 
 function getStateStringAttribute(state, pick_state, deleted_at, event_type, type, funding_closing_at){
   if (deleted_at) {
-      return '취소됨';
+      return 's361';
   }
 
   // $project = Project::find($this->project_id);
@@ -785,22 +785,22 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
   // }
 
   if(state === types.order.ORDER_STATE_APP_PAY_WAIT){
-    return '결제대기';
+    return 's362';
   }
   else if(state === types.order.ORDER_STATE_CANCEL_WAIT_PAY){
-    return '자동취소됨';
+    return 's363';
   }
   else if(state === types.order.ORDER_STATE_CANCEL)
   {
-    return '취소됨';
+    return 's364';
   }
   else if(state === types.order.ORDER_STATE_ERROR_NO_PAY_NINETY_EIGHT)
   {
-    return '결제실패(결제에러)';
+    return 's365';
   }
   else if(state === types.order.ORDER_STATE_PROJECT_CANCEL)
   {
-    return '목표 도달 실패';
+    return 's366';
   }
   else if(state === types.order.ORDER_STATE_PAY_SCHEDULE)
   {
@@ -810,11 +810,11 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
     }
     else if(isFinished(funding_closing_at))
     {
-      return '결제완료';
+      return 's367';
     }
     else
     {
-      return '결제예약';
+      return 's368';
     }
   }
   else if(state === types.order.ORDER_STATE_PAY_SCHEDULE_RESULT_FAIL)
@@ -824,78 +824,78 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
       return '당첨 - 결제실패';
     }
 
-    return '결제실패(예약)';
+    return 's369';
   }
   else if(state === types.order.ORDER_STATE_STANDBY_START)
   {
-    return '결제 에러(1)';
+    return 's370';
   }
   else if(state === types.order.ORDER_STATE_ERROR_PAY)
   {
-    return '결제 에러(2)';
+    return 's371';
   }
   else if(state === types.order.ORDER_STATE_PAY_SUCCESS_NINETY_EIGHT)
   {
-    return '결제 완료';
+    return 's372';
   }
   else if(state === types.order.ORDER_STATE_PROJECT_PICK_CANCEL)
   {
-    return '미당첨';
+    return 's373';
   }
   else if(state === types.order.ORDER_STATE_PAY_ACCOUNT_STANDBY)
   {
-    return '입금대기';
+    return 's374';
   }
   else if(state === types.order.ORDER_STATE_PAY_ACCOUNT_NO_PAY)
   {
-    return '미입금 취소됨';
+    return 's375';
   }
   else if(state === types.order.ORDER_STATE_CANCEL_ACCOUNT_PAY)
   {
-    return '입금 취소함';
+    return 's376';
   }
   else if(state === types.order.ORDER_STATE_PAY_ACCOUNT_SUCCESS)
   {
-    return '결제 완료(입금확인)';
+    return 's377';
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_PAYMENT)
   {
-    return '승인대기'
+    return 's378'
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_READY)
   {
-    return '승인 완료(콘텐츠 제작중)'
+    return 's379'
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_SUCCESS)
   {
-    return '크티 전달 완료'
+    return 's380'
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER)
   {
-    return '고객 전달 완료'
+    return 's381'
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE)
   {
-    return '고객 확인 완료'
+    return 's382'
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_STANBY)
   {
-    return '결제 대기'; 
+    return 's383'; 
   }
   else if(state === types.order.ORDER_STATE_APP_STORE_STANBY_FAIL)
   {
-    return '결제 에러';
+    return 's384';
   }
   else if(state === types.order.ORDER_STATE_CANCEL_STORE_RETURN)
   {
-    return '반려'
+    return 's385'
   }
   else if(state === types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER)
   {
-    return '승인 만료(취소됨)'
+    return 's386'
   }else if(state === types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS)
   {
-    return '진행완료';
+    return 's387';
   }
 
 
@@ -922,7 +922,7 @@ function getStateStringAttribute(state, pick_state, deleted_at, event_type, type
       return '결제예약';
   }
 
-  return '결제완료';
+  return 's388';
 }
 
 function isOrderStateStandbyStart(state){
@@ -1500,14 +1500,14 @@ function getOrderStateStringAttribute(state){
 
 function getStorePayState(state){
   if(state >= types.order.ORDER_STATE_ERROR_START){
-    return '결제에러';
+    return 's391';
   }else if(state >= types.order.ORDER_STATE_CANCEL_START){
-    return '결제취소';
+    return 's392';
   }else {
     if(state === types.order.ORDER_STATE_APP_STORE_STANBY){
-      return '결제 대기중 (결제 실패인 경우 1시간 안으로 취소처리 됩니다)';
+      return 's393';
     }
-    return '결제완료';
+    return 's394';
   }
 }
 
@@ -1548,31 +1548,31 @@ router.post("/store/info", function(req, res){
     }
 
     if(data.state === types.order.ORDER_STATE_APP_STORE_PAYMENT){
-      refundButtonText = "주문 취소";
+      refundButtonText = "s397";
       isRefund = true;
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_READY){
-      refundButtonText = "콘텐츠 준비중";
+      refundButtonText = "s398";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_SUCCESS){
-      refundButtonText = "콘텐츠 제공 완료";
+      refundButtonText = "s399";
     }else if(data.state === types.order.ORDER_STATE_CANCEL_STORE_RETURN){
-      refundButtonText = "반려됨";
+      refundButtonText = "s400";
     }else if(data.state === types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER){
-      refundButtonText = "승인기간 만료(주문취소)";
+      refundButtonText = "s401";
     }else if(data.state === types.order.ORDER_STATE_CANCEL){
-      refundButtonText = "취소됨";
+      refundButtonText = "s402";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER){
-      refundButtonText = "고객 전달 완료";
+      refundButtonText = "s403";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE){
-      refundButtonText = "고객 확인 완료";
+      refundButtonText = "s404";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_STANBY){
-      refundButtonText = "결제 대기중(결제 실패인 경우 1시간 안으로 취소처리 됩니다)";
+      refundButtonText = "s405";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_STANBY_FAIL){
-      refundButtonText = "결제 에러(결제 실패로 인한 결제 에러)";
+      refundButtonText = "s406";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS){
-      refundButtonText = "콘텐츠 진행완료";
+      refundButtonText = "s407";
     }
     else{
-      refundButtonText = '주문정보에러(크티에문의주세요!)';
+      refundButtonText = 's408';
     }
 
 
@@ -1596,7 +1596,7 @@ router.post("/store/info", function(req, res){
 router.post("/store/info/v1", function(req, res){
   const store_order_id = req.body.data.store_order_id;
 
-  const querySelect = mysql.format('SELECT orders_donation.total_price AS donation_total_price, orders_item.pay_method, orders_item.total_price_USD, item.price_USD, item.currency_code, item.type_contents, item.file_upload_state, item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN orders_donations AS orders_donation ON orders_item.orders_donation_id=orders_donation.id WHERE orders_item.id=?', store_order_id);
+  const querySelect = mysql.format('SELECT orders_donation.total_price_USD AS donation_total_price_usd, orders_donation.total_price AS donation_total_price, orders_item.pay_method, orders_item.total_price_USD, orders_item.price_USD, orders_item.currency_code, item.type_contents, item.file_upload_state, item.product_state, time_check_state, store.alias, store.title AS store_title, item.img_url AS item_img_url, orders_item.product_answer, orders_item.user_id AS order_user_id, refund_reason, orders_item.state, orders_item.item_id, orders_item.store_id, orders_item.total_price, orders_item.contact, orders_item.email, orders_item.name, orders_item.requestContent, orders_item.created_at, orders_item.price AS item_price, item.title AS item_title FROM orders_items AS orders_item LEFT JOIN items AS item ON item.id=orders_item.item_id LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN orders_donations AS orders_donation ON orders_item.orders_donation_id=orders_donation.id WHERE orders_item.id=?', store_order_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1622,31 +1622,31 @@ router.post("/store/info/v1", function(req, res){
     }
 
     if(data.state === types.order.ORDER_STATE_APP_STORE_PAYMENT){
-      refundButtonText = "주문 취소";
+      refundButtonText = "s397";
       isRefund = true;
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_READY){
-      refundButtonText = "콘텐츠 준비중";
+      refundButtonText = "s398";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_SUCCESS){
-      refundButtonText = "콘텐츠 제공 완료";
+      refundButtonText = "s399";
     }else if(data.state === types.order.ORDER_STATE_CANCEL_STORE_RETURN){
-      refundButtonText = "반려됨";
+      refundButtonText = "s400";
     }else if(data.state === types.order.ORDER_STATE_CANCEL_STORE_WAIT_OVER){
-      refundButtonText = "승인기간 만료(주문취소)";
+      refundButtonText = "s401";
     }else if(data.state === types.order.ORDER_STATE_CANCEL){
-      refundButtonText = "취소됨";
+      refundButtonText = "s402";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_RELAY_CUSTOMER){
-      refundButtonText = "고객 전달 완료";
+      refundButtonText = "s403";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE){
-      refundButtonText = "고객 확인 완료";
+      refundButtonText = "s404";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_STANBY){
-      refundButtonText = "결제 대기중(결제 실패인 경우 1시간 안으로 취소처리 됩니다)";
+      refundButtonText = "s405";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_STANBY_FAIL){
-      refundButtonText = "결제 에러(결제 실패로 인한 결제 에러)";
+      refundButtonText = "s406";
     }else if(data.state === types.order.ORDER_STATE_APP_STORE_PLAYING_DONE_CONTENTS){
-      refundButtonText = "콘텐츠 진행완료";
+      refundButtonText = "s407";
     }
     else{
-      refundButtonText = '주문정보에러(크티에문의주세요!)';
+      refundButtonText = 's408';
     }
 
 

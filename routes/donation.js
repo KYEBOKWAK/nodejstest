@@ -30,6 +30,7 @@ slack.setWebhook(webhookUri);
 ////////////
 
 const DEFAULT_DONATION_PRICE = 3000;
+const DEFAULT_DONATION_PRICE_USD = 3;
 const PAY_SERIALIZER_ONETIME = "onetime";
 
 router.post('/pay/isp', function(req, res){
@@ -41,12 +42,14 @@ router.post('/pay/isp', function(req, res){
   const email = req.body.data.email;
 
   const count = req.body.data.count;
-  const total_price = count * DEFAULT_DONATION_PRICE;
+  const total_price = req.body.data.total_price;
+  const total_price_usd = req.body.data.total_price_usd;
 
   const merchant_uid = req.body.data.merchant_uid;
   const pay_method = req.body.data.pay_method;
 
   const currency_code = req.body.data.currency_code;
+  let pg = req.body.data.pg;
 
   const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
@@ -66,6 +69,10 @@ router.post('/pay/isp', function(req, res){
     })
   }
 
+  if(pg === undefined || pg === null){
+    pg = null;
+  }
+
   const insertDonationData = {
     store_id: store_id,
     user_id: user_id,
@@ -75,15 +82,17 @@ router.post('/pay/isp', function(req, res){
     count: count,
     price: DEFAULT_DONATION_PRICE,
     total_price: total_price,
-    price_USD: 0,
-    total_price_USD: 0,
+    price_USD: DEFAULT_DONATION_PRICE_USD,
+    total_price_USD: total_price_usd,
     name: name,
     contact: contact,
     email: email,
     currency_code: currency_code,
     merchant_uid: merchant_uid,
     pay_method: pay_method,
+    pg: pg,
     // imp_uid: imp_uid,
+
     created_at: date,
     updated_at: date,
     confirm_at: date
@@ -288,8 +297,16 @@ router.post('/total/count', function(req, res){
 router.post('/any/total/count', function(req, res){
   const store_id = req.body.data.store_id;
 
-  const querySelect = mysql.format("SELECT SUM(count) AS total_count FROM orders_donations WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION]);
+  const select_currency_code = req.body.data.select_currency_code
 
+  let querySelect = '';
+  if(select_currency_code === undefined || select_currency_code === null){
+    querySelect = mysql.format("SELECT SUM(count) AS total_count FROM orders_donations WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION]);
+  }
+  else {
+    querySelect = mysql.format("SELECT SUM(count) AS total_count FROM orders_donations WHERE store_id=? AND state=? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, select_currency_code]);
+  }
+  
   db.SELECT(querySelect, {}, (result) => {
     const data = result[0];
 
@@ -332,8 +349,9 @@ router.post('/any/list/rank', function(req, res){
 
 router.post('/my/total/count', function(req, res){
   const user_id = req.body.data.user_id;
+  const currency_code = req.body.data.currency_code;
 
-  const querySelect = mysql.format("SELECT SUM(count) AS total_count FROM orders_donations WHERE user_id=? AND state=?", [user_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION]);
+  const querySelect = mysql.format("SELECT SUM(count) AS total_count FROM orders_donations WHERE user_id=? AND state=? AND currency_code=?", [user_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, currency_code]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -357,15 +375,17 @@ router.post('/my/total/count', function(req, res){
 
 router.post('/my/total/price', function(req, res){
   const user_id = req.body.data.user_id;
+  const currency_code = req.body.data.currency_code;
 
-  const querySelect = mysql.format("SELECT SUM(total_price) AS total_price FROM orders_donations WHERE user_id=? AND state=?", [user_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION]);
+  const querySelect = mysql.format("SELECT SUM(total_price) AS total_price, SUM(total_price_USD) AS total_price_USD FROM orders_donations WHERE user_id=? AND state=? AND currency_code=?", [user_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, currency_code]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
       return res.json({
         result: {
           state: res_state.success,
-          total_price: 0
+          total_price: 0,
+          total_price_usd: 0
         }
       })
     }
@@ -374,7 +394,8 @@ router.post('/my/total/price', function(req, res){
     return res.json({
       result: {
         state: res_state.success,
-        total_price: data.total_price
+        total_price: data.total_price,
+        total_price_usd: data.total_price_USD
       }
     })
   })
@@ -382,8 +403,9 @@ router.post('/my/total/price', function(req, res){
 
 router.post('/my/bestcreator', function(req, res){
   const user_id = req.body.data.user_id;
+  const currency_code = req.body.data.currency_code;
 
-  const querySelect = mysql.format("SELECT MAX(id) AS id, store_id, user_id, SUM(total_price) AS total_price FROM orders_donations WHERE user_id=? AND state=? GROUP BY store_id ORDER BY total_price DESC, id DESC LIMIT ?", [user_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, 1]);
+  const querySelect = mysql.format("SELECT MAX(id) AS id, store_id, user_id, SUM(total_price) AS total_price FROM orders_donations WHERE user_id=? AND state=? AND currency_code=? GROUP BY store_id ORDER BY total_price DESC, id DESC LIMIT ?", [user_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, currency_code, 1]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -414,8 +436,10 @@ router.post('/my/list/get', function(req, res){
 
   let limit = req.body.data.limit;
   let skip = req.body.data.skip;
+
+  const currency_code = req.body.data.currency_code;
   
-  const querySelect = mysql.format("SELECT orders_donation.id, orders_donation.state, orders_donation.created_at, orders_donation.count, store.user_id AS place_user_id, store.title FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.user_id=? AND (orders_donation.state=? OR orders_donation.state=? OR orders_donation.state=?) ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [user_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, Types.order.ORDER_STATE_CANCEL, Types.order.ORDER_STATE_APP_STORE_PAYMENT, limit, skip]);
+  const querySelect = mysql.format("SELECT orders_donation.id, orders_donation.state, orders_donation.created_at, orders_donation.count, store.user_id AS place_user_id, store.title FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.user_id=? AND orders_donation.currency_code=? AND (orders_donation.state=? OR orders_donation.state=? OR orders_donation.state=?) ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [user_id, currency_code, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, Types.order.ORDER_STATE_CANCEL, Types.order.ORDER_STATE_APP_STORE_PAYMENT, limit, skip]);
   
   db.SELECT(querySelect, {}, (result) => {
     // if(result.length === 0){
@@ -446,14 +470,22 @@ router.post('/my/list/get', function(req, res){
 router.post('/total/price', function(req, res){
   const store_id = req.body.data.store_id;
 
-  const querySelect = mysql.format("SELECT SUM(total_price) AS total_price FROM orders_donations WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION]);
+  const select_currency_code = req.body.data.select_currency_code;
+
+  let querySelect = '';
+  if(select_currency_code === undefined || select_currency_code === null){
+    querySelect = mysql.format("SELECT SUM(total_price) AS total_price FROM orders_donations WHERE store_id=? AND state=?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION]);
+  }else{
+    querySelect = mysql.format("SELECT SUM(total_price) AS total_price, SUM(total_price_USD) AS total_price_usd FROM orders_donations WHERE store_id=? AND state=? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, select_currency_code]);
+  }
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
       return res.json({
         result: {
           state: res_state.success,
-          total_price: 0
+          total_price: 0,
+          total_price_usd: 0
         }
       })
     }
@@ -462,7 +494,8 @@ router.post('/total/price', function(req, res){
     return res.json({
       result: {
         state: res_state.success,
-        total_price: data.total_price
+        total_price: data.total_price,
+        total_price_usd: data.total_price_usd
       }
     })
   })
@@ -473,8 +506,16 @@ router.post("/manager/list", function(req, res){
   let skip = req.body.data.skip;
 
   const store_id = req.body.data.store_id;
+  const select_currency_code = req.body.data.select_currency_code;
 
-  let querySelect = mysql.format("SELECT id, count, total_price, created_at, name, user_id  FROM orders_donations WHERE store_id=? AND state=? ORDER BY id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, limit, skip]);
+  let querySelect = ''
+  if(select_currency_code === undefined || select_currency_code === null){
+    querySelect = mysql.format("SELECT currency_code, total_price_USD, id, count, total_price, created_at, name, user_id  FROM orders_donations WHERE store_id=? AND state=? ORDER BY id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, limit, skip]);
+  }else{
+    querySelect = mysql.format("SELECT currency_code, total_price_USD, id, count, total_price, created_at, name, user_id  FROM orders_donations WHERE store_id=? AND state=? AND currency_code=? ORDER BY id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, select_currency_code,limit, skip]);
+  }
+
+  
 
   db.SELECT(querySelect, {}, (result) => {
 
@@ -648,7 +689,7 @@ router.post('/info', function(req, res){
     })
   }
 
-  const selectQuery = mysql.format("SELECT store.user_id AS place_user_id, store.title AS place_title, orders_donation.pay_method, orders_donation.contact, orders_donation.item_id, orders_donation.orders_item_id, orders_donation.item_id,  orders_donation.state, orders_donation.count, orders_donation.email, orders_donation.total_price, orders_donation.created_at FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.id=? AND orders_donation.user_id=?", [donation_order_id, user_id]);
+  const selectQuery = mysql.format("SELECT orders_donation.currency_code, orders_donation.pg, orders_donation.total_price_USD, store.user_id AS place_user_id, store.title AS place_title, orders_donation.pay_method, orders_donation.contact, orders_donation.item_id, orders_donation.orders_item_id, orders_donation.item_id,  orders_donation.state, orders_donation.count, orders_donation.email, orders_donation.total_price, orders_donation.created_at FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.id=? AND orders_donation.user_id=?", [donation_order_id, user_id]);
 
   db.SELECT(selectQuery, {}, (result) => {
     if(result.length === 0){

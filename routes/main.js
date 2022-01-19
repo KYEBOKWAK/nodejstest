@@ -212,7 +212,7 @@ router.post('/event/feed', function(req, res){
 router.post('/any/thumbnails/popular/list', function(req, res){
   const thumbnails_type = req.body.data.thumbnails_type;
 
-  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url, first_text, second_text FROM main_thumbnails WHERE type=?", [thumbnails_type]);
+  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url, first_text, second_text, first_text_eng, second_text_eng FROM main_thumbnails WHERE type=?", [thumbnails_type]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -410,7 +410,7 @@ router.post('/any/search/no/recommend', function(req, res){
 })
 
 router.post('/any/carousels', function(req, res){
-  const querySelect = mysql.format("SELECT img_url, title, sub_title, bg_color, bg_img_url, bg_img_type, target_id, target_type, link_url, is_open_new_window FROM main_web_carousels WHERE order_number > 0 ORDER BY order_number");
+  const querySelect = mysql.format("SELECT img_url, title, title_eng, sub_title, sub_title_eng, bg_color, bg_img_url, bg_img_type, target_id, target_type, link_url, is_open_new_window FROM main_web_carousels WHERE order_number > 0 ORDER BY order_number");
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({

@@ -37,6 +37,8 @@ var iamport = new Iamport({
 const EXPIRE_REFRESH_TOKEN = '365d';
 const EXPIRE_ACCESS_TOKEN = '1h';
 
+const EXPIRE_TEMP_ADULT_TOKEN = '30d';
+
 /*
 router.get('/:id/introduce', function(req, res) {
   db.SELECT("SELECT id, name, profile_photo_url, introduce FROM users" + 
@@ -1756,7 +1758,7 @@ router.post('/any/location/get', function(req, res){
 
   axios.get(`http://whois.kisa.or.kr/openapi/ipascc.jsp?query=${myIp}&key=${process.env.WHOIS_API_KEY}&answer=json`).then((result) => {
     
-    console.log(result.data.whois.countryCode);
+    // console.log(result.data.whois.countryCode);
 
     if(result.status === 200){
       let countryCode = result.data.whois.countryCode;
@@ -1764,7 +1766,9 @@ router.post('/any/location/get', function(req, res){
         countryCode = 'KR';
       }
 
-      console.log(countryCode);
+      //test//
+      // countryCode = 'US';
+      ////////
 
       return res.json({
         result: {
@@ -1790,5 +1794,63 @@ router.post('/any/location/get', function(req, res){
     })
   })
 });
+
+router.post('/any/temp/certification/token/get', function(req, res){
+  // const user_id = req.body.data.user_id;
+  _jwt.CREATE(jwtType.TYPE_JWT_TEMP_ADULT_CERTIFICATION, 
+    {
+      // user_id: user_id,
+      type: jwtType.TYPE_JWT_TEMP_ADULT_CERTIFICATION
+    }, 
+    EXPIRE_TEMP_ADULT_TOKEN, function(value){
+    if(value.state === 'error'){
+      res.json({
+        result: {
+          state: 'error',
+          message: value.message
+        }
+      })
+    }else{
+      return res.json({
+        result: {
+          state: res_state.success,
+          token: value.token,
+        }
+      });
+    }
+  });
+});
+
+router.post('/any/temp/certification/token/validate', function(req, res){
+  const adult_temp_certification_token = req.body.data.adult_temp_certification_token;
+  _jwt.READ(adult_temp_certification_token, function(result){
+    //console.log(result);
+    if(result.state === 'success'){
+      if(result.iss === process.env.JWT_TOKEN_ISSUER){
+        return res.json({
+          result:{
+            state: res_state.success,
+            validate: true
+          }
+        })
+      }else{
+        return res.json({
+          result:{
+            state: res_state.success,
+            validate: false
+          }
+        })
+      }
+    }else{
+      //토킄 정보 오류거나 없으면
+      return res.json({
+        result:{
+          state: res_state.success,
+          validate: false
+        }
+      })
+    }
+  });
+})
 
 module.exports = router;

@@ -28,9 +28,9 @@ router.post('/any/sub/list', function(req, res){
 
   let querySelect = '';
   if(category_top_id === 0){
-    querySelect = mysql.format("SELECT id, title FROM category_sub_items WHERE title<>'기타'");
+    querySelect = mysql.format("SELECT id, title, title_eng FROM category_sub_items WHERE title<>'기타'");
   }else{
-    querySelect = mysql.format("SELECT id, title FROM category_sub_items WHERE category_top_id=? ORDER BY order_number", [category_top_id]);
+    querySelect = mysql.format("SELECT id, title, title_eng FROM category_sub_items WHERE category_top_id=? ORDER BY order_number", [category_top_id]);
   }
    
   
@@ -40,7 +40,8 @@ router.post('/any/sub/list', function(req, res){
       //기타 data
       const data = {
         id: Types.category_total_etc_id, //전체 카테고리의 기타는 하나만 묶여서 보여야 함.. 9999로 별도 처리
-        title: '기타'
+        title: '기타',
+        title_eng: 'etc'
       }
       result.push(data);
     }
@@ -220,8 +221,9 @@ router.post('/any/store/list', function(req, res){
 
 router.post('/any/top/info', function(req, res){
   const category_top_item_id = req.body.data.category_top_item_id;
+  const language_code = req.body.data.language_code;
 
-  const querySelect = mysql.format('SELECT title FROM category_top_items WHERE id=?', [category_top_item_id]);
+  const querySelect = mysql.format('SELECT title, title_eng FROM category_top_items WHERE id=?', [category_top_item_id]);
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
       return res.json({
@@ -233,10 +235,15 @@ router.post('/any/top/info', function(req, res){
     
     const data = result[0];
 
+    let title = data.title
+    if(language_code === Types.language.en){
+      title = data.title_eng;
+    }
+
     return res.json({
       result: {
         state: res_state.success,
-        title: data.title
+        title: title
       }
     })
   })
@@ -244,8 +251,9 @@ router.post('/any/top/info', function(req, res){
 
 router.post('/any/sub/info', function(req, res){
   const category_sub_item_id = req.body.data.category_sub_item_id;
+  const language_code = req.body.data.language_code;
 
-  const querySelect = mysql.format('SELECT title FROM category_sub_items WHERE id=?', [category_sub_item_id]);
+  const querySelect = mysql.format('SELECT title, title_eng FROM category_sub_items WHERE id=?', [category_sub_item_id]);
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
       return res.json({
@@ -257,10 +265,15 @@ router.post('/any/sub/info', function(req, res){
     
     const data = result[0];
 
+    let title = data.title
+    if(language_code === Types.language.en){
+      title = data.title_eng;
+    }
+
     return res.json({
       result: {
         state: res_state.success,
-        title: data.title
+        title: title
       }
     })
   })
@@ -269,7 +282,7 @@ router.post('/any/sub/info', function(req, res){
 router.post('/any/list/get/item', function(req, res){
   const store_id = req.body.data.store_id;
   
-  const querySelect = mysql.format('SELECT category_sub_item.id, category_sub_item.title FROM items AS item LEFT JOIN category_sub_items AS category_sub_item ON item.category_sub_item_id=category_sub_item.id WHERE item.store_id=? AND item.state=? AND item.category_sub_item_id IS NOT NULL GROUP BY item.category_sub_item_id', [store_id, Types.item_state.SALE]);
+  const querySelect = mysql.format('SELECT category_sub_item.title_eng, category_sub_item.id, category_sub_item.title FROM items AS item LEFT JOIN category_sub_items AS category_sub_item ON item.category_sub_item_id=category_sub_item.id WHERE item.store_id=? AND item.state=? AND item.category_sub_item_id IS NOT NULL GROUP BY item.category_sub_item_id', [store_id, Types.item_state.SALE]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({

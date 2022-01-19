@@ -17,6 +17,9 @@ const Util = use('lib/util.js');
 const global = use('lib/global_const.js');
 const axios = require('axios');
 
+
+const jwt = use('lib/jwt.js');
+
 const STORE_HOME_ITEM_LIST_TAKE = 4;
 const STORE_HOME_ITEM_LIST_IN_ITEM_TAKE = 3;
 
@@ -138,57 +141,16 @@ router.post('/any/detail/info', function(req, res){
   })
 });
 
-router.post('/any/detail/item/list', function(req, res){
-  let limit = req.body.data.limit;
-  let skip = req.body.data.skip;
-  let store_id = req.body.data.store_id;
-
-  let language_code = req.body.data.language_code;
-  if(language_code === undefined){
-    language_code = 'kr'
-  }
-
-  let currency_code = Types.currency_code.Won;
-  if(language_code === 'kr'){
-    currency_code = Types.currency_code.Won;
-  }else{
-    currency_code = Types.currency_code.US_Dollar;
-  }
-
-  let querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL  AND currency_code=? ORDER BY item.order_number LIMIT ? OFFSET ?", [store_id, Types.item_state.SALE_STOP, currency_code, limit, skip]);
-
-  db.SELECT(querySelect, {}, (result) => {
-    return res.json({
-      result:{
-        state: res_state.success,
-        list: result
-      }
-    })
-  })
-})
-
 router.post('/any/item/list/category', function(req, res){
   let store_id = req.body.data.store_id;
   const category_sub_item_id = req.body.data.category_sub_item_id;
 
-  let language_code = req.body.data.language_code;
-  if(language_code === undefined){
-    language_code = 'kr'
-  }
-
-  let currency_code = Types.currency_code.Won;
-  if(language_code === 'kr'){
-    currency_code = Types.currency_code.Won;
-  }else{
-    currency_code = Types.currency_code.US_Dollar;
-  }
-
   let querySelect = ''
 
   if(category_sub_item_id === 0){
-    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL  AND currency_code=? ORDER BY item.order_number", [store_id, Types.item_state.SALE_STOP, currency_code]);
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id, Types.item_state.SALE_STOP]);
   }else{
-    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL AND currency_code=? AND category_sub_item_id=? ORDER BY item.order_number", [store_id, Types.item_state.SALE_STOP, currency_code, category_sub_item_id]);
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL AND category_sub_item_id=? ORDER BY item.order_number", [store_id, Types.item_state.SALE_STOP, category_sub_item_id]);
   }
 
   db.SELECT(querySelect, {}, (result) => {
@@ -217,7 +179,21 @@ router.post('/any/info/alias', function(req, res){
 
 router.post('/any/item/info', function(req, res){
   const store_item_id = req.body.data.store_item_id;
-  const querySelect = mysql.format("SELECT item.is_adult, store.contact AS store_contact, item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+
+  let currency_code = req.body.data.currency_code;
+  if(currency_code === undefined || currency_code === null){
+    currency_code = Types.currency_code.Won;
+  }
+  
+  let language_code = req.body.data.language_code;
+  if(language_code === undefined || language_code === null){
+    language_code = Types.language.kr;
+  }
+
+  // const querySelect = mysql.format("SELECT item.is_adult, store.contact AS store_contact, item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+
+  const querySelect = mysql.format("SELECT exchange_rate.price AS exchange_price, item.is_adult, store.contact AS store_contact, item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id LEFT JOIN exchange_rates AS exchange_rate ON exchange_rate.currency_code=? WHERE item.id=?", [Types.currency_code.Won, store_item_id]);
+
   db.SELECT(querySelect, {}, (result) => {
 
     if(result.length === 0){
@@ -235,27 +211,40 @@ router.post('/any/item/info', function(req, res){
     if(data.img_url === null || data.img_url === ''){
       data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/real/items/img-thumb-default.png';
     }
+    
+    if(currency_code === Types.currency_code.US_Dollar){
+      const item_price = data.price;
+      if(item_price === 0){
+        data.price_USD = Number(item_price);
+        data.currency_code = currency_code;
+      }else {
+        const exchange_price = (item_price / data.exchange_price).toFixed(2);
+        data.price_USD = Number(exchange_price);
+        data.currency_code = currency_code;
+      }
+    }
+    // console.log(data.exchange_price);
+
+    
 
     if(data.is_adult){
       //원래 /any에는 user_id가 없었음.
       const user_id_any = req.body.data.user_id_any;
       let temp_img_url = data.img_url;
-      data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult2.png';
-      // let default_adult_thumb_img_url = '';
-      if(user_id_any === undefined || user_id_any === null || user_id_any === 0 || user_id_any === '') {
-        return res.json({
-          result:{
-            state: res_state.success,
-            data: {
-              ...data
-            }
-          }
-        })
+      if(language_code === Types.language.kr){
+        data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult2.png';
       }else{
-        //로그인을 했다면, 성인 인증을 했는지 확인한다.
-        const querySelectUser = mysql.format("SELECT is_adult_certification FROM users WHERE id=?", [user_id_any]);
-        db.SELECT(querySelectUser, {}, (result_user) => {
-           if(!result_user || result_user.length === 0){
+        data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult_eng.png';
+      }
+      // let default_adult_thumb_img_url = '';
+
+      //토큰이 있으면 로그인 유무 상관 없이 성인 인증으로 패쓰
+      const adult_temp_certification_token = req.body.data.adult_temp_certification_token;
+      jwt.READ(adult_temp_certification_token, function(result){
+        //console.log(result);
+        if(result.state === 'success'){
+          if(result.iss === process.env.JWT_TOKEN_ISSUER){
+            data.img_url = temp_img_url;
             return res.json({
               result:{
                 state: res_state.success,
@@ -264,24 +253,50 @@ router.post('/any/item/info', function(req, res){
                 }
               }
             })
-           }
-
-           const userData = result_user[0];
-           if(userData.is_adult_certification){
-              data.img_url = temp_img_url;
-           }
-
-           return res.json({
-            result:{
-              state: res_state.success,
-              data: {
-                ...data
+          }
+        }else{
+          //토킄 정보 오류거나 없으면
+          if(user_id_any === undefined || user_id_any === null || user_id_any === 0 || user_id_any === '') {
+            return res.json({
+              result:{
+                state: res_state.success,
+                data: {
+                  ...data
+                }
               }
-            }
-          })
-        })
-      }
-      
+            })
+          }else{
+            //로그인을 했다면, 성인 인증을 했는지 확인한다.
+            const querySelectUser = mysql.format("SELECT is_adult_certification FROM users WHERE id=?", [user_id_any]);
+            db.SELECT(querySelectUser, {}, (result_user) => {
+               if(!result_user || result_user.length === 0){
+                return res.json({
+                  result:{
+                    state: res_state.success,
+                    data: {
+                      ...data
+                    }
+                  }
+                })
+               }
+    
+               const userData = result_user[0];
+               if(userData.is_adult_certification){
+                  data.img_url = temp_img_url;
+               }
+    
+               return res.json({
+                result:{
+                  state: res_state.success,
+                  data: {
+                    ...data
+                  }
+                }
+              })
+            })
+          }
+        }
+      });
     }else{
       return res.json({
         result:{
@@ -1024,9 +1039,9 @@ router.post("/manager/order/list/v1", function(req, res){
   let querySelect = '';
 
   if(state_currency_code === null){
-    querySelect = mysql.format("SELECT orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+    querySelect = mysql.format("SELECT orders_item.price_USD, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
   }else{
-    querySelect = mysql.format("SELECT orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.currency_code=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, state_currency_code, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+    querySelect = mysql.format("SELECT orders_item.price_USD, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.currency_code=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, state_currency_code, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
   }
   
 
@@ -2268,6 +2283,7 @@ router.post("/manager/payment/info/v1", function(req, res){
   const sort_state = req.body.data.sort_state;
 
   const nowDate = moment_timezone();
+  // const nowDate = moment_timezone('2022-02-01 00:00:00');
   //범위 구하기
   let startDate = '';
   let endDate = '';
@@ -2301,10 +2317,10 @@ router.post("/manager/payment/info/v1", function(req, res){
     selectQuery = mysql.format("SELECT id, price, total_price, price_USD, total_price_USD, currency_code, created_at, confirm_at FROM orders_donations WHERE store_id=? AND state=? AND confirm_at IS NOT NULL AND confirm_at>=? AND confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, startDate, endDate]);
   }else{
     //상점, 전체 일때는 해당 쿼리
-    selectQuery = mysql.format("SELECT orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND orders_item.currency_code=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate, Types.currency_code.Won]);
-  }
+    // selectQuery = mysql.format("SELECT orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND orders_item.currency_code=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate, Types.currency_code.Won]);
 
-  
+    selectQuery = mysql.format("SELECT orders_item.price_USD, orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
+  }
 
   db.SELECT(selectQuery, {}, (result) => {
 
@@ -2328,6 +2344,8 @@ router.post("/manager/payment/info/v1", function(req, res){
     else if(sort_state === Types_Sort.account.stores){
       for(let i = 0 ; i < result.length ; i++){
         result[i].total_price = result[i].price;  //정산시에는 실 상품 구매 가격이 나와야함. 도네이션 작업 했으므로 total_price를 쓸 수 없음. 프론트에서 total_price를 쓰고 있어서 값 교체
+        result[i].total_price_USD = result[i].price_USD;
+
         result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
         result[i].commission = result[i].total_price * (COMMISION_PERCENTAGE/100);
         result[i].payment_price = result[i].total_price - result[i].commission;
@@ -2346,6 +2364,8 @@ router.post("/manager/payment/info/v1", function(req, res){
       //전체 일 경우 도네이션까지 조회
       for(let i = 0 ; i < result.length ; i++){
         result[i].total_price = result[i].price;  //정산시에는 실 상품 구매 가격이 나와야함. 도네이션 작업 했으므로 total_price를 쓸 수 없음. 프론트에서 total_price를 쓰고 있어서 값 교체
+        result[i].total_price_USD = result[i].price_USD;
+
         result[i].ori_confirm_at = result[i].confirm_at;
         result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
         result[i].commission = result[i].total_price * (COMMISION_PERCENTAGE/100);
@@ -2477,52 +2497,11 @@ router.post("/any/averageday", function(req, res){
   })
 });
 
-router.post("/any/item/other/get", function(req, res){
-  const store_id = req.body.data.store_id;
-  const item_id = req.body.data.item_id;
-
-
-  let language_code = req.body.data.language_code;
-  if(language_code === undefined){
-    language_code = 'kr'
-  }
-
-  let currency_code = Types.currency_code.Won;
-  if(language_code === 'kr'){
-    currency_code = Types.currency_code.Won;
-  }else{
-    currency_code = Types.currency_code.US_Dollar;
-  }
-
-  const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id=? AND id<>? AND state=? AND currency_code=?", [store_id, item_id, Types.item_state.SALE, currency_code])
-  db.SELECT(querySelect, {}, (result) => {
-    return res.json({
-      result: {
-        state: res_state.success,
-        list: result
-      }
-    })
-  })
-});
-
 router.post("/any/item/other/get/v1", function(req, res){
   const store_id = req.body.data.store_id;
   const item_id = req.body.data.item_id;
 
-
-  let language_code = req.body.data.language_code;
-  if(language_code === undefined){
-    language_code = 'kr'
-  }
-
-  let currency_code = Types.currency_code.Won;
-  if(language_code === 'kr'){
-    currency_code = Types.currency_code.Won;
-  }else{
-    currency_code = Types.currency_code.US_Dollar;
-  }
-
-  const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id=? AND state=? AND currency_code=?", [store_id, Types.item_state.SALE, currency_code])
+  const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id=? AND state=?", [store_id, Types.item_state.SALE])
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result: {
@@ -2858,7 +2837,12 @@ router.post('/any/viewcount/item/add', function(req, res){
 router.post('/any/item/info/first', function(req, res){
   const store_id = req.body.data.store_id;
 
-  const selectQuery = mysql.format("SELECT is_adult, title, price, img_url, id, currency_code, price_USD FROM items AS item WHERE item.store_id=? AND item.state=? ORDER BY item.order_number", [store_id, Types.item_state.SALE]);
+  let currency_code = req.body.data.currency_code;
+  if(currency_code === undefined || currency_code === null){
+    currency_code = Types.currency_code.Won;
+  }
+
+  const selectQuery = mysql.format("SELECT exchange_rate.price AS exchange_price, item.is_adult, item.title, item.price, item.img_url, item.id, item.currency_code, item.price_USD FROM items AS item LEFT JOIN exchange_rates AS exchange_rate ON exchange_rate.currency_code=? WHERE item.store_id=? AND item.state=? ORDER BY item.order_number", [Types.currency_code.Won, store_id, Types.item_state.SALE]);
 
   db.SELECT(selectQuery, {}, (result) => {
     if(result.length === 0){
@@ -2874,26 +2858,32 @@ router.post('/any/item/info/first', function(req, res){
       data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/real/items/img-thumb-default.png';
     }
 
+    if(currency_code === Types.currency_code.US_Dollar){
+      const item_price = data.price;
+      if(item_price === 0){
+        data.price_USD = Number(item_price);
+        data.currency_code = currency_code;
+      }else {
+        const exchange_price = (item_price / data.exchange_price).toFixed(2);
+        data.price_USD = Number(exchange_price);
+        data.currency_code = currency_code;
+      }
+    }
+
     if(data.is_adult){
       //원래 /any에는 user_id가 없었음.
       const user_id_any = req.body.data.user_id_any;
       let temp_img_url = data.img_url;
       data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult2.png';
       // let default_adult_thumb_img_url = '';
-      if(user_id_any === undefined || user_id_any === null || user_id_any === 0 || user_id_any === '') {
-        return res.json({
-          result:{
-            state: res_state.success,
-            data: {
-              ...data
-            }
-          }
-        })
-      }else{
-        //로그인을 했다면, 성인 인증을 했는지 확인한다.
-        const querySelectUser = mysql.format("SELECT is_adult_certification FROM users WHERE id=?", [user_id_any]);
-        db.SELECT(querySelectUser, {}, (result_user) => {
-           if(!result_user || result_user.length === 0){
+
+      //토큰이 있으면 로그인 유무 상관 없이 성인 인증으로 패쓰
+      const adult_temp_certification_token = req.body.data.adult_temp_certification_token;
+      jwt.READ(adult_temp_certification_token, function(result){
+        //console.log(result);
+        if(result.state === 'success'){
+          if(result.iss === process.env.JWT_TOKEN_ISSUER){
+            data.img_url = temp_img_url;
             return res.json({
               result:{
                 state: res_state.success,
@@ -2902,24 +2892,49 @@ router.post('/any/item/info/first', function(req, res){
                 }
               }
             })
-           }
-
-           const userData = result_user[0];
-           if(userData.is_adult_certification){
-              data.img_url = temp_img_url;
-           }
-
-           return res.json({
-            result:{
-              state: res_state.success,
-              data: {
-                ...data
+          }
+        }else{
+          if(user_id_any === undefined || user_id_any === null || user_id_any === 0 || user_id_any === '') {
+            return res.json({
+              result:{
+                state: res_state.success,
+                data: {
+                  ...data
+                }
               }
-            }
-          })
-        })
-      }
-      
+            })
+          }else{
+            //로그인을 했다면, 성인 인증을 했는지 확인한다.
+            const querySelectUser = mysql.format("SELECT is_adult_certification FROM users WHERE id=?", [user_id_any]);
+            db.SELECT(querySelectUser, {}, (result_user) => {
+               if(!result_user || result_user.length === 0){
+                return res.json({
+                  result:{
+                    state: res_state.success,
+                    data: {
+                      ...data
+                    }
+                  }
+                })
+               }
+    
+               const userData = result_user[0];
+               if(userData.is_adult_certification){
+                  data.img_url = temp_img_url;
+               }
+    
+               return res.json({
+                result:{
+                  state: res_state.success,
+                  data: {
+                    ...data
+                  }
+                }
+              })
+            })
+          }
+        }
+      });
     }else{
       return res.json({
         result:{
@@ -3140,21 +3155,9 @@ router.post("/any/items/otherstore/get", function(req, res){
   const item_id = req.body.data.item_id;
   const category_sub_item_id = req.body.data.category_sub_item_id;
 
-  let language_code = req.body.data.language_code;
-  if(language_code === undefined){
-    language_code = 'kr'
-  }
-
-  let currency_code = Types.currency_code.Won;
-  if(language_code === 'kr'){
-    currency_code = Types.currency_code.Won;
-  }else{
-    currency_code = Types.currency_code.US_Dollar;
-  }
-
   // const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id<>? AND id<>? AND category_sub_item_id=? AND state=? AND currency_code=? ORDER BY RAND() LIMIT ?", [store_id, item_id, category_sub_item_id, Types.item_state.SALE, currency_code, 8])
 
-  const querySelect = mysql.format("SELECT item.id, item.title, item.img_url, item.price, item.price_USD, item.currency_code FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.store_id<>? AND item.id<>? AND store.tier<>? AND item.category_sub_item_id=? AND item.state=? AND item.currency_code=? ORDER BY RAND() LIMIT ?", [store_id, item_id, Types.tier_store.close, category_sub_item_id, Types.item_state.SALE, currency_code, 8])
+  const querySelect = mysql.format("SELECT item.id, item.title, item.img_url, item.price, item.price_USD, item.currency_code FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.store_id<>? AND item.id<>? AND store.tier<>? AND item.category_sub_item_id=? AND item.state=? ORDER BY RAND() LIMIT ?", [store_id, item_id, Types.tier_store.close, category_sub_item_id, Types.item_state.SALE, 8])
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -3184,19 +3187,7 @@ router.post('/any/download/file/list', function(req, res){
 router.post("/any/item/count", function(req, res){
   let store_id = req.body.data.store_id;
 
-  let language_code = req.body.data.language_code;
-  if(language_code === undefined){
-    language_code = 'kr'
-  }
-
-  let currency_code = Types.currency_code.Won;
-  if(language_code === 'kr'){
-    currency_code = Types.currency_code.Won;
-  }else{
-    currency_code = Types.currency_code.US_Dollar;
-  }
-
-  const querySelect = mysql.format("SELECT COUNT(item.id) AS item_count FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL AND currency_code=?", [store_id, Types.item_state.SALE_STOP, currency_code]);
+  const querySelect = mysql.format("SELECT COUNT(item.id) AS item_count FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL", [store_id, Types.item_state.SALE_STOP]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){

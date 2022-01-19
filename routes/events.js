@@ -14,7 +14,7 @@ const global = use('lib/global_const.js');
 var mysql = require('mysql');
 
 router.post('/any/banner/top/info', function(req, res){
-  const querySelect = mysql.format("SELECT id, type, contents, contents_color, background_color, icon_img_url, link_url, icon_img_size FROM top_banners ORDER BY id desc LIMIT 1");
+  const querySelect = mysql.format("SELECT id, type, contents, contents_eng, contents_color, background_color, icon_img_url, link_url, icon_img_size FROM top_banners ORDER BY id desc LIMIT 1");
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -41,13 +41,14 @@ router.post('/any/banner/top/info', function(req, res){
 
 router.post('/any/page/notice', function(req, res){
   const alias = req.body.data.alias;
-  const querySelect = mysql.format("SELECT text FROM event_pages WHERE alias=? AND row_type=?", [alias, Types.event_row_type.notice]);
+  const querySelect = mysql.format("SELECT text, text_eng FROM event_pages WHERE alias=? AND row_type=?", [alias, Types.event_row_type.notice]);
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
       return res.json({
         result: {
           state: res_state.success,
-          text: null
+          text: null,
+          text_eng: null
         }
       })
     }
@@ -56,7 +57,8 @@ router.post('/any/page/notice', function(req, res){
     return res.json({
       result: {
         state: res_state.success,
-        text: data.text
+        text: data.text,
+        text_eng: data.text_eng
       }
     })
   })
@@ -64,13 +66,14 @@ router.post('/any/page/notice', function(req, res){
 
 router.post('/any/page/tag', function(req, res){
   const alias = req.body.data.alias;
-  const querySelect = mysql.format("SELECT text FROM event_pages WHERE alias=? AND row_type=?", [alias, Types.event_row_type.tag]);
+  const querySelect = mysql.format("SELECT text, text_eng FROM event_pages WHERE alias=? AND row_type=?", [alias, Types.event_row_type.tag]);
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
       return res.json({
         result: {
           state: res_state.success,
-          text: null
+          text: null,
+          text_eng: null
         }
       })
     }
@@ -79,7 +82,8 @@ router.post('/any/page/tag', function(req, res){
     return res.json({
       result: {
         state: res_state.success,
-        text: data.text
+        text: data.text,
+        text_eng: data.text_eng
       }
     })
   })
@@ -87,13 +91,14 @@ router.post('/any/page/tag', function(req, res){
 
 router.post('/any/page/title', function(req, res){
   const alias = req.body.data.alias;
-  const querySelect = mysql.format("SELECT text FROM event_pages WHERE alias=? AND row_type=?", [alias, Types.event_row_type.title]);
+  const querySelect = mysql.format("SELECT text, text_eng FROM event_pages WHERE alias=? AND row_type=?", [alias, Types.event_row_type.title]);
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
       return res.json({
         result: {
           state: res_state.success,
-          text: null
+          text: null,
+          text_eng: null
         }
       })
     }
@@ -102,7 +107,8 @@ router.post('/any/page/title', function(req, res){
     return res.json({
       result: {
         state: res_state.success,
-        text: data.text
+        text: data.text,
+        text_eng: data.text_eng
       }
     })
   })
