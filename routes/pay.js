@@ -595,7 +595,7 @@ payISPComplite = (req, res, serializer_uid) => {
                         slack.webhook({
                           channel: "#결제알림",
                           username: "알림bot",
-                          text: `(후원)\n플레이스: ${orderData.place_title}\n금액: ${orderData.total_price}원\n달러: $${orderData.total_price_USD}\n주문자명: ${orderData.name}`
+                          text: `(후원)\n플레이스: ${orderData.place_title}\n한화: ${orderData.total_price}원\n달러: $${orderData.total_price_USD}\n주문자명: ${orderData.name}`
                         }, function(err, response) {
                           console.log(err);
                         });

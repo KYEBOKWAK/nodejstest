@@ -276,7 +276,7 @@ router.post('/pay/onetime', function(req, res){
               slack.webhook({
                 channel: "#결제알림",
                 username: "알림bot",
-                text: `(후원)\n플레이스: ${_data.title}\n금액: ${_data.total_price}원\n달러: $${_data.total_price_USD}\n주문자명: ${_data.name}`
+                text: `(후원)\n플레이스: ${_data.title}\n한화: ${_data.total_price}원\n달러: $${_data.total_price_USD}\n주문자명: ${_data.name}`
               }, function(err, response) {
                 console.log(err);
               });
