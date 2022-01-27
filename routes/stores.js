@@ -147,10 +147,18 @@ router.post('/any/item/list/category', function(req, res){
 
   let querySelect = ''
 
+  /*
   if(category_sub_item_id === 0){
     querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id, Types.item_state.SALE_STOP]);
   }else{
     querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL AND category_sub_item_id=? ORDER BY item.order_number", [store_id, Types.item_state.SALE_STOP, category_sub_item_id]);
+  }
+  */
+
+  if(category_sub_item_id === 0){
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL ORDER BY item.order_number ASC, item.id DESC", [store_id, Types.item_state.SALE_STOP]);
+  }else{
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL AND category_sub_item_id=? ORDER BY item.order_number ASC, item.id DESC", [store_id, Types.item_state.SALE_STOP, category_sub_item_id]);
   }
 
   db.SELECT(querySelect, {}, (result) => {
@@ -461,13 +469,20 @@ router.post("/item/list/all/v1", function(req, res){
   const sort_state = req.body.data.sort_state;
 
   let querySelect = '';
+
+  if(sort_state === null){
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number ASC, item.id DESC", [store_id]);
+  }else{
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state=? AND item.order_number IS NOT NULL ORDER BY item.order_number ASC, item.id DESC", [store_id, sort_state]);
+  }
+
+  /*
   if(sort_state === null){
     querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id]);
   }else{
     querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id, sort_state]);
   }
-
-  // let querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id]);
+  */
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -729,12 +744,12 @@ router.post("/item/add", function(req, res){
     }
 
     let _order_number = 0;
-    if(result_select.length === 0){
-      _order_number = 0;
-    }else{
-      _order_number = result_select[0].order_number;
-      _order_number++;
-    }
+    // if(result_select.length === 0){
+    //   _order_number = 0;
+    // }else{
+    //   _order_number = result_select[0].order_number;
+    //   _order_number++;
+    // }
 
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
