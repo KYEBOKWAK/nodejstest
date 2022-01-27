@@ -33,6 +33,36 @@ const DEFAULT_DONATION_PRICE = 3000;
 const DEFAULT_DONATION_PRICE_USD = 3;
 const PAY_SERIALIZER_ONETIME = "onetime";
 
+function setDonationMessages(req, res, callback, callbackError) {
+  const isSecret = req.body.data.isSecret;
+  const comment_text = req.body.data.comment_text;
+
+  if(comment_text === undefined || comment_text === null || comment_text === ''){
+    return callback(null);
+  }
+
+  const store_id = req.body.data.store_id;
+  const user_id = req.body.data.user_id;
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  const insertDonationMessageData = {
+    store_id: store_id,
+    user_id: user_id,
+    answer_comment_id: null,
+    is_secret: isSecret,
+    text: comment_text,
+    created_at: date
+  }
+
+  db.INSERT("INSERT INTO donation_comments SET ?", insertDonationMessageData, (result_insert_donation_message) => {
+    const donation_message_id = result_insert_donation_message.insertId;
+    return callback(donation_message_id);
+  }, (error) => {
+    return callbackError();
+  })
+}
+
 router.post('/pay/isp', function(req, res){
   const store_id = req.body.data.store_id;
   const user_id = req.body.data.user_id;
@@ -73,44 +103,57 @@ router.post('/pay/isp', function(req, res){
     pg = null;
   }
 
-  const insertDonationData = {
-    store_id: store_id,
-    user_id: user_id,
-    item_id: null,
-    orders_item_id: null,
-    state: Types.order.ORDER_STATE_APP_STORE_STANBY,
-    count: count,
-    price: DEFAULT_DONATION_PRICE,
-    total_price: total_price,
-    price_USD: DEFAULT_DONATION_PRICE_USD,
-    total_price_USD: total_price_usd,
-    name: name,
-    contact: contact,
-    email: email,
-    currency_code: currency_code,
-    merchant_uid: merchant_uid,
-    pay_method: pay_method,
-    pg: pg,
-    // imp_uid: imp_uid,
+  setDonationMessages(req, res, 
+  (donation_comment_id) => {
+    const insertDonationData = {
+      store_id: store_id,
+      user_id: user_id,
+      item_id: null,
+      orders_item_id: null,
+      state: Types.order.ORDER_STATE_APP_STORE_STANBY,
+      count: count,
+      price: DEFAULT_DONATION_PRICE,
+      total_price: total_price,
+      price_USD: DEFAULT_DONATION_PRICE_USD,
+      total_price_USD: total_price_usd,
+      name: name,
+      contact: contact,
+      email: email,
+      currency_code: currency_code,
+      merchant_uid: merchant_uid,
+      pay_method: pay_method,
+      pg: pg,
 
-    created_at: date,
-    updated_at: date,
-    confirm_at: date
-  }
-
-  db.INSERT("INSERT INTO orders_donations SET ?", insertDonationData, (result_insert_orders_donations) => {
-    const donation_order_id = result_insert_orders_donations.insertId;
-
-    return res.json({
-      result:{
-          state: res_state.success,
-          order_id: donation_order_id
-      }
+      donation_comment_id: donation_comment_id,
+      is_heart: false,
+      // imp_uid: imp_uid,
+  
+      created_at: date,
+      updated_at: date,
+      confirm_at: date
+    }
+  
+    db.INSERT("INSERT INTO orders_donations SET ?", insertDonationData, (result_insert_orders_donations) => {
+      const donation_order_id = result_insert_orders_donations.insertId;
+  
+      return res.json({
+        result:{
+            state: res_state.success,
+            order_id: donation_order_id
+        }
+      })
+    }, (error) => {
+      return res.json({
+        state: res_state.error,
+        message: '도네이션 추가 에러',
+        result: {}
+      })
     })
   }, (error) => {
     return res.json({
       state: res_state.error,
-      message: '도네이션 추가 에러'
+      message: '도네이션 메세지 추가 에러',
+      result: {}
     })
   })
 });
@@ -185,77 +228,87 @@ router.post('/pay/onetime', function(req, res){
           // }
 
           // req.body.data.pay_method = result.pay_method;
-        
-        const serializer_uid = PAY_SERIALIZER_ONETIME
 
-        let _imp_meta = {
-          serializer_uid: serializer_uid,
-          merchant_uid: result.merchant_uid,
-          customer_uid: customer_uid
-        };
+        setDonationMessages(req, res, 
+        (donation_comment_id) => {
+          const serializer_uid = PAY_SERIALIZER_ONETIME
 
-        _imp_meta = JSON.stringify(_imp_meta);
+          let _imp_meta = {
+            serializer_uid: serializer_uid,
+            merchant_uid: result.merchant_uid,
+            customer_uid: customer_uid
+          };
 
-        const insertDonationData = {
-          store_id: store_id,
-          user_id: user_id,
-          item_id: null,
-          orders_item_id: null,
-          state: Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION,
-          count: count,
-          price: DEFAULT_DONATION_PRICE,
-          total_price: total_price,
-          price_USD: 0,
-          total_price_USD: 0,
-          name: name,
-          contact: contact,
-          email: email,
-          currency_code: currency_code,
-          merchant_uid: result.merchant_uid,
-          pay_method: pay_method,
-          imp_uid: result.imp_uid,
-          serializer_uid: serializer_uid,
-          imp_meta: _imp_meta,
-          created_at: date,
-          updated_at: date,
-          confirm_at: date
-        }
+          _imp_meta = JSON.stringify(_imp_meta);
 
-        db.INSERT("INSERT INTO orders_donations SET ?", insertDonationData, (result_insert_orders_donations) => {
-          const donation_order_id = result_insert_orders_donations.insertId;
-      
-          if(process.env.APP_TYPE !== 'local'){
-            slack.webhook({
-              channel: "#결제알림",
-              username: "알림bot",
-              text: `(후원)\n플레이스: ${_data.title}\n후원: ${_data.total_price}\n주문자명: ${_data.name}`
-            }, function(err, response) {
-              console.log(err);
-            });
+          const insertDonationData = {
+            store_id: store_id,
+            user_id: user_id,
+            item_id: null,
+            orders_item_id: null,
+            state: Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION,
+            count: count,
+            price: DEFAULT_DONATION_PRICE,
+            total_price: total_price,
+            price_USD: 0,
+            total_price_USD: 0,
+            name: name,
+            contact: contact,
+            email: email,
+            currency_code: currency_code,
+            merchant_uid: result.merchant_uid,
+            pay_method: pay_method,
+            imp_uid: result.imp_uid,
+            serializer_uid: serializer_uid,
+            imp_meta: _imp_meta,
+            donation_comment_id: donation_comment_id,
+            is_heart: false,
 
-            Global_Func.sendKakaoAlimTalk({
-              templateCode: 'Kalarm16v1',
-              to: store_contact,
-              donation_user_name: name,
-              creator_name: store_title,
-              coffee_count: count,
-              place_manager_url: 'ctee.kr/manager/place'
-            })
+            created_at: date,
+            updated_at: date,
+            confirm_at: date
           }
 
-          return res.json({
-            result:{
-                state: res_state.success,
-                order_id: donation_order_id
+          db.INSERT("INSERT INTO orders_donations SET ?", insertDonationData, (result_insert_orders_donations) => {
+            const donation_order_id = result_insert_orders_donations.insertId;
+        
+            if(process.env.APP_TYPE !== 'local'){
+              slack.webhook({
+                channel: "#결제알림",
+                username: "알림bot",
+                text: `(후원)\n플레이스: ${_data.title}\n후원: ${_data.total_price}\n주문자명: ${_data.name}`
+              }, function(err, response) {
+                console.log(err);
+              });
+
+              Global_Func.sendKakaoAlimTalk({
+                templateCode: 'Kalarm16v1',
+                to: store_contact,
+                donation_user_name: name,
+                creator_name: store_title,
+                coffee_count: count,
+                place_manager_url: 'ctee.kr/manager/place'
+              })
             }
+
+            return res.json({
+              result:{
+                  state: res_state.success,
+                  order_id: donation_order_id
+              }
+            })
+          }, (error) => {
+            return res.json({
+              state: res_state.error,
+              message: '도네이션 추가 에러'
+            })
           })
         }, (error) => {
           return res.json({
             state: res_state.error,
-            message: '도네이션 추가 에러'
+            message: '도네이션 메시지 추가 에러'
           })
-        })
-          
+        })  
       }else{
         // console.log("success");
         return res.json({
@@ -439,7 +492,9 @@ router.post('/my/list/get', function(req, res){
 
   const currency_code = req.body.data.currency_code;
   
-  const querySelect = mysql.format("SELECT orders_donation.id, orders_donation.state, orders_donation.created_at, orders_donation.count, store.user_id AS place_user_id, store.title FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.user_id=? AND orders_donation.currency_code=? AND (orders_donation.state=? OR orders_donation.state=? OR orders_donation.state=?) ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [user_id, currency_code, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, Types.order.ORDER_STATE_CANCEL, Types.order.ORDER_STATE_APP_STORE_PAYMENT, limit, skip]);
+  const querySelect = mysql.format("SELECT donation_comment.answer_comment_id, orders_donation.user_id, orders_donation.is_heart, donation_comment.text, donation_comment.is_secret, orders_donation.donation_comment_id, orders_donation.id, orders_donation.state, orders_donation.created_at, orders_donation.count, store.user_id AS place_user_id, store.title FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id LEFT JOIN donation_comments AS donation_comment ON orders_donation.donation_comment_id=donation_comment.id WHERE orders_donation.user_id=? AND orders_donation.currency_code=? AND (orders_donation.state=? OR orders_donation.state=? OR orders_donation.state=?) ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [user_id, currency_code, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, Types.order.ORDER_STATE_CANCEL, Types.order.ORDER_STATE_APP_STORE_PAYMENT, limit, skip]);
+
+  // const querySelect = mysql.format("SELECT orders_donation.id, orders_donation.state, orders_donation.created_at, orders_donation.count, store.user_id AS place_user_id, store.title FROM orders_donations AS orders_donation LEFT JOIN stores AS store ON orders_donation.store_id=store.id WHERE orders_donation.user_id=? AND orders_donation.currency_code=? AND (orders_donation.state=? OR orders_donation.state=? OR orders_donation.state=?) ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [user_id, currency_code, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, Types.order.ORDER_STATE_CANCEL, Types.order.ORDER_STATE_APP_STORE_PAYMENT, limit, skip]);
   
   db.SELECT(querySelect, {}, (result) => {
     // if(result.length === 0){
@@ -727,6 +782,201 @@ router.post('/info', function(req, res){
       }
     })
   });
+})
+
+router.post('/any/list/get/thumb', function(req, res){
+
+  const store_id = req.body.data.store_id;
+  const user_id = req.body.data.user_id;
+
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+  
+  const querySelect = mysql.format("SELECT donation_comment.is_secret, donation_comment.text, user.name, user.nick_name, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, orders_donation.is_heart FROM orders_donations AS orders_donation LEFT JOIN users AS user ON orders_donation.user_id=user.id LEFT JOIN donation_comments AS donation_comment ON donation_comment.id=orders_donation.donation_comment_id WHERE orders_donation.store_id=? AND orders_donation.state=? ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, limit, skip]);
+  
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post('/my/donation/answer/get', function(req, res){
+  const answer_comment_id = req.body.data.answer_comment_id;
+
+  const querySelect = mysql.format("SELECT store.title AS store_title, donation_comment.user_id, donation_comment.text FROM donation_comments AS donation_comment LEFT JOIN stores AS store ON donation_comment.store_id=store.id WHERE donation_comment.id=?", [answer_comment_id]);
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '도네이션 답 ID값이 없음.',
+        result: {}
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+})
+
+router.post('/manager/list/get', function(req, res){
+  //후원 관리 리스트
+  const sort_type = req.body.data.sort_type;
+  const store_id = req.body.data.store_id;
+
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+
+  let selectQuery = '';
+  if(sort_type === 'SELECT_DONATION_ONLY'){
+    selectQuery = mysql.format("SELECT orders_donation.id, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, donation_comment.answer_comment_id, donation_comment.text, orders_donation.is_heart, donation_comment.is_secret FROM orders_donations AS orders_donation LEFT JOIN donation_comments AS donation_comment ON orders_donation.donation_comment_id=donation_comment.id WHERE orders_donation.store_id=? AND orders_donation.state=? AND orders_donation.donation_comment_id IS NULL ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, limit, skip]);
+
+  }else if(sort_type === 'SELECT_DONATION_MESSAGE'){
+    selectQuery = mysql.format("SELECT orders_donation.id, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, donation_comment.answer_comment_id, donation_comment.text, orders_donation.is_heart, donation_comment.is_secret FROM orders_donations AS orders_donation LEFT JOIN donation_comments AS donation_comment ON orders_donation.donation_comment_id=donation_comment.id WHERE orders_donation.store_id=? AND orders_donation.state=? AND orders_donation.donation_comment_id IS NOT NULL ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, limit, skip]);
+  }else{
+    selectQuery = mysql.format("SELECT orders_donation.id, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, donation_comment.answer_comment_id, donation_comment.text, orders_donation.is_heart, donation_comment.is_secret FROM orders_donations AS orders_donation LEFT JOIN donation_comments AS donation_comment ON orders_donation.donation_comment_id=donation_comment.id WHERE orders_donation.store_id=? AND orders_donation.state=? ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, limit, skip]);
+  }
+
+
+  // const selectQuery = mysql.format("SELECT orders_donation.id, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, donation_comment.answer_comment_id, donation_comment.text, orders_donation.is_heart, donation_comment.is_secret FROM orders_donations AS orders_donation LEFT JOIN donation_comments AS donation_comment ON orders_donation.donation_comment_id=donation_comment.id WHERE orders_donation.store_id=? AND orders_donation.state=? ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, limit, skip]);
+
+  db.SELECT(selectQuery, {}, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })  
+})
+
+router.post('/manager/heart/get', function(req, res){
+  const donation_id = req.body.data.donation_id;
+
+  const selectQuery = mysql.format("SELECT is_heart FROM orders_donations WHERE id=?", [donation_id])
+  db.SELECT(selectQuery, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          is_heart: false
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        is_heart: data.is_heart
+      }
+    })
+  })
+})
+
+router.post('/manager/heart/set', function(req, res){
+  const donation_id = req.body.data.donation_id;
+  const is_heart = req.body.data.is_heart;
+
+  const data = {
+    is_heart: is_heart
+  }
+
+  db.UPDATE("UPDATE orders_donations SET ? WHERE id=?", [data, donation_id], (result) => {
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '도네이션 하트 업데이트 오류',
+      result: {}
+    })
+  })
+})
+
+router.post('/manager/answer/get', function(req, res){
+  const answer_comment_id = req.body.data.answer_comment_id;
+
+  const selectQuery = mysql.format("SELECT text FROM donation_comments WHERE id=?", [answer_comment_id])
+  db.SELECT(selectQuery, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          text: ''
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        text: data.text
+      }
+    })
+  })
+})
+
+router.post('/manager/answer/set', function(req, res){
+  const donation_comment_id = req.body.data.donation_comment_id;
+  const text = req.body.data.text;
+  const store_user_id = req.body.data.store_user_id;
+  const store_id = req.body.data.store_id;
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  const insertMessageAnswer = {
+    user_id: store_user_id,
+    store_id: store_id,
+    answer_comment_id: null,
+    is_secret: true,
+    text: text,
+    created_at: date
+  };
+
+  db.INSERT("INSERT INTO donation_comments SET ?", [insertMessageAnswer], 
+  (result_insert_donation_comment) => {
+    const answer_comment_id = result_insert_donation_comment.insertId;
+    const updateMessageData = {
+      answer_comment_id: answer_comment_id
+    }
+
+    db.UPDATE("UPDATE donation_comments SET ? WHERE id=?", [updateMessageData, donation_comment_id], 
+    (result_update) => {
+      return res.json({
+        result: {
+          state: res_state.success,
+          answer_comment_id: answer_comment_id
+        }
+      })
+    }, (error_update) => {
+      return res.json({
+        state: res_state.error,
+        message: '도네이션 메시지 업데이트 에러',
+        result: {}
+      })
+    })
+  }, (error_insert_donation_comment) => {
+    return res.json({
+      state: res_state.error,
+      message: '도네이션 메시지 추가 에러',
+      result: {}
+    })
+  })
 })
 
 module.exports = router;

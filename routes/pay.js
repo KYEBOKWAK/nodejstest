@@ -1513,7 +1513,9 @@ setDonation = (req, res, successCallBack, errorCallBack) => {
         updated_at: created_at,
         confirm_at: null,
 
-        pg: pg
+        pg: pg,
+        donation_comment_id: null,
+        is_heart: false
       }
 
       let confirm_at = null;

@@ -778,8 +778,6 @@ router.post("/item/add", function(req, res){
       is_adult: is_adult
     }
 
-    console.log(itemData);
-
     db.INSERT("INSERT INTO items SET ?", itemData, 
     (result_insert) => {
       if(_order_number === 0){
@@ -808,7 +806,6 @@ router.post("/item/add", function(req, res){
         })
       }      
     }, (error) => {
-      console.log('------error----');
       return res.json({
         state: res_state.error,
         message: '아이템 추가 에러',
