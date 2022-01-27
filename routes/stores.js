@@ -3255,10 +3255,10 @@ router.post("/any/review/count", function(req, res){
 router.post("/any/view/count", function(req, res){
   let store_id = req.body.data.store_id;
 
-  const querySelect = mysql.format("SELECT SUM(item.view_count) AS view_count FROM items AS item WHERE item.store_id=? AND item.state<>?", [store_id, Types.item_state.SALE_STOP]);
-
-  db.SELECT(querySelect, {}, (result) => {
-    if(result.length === 0){
+  const querySelectStore = mysql.format("SELECT view_count AS store_view_count FROM stores WHERE id=?", [store_id]);
+  db.SELECT(querySelectStore, {}, 
+  (result_store) => {
+    if(!result_store || result_store.length === 0){
       return res.json({
         result:{
           state: res_state.success,
@@ -3267,12 +3267,28 @@ router.post("/any/view/count", function(req, res){
       })
     }
 
-    const data = result[0];
-    return res.json({
-      result:{
-        state: res_state.success,
-        count: data.view_count
+    const storeData = result_store[0];
+
+    const querySelect = mysql.format("SELECT SUM(item.view_count) AS view_count FROM items AS item WHERE item.store_id=? AND item.state<>?", [store_id, Types.item_state.SALE_STOP]);
+
+    db.SELECT(querySelect, {}, (result) => {
+      if(!result || result.length === 0){
+        return res.json({
+          result:{
+            state: res_state.success,
+            count: 0
+          }
+        })
       }
+
+      const data = result[0];
+      let view_count = storeData.store_view_count + data.view_count;
+      return res.json({
+        result:{
+          state: res_state.success,
+          count: view_count
+        }
+      })
     })
   })
 })
