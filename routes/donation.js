@@ -276,7 +276,7 @@ router.post('/pay/onetime', function(req, res){
               slack.webhook({
                 channel: "#결제알림",
                 username: "알림bot",
-                text: `(후원)\n플레이스: ${_data.title}\n후원: ${_data.total_price}\n주문자명: ${_data.name}`
+                text: `(후원)\n플레이스: ${_data.title}\n금액: ${_data.total_price}원\n달러: $${_data.total_price_USD}\n주문자명: ${_data.name}`
               }, function(err, response) {
                 console.log(err);
               });
@@ -792,7 +792,7 @@ router.post('/any/list/get/thumb', function(req, res){
   let limit = req.body.data.limit;
   let skip = req.body.data.skip;
   
-  const querySelect = mysql.format("SELECT donation_comment.is_secret, donation_comment.text, user.name, user.nick_name, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, orders_donation.is_heart FROM orders_donations AS orders_donation LEFT JOIN users AS user ON orders_donation.user_id=user.id LEFT JOIN donation_comments AS donation_comment ON donation_comment.id=orders_donation.donation_comment_id WHERE orders_donation.store_id=? AND orders_donation.state=? ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, limit, skip]);
+  const querySelect = mysql.format("SELECT orders_donation.id AS donation_id, donation_comment.is_secret, donation_comment.text, user.name, user.nick_name, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, orders_donation.is_heart FROM orders_donations AS orders_donation LEFT JOIN users AS user ON orders_donation.user_id=user.id LEFT JOIN donation_comments AS donation_comment ON donation_comment.id=orders_donation.donation_comment_id WHERE orders_donation.store_id=? AND orders_donation.state=? ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, limit, skip]);
   
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -803,6 +803,27 @@ router.post('/any/list/get/thumb', function(req, res){
     })
   })
 })
+
+router.post('/any/list/get/thumb/last', function(req, res){
+  const store_id = req.body.data.store_id;
+  const user_id = req.body.data.user_id;
+
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+  
+  const querySelect = mysql.format("SELECT orders_donation.id AS donation_id, donation_comment.is_secret, donation_comment.text, user.name, user.nick_name, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, orders_donation.is_heart FROM orders_donations AS orders_donation LEFT JOIN users AS user ON orders_donation.user_id=user.id LEFT JOIN donation_comments AS donation_comment ON donation_comment.id=orders_donation.donation_comment_id WHERE orders_donation.store_id=? AND orders_donation.state=? ORDER BY orders_donation.id ASC LIMIT 1", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION]);
+  
+  db.SELECT(querySelect, {}, (result) => {
+
+    const data = result[0];
+    return res.json({
+      result:{
+        state: res_state.success,
+        donation_id: data.donation_id
+      }
+    })
+  })
+});
 
 router.post('/my/donation/answer/get', function(req, res){
   const answer_comment_id = req.body.data.answer_comment_id;
