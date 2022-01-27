@@ -733,7 +733,7 @@ router.post("/item/add", function(req, res){
     is_adult = false;
   }
 
-  let querySelect = mysql.format("SELECT order_number FROM items WHERE store_id=? ORDER BY order_number DESC", store_id);
+  let querySelect = mysql.format("SELECT COUNT(id) AS item_count FROM items WHERE store_id=? ORDER BY order_number DESC", store_id);
 
   db.SELECT(querySelect, {}, (result_select) => {
     if(!result_select){
@@ -743,6 +743,7 @@ router.post("/item/add", function(req, res){
       })
     }
 
+    const item_count = result_select[0].item_count;
     let _order_number = 0;
     // if(result_select.length === 0){
     //   _order_number = 0;
@@ -795,7 +796,7 @@ router.post("/item/add", function(req, res){
 
     db.INSERT("INSERT INTO items SET ?", itemData, 
     (result_insert) => {
-      if(_order_number === 0){
+      if(item_count === 0){
         db.UPDATE("UPDATE stores SET representative_item_id=? WHERE id=?", [result_insert.insertId, store_id], 
         (result) => {
           return res.json({

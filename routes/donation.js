@@ -814,7 +814,15 @@ router.post('/any/list/get/thumb/last', function(req, res){
   const querySelect = mysql.format("SELECT orders_donation.id AS donation_id, donation_comment.is_secret, donation_comment.text, user.name, user.nick_name, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, orders_donation.is_heart FROM orders_donations AS orders_donation LEFT JOIN users AS user ON orders_donation.user_id=user.id LEFT JOIN donation_comments AS donation_comment ON donation_comment.id=orders_donation.donation_comment_id WHERE orders_donation.store_id=? AND orders_donation.state=? ORDER BY orders_donation.id ASC LIMIT 1", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION]);
   
   db.SELECT(querySelect, {}, (result) => {
-
+    if(!result || result.length === 0){
+      return res.json({
+        result:{
+          state: res_state.success,
+          donation_id: null
+        }
+      })
+    }
+    
     const data = result[0];
     return res.json({
       result:{
