@@ -3276,7 +3276,7 @@ router.post("/any/view/count", function(req, res){
         return res.json({
           result:{
             state: res_state.success,
-            count: 0
+            count: storeData.store_view_count
           }
         })
       }
