@@ -1429,6 +1429,8 @@ sendSlackAlim = (req, item_order_id, _donation_total_price=null) => {
       if(donation_total_price === undefined){
         donation_total_price = 0;
       }
+
+      console.log(`(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}`);
       
       slack.webhook({
         channel: "#결제알림",
