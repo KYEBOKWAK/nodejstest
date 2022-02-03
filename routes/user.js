@@ -1480,7 +1480,8 @@ router.post("/update/sns/id", function(req, res){
 
     return res.json({
       result: {
-        state: res_state.success
+        state: res_state.success,
+        user_id: user_id
       }
     })
 
