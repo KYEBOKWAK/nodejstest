@@ -1398,8 +1398,8 @@ function senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, s
     })
 }
 
-sendSlackAlim = (req, item_order_id, _donation_total_price=null) => {
-    const querySelect = mysql.format("SELECT orders_item.total_price AS total_price, orders_donation.count AS donation_count, orders_donation.total_price AS donation_total_price, orders_item.orders_donation_id, item.price_USD AS item_price_usd, orders_item.total_price_USD, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN orders_donations AS orders_donation ON orders_item.orders_donation_id=orders_donation.id WHERE orders_item.id=?", item_order_id);
+sendSlackAlim = (req, item_order_id) => {
+    const querySelect = mysql.format("SELECT orders_item.currency_code, orders_item.total_price AS total_price, orders_donation.count AS donation_count, orders_donation.total_price AS donation_total_price, orders_donation.total_price_USD AS donation_total_price_usd, orders_item.orders_donation_id, orders_item.price_USD AS item_price_usd, orders_item.total_price_USD, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN orders_donations AS orders_donation ON orders_item.orders_donation_id=orders_donation.id WHERE orders_item.id=?", item_order_id);
   
     db.SELECT(querySelect, {}, (result) => {
       if(!result || result.length === 0){
@@ -1419,23 +1419,20 @@ sendSlackAlim = (req, item_order_id, _donation_total_price=null) => {
       }
 
       let donation_total_price = 0;
-      if(_donation_total_price === undefined || _donation_total_price === null){
-        const _data = req.body.data;
-        donation_total_price = _data.donation_total_price;      
-      }else{
-        donation_total_price = _donation_total_price;
+      if(data.orders_donation_id !== null){
+        if(data.currency_code === types.currency_code.Won){
+          donation_total_price = `${data.donation_total_price}원`
+        }else{
+          donation_total_price = `$${data.donation_total_price_usd}`
+        }
       }
 
-      if(donation_total_price === undefined){
-        donation_total_price = 0;
-      }
-
-      console.log(`(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}`);
+      // console.log(`(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}\n주문ID: ${item_order_id}\n주문위치: ${req.body.data.bug_check_message}\n디바이스정보: ${req.body.data.userAgent}`);
       
       slack.webhook({
         channel: "#결제알림",
         username: "알림bot",
-        text: `(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}`
+        text: `(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}\n주문ID: ${item_order_id}\n주문위치: ${req.body.data.bug_check_message}\n디바이스정보: ${req.body.data.userAgent}`
       }, function(err, response) {
         console.log(err);
       });
@@ -1871,12 +1868,13 @@ router.post('/store/send/message', function(req, res){
 
         const data = result[0];
 
-        let donation_total_price = data.donation_total_price;
-        if(donation_total_price === undefined || donation_total_price === null){
-          donation_total_price = null;
-        }
+        // let donation_total_price = data.donation_total_price;
+        // if(donation_total_price === undefined || donation_total_price === null){
+        //   donation_total_price = null;
+        // }
 
-        this.sendSlackAlim(req, store_order_id, donation_total_price);
+        // this.sendSlackAlim(req, store_order_id, donation_total_price);
+        this.sendSlackAlim(req, store_order_id);
 
         if(data.type_contents === types.contents.completed){
             return res.json({
