@@ -14,6 +14,8 @@ const moment = require('moment');
 var mysql = require('mysql');
 const Util = use('lib/util.js');
 
+const Commision = use('lib/Commision.js');
+
 const global = use('lib/global_const.js');
 const axios = require('axios');
 
@@ -2237,69 +2239,12 @@ router.post("/order/detailask/get", function(req, res){
   })
 })
 
-const COMMISION_PERCENTAGE = 15;
-router.post("/manager/payment/info", function(req, res){
-  const store_id = req.body.data.store_id;
-
-  const nowDate = moment_timezone();
-  //범위 구하기
-  let startDate = '';
-  let endDate = '';
-  let paymentDate = '';
-  if(nowDate.date() === 1){
-    //전달 1일 ~ 16일 전달
-    startDate = moment_timezone(nowDate).add(-1, 'months').format("YYYY-MM-01 00:00:00");
-    endDate = moment_timezone(nowDate).add(-1, 'months').format("YYYY-MM-15 23:59:59");
-
-    paymentDate = moment_timezone(nowDate).format("YYYY-MM-01 00:00:00");
-    
-  }
-  else if(nowDate.date() <= 16){
-    startDate = moment_timezone(nowDate).add(-1, 'months').format("YYYY-MM-16 00:00:00");
-    let endDays = moment_timezone(startDate).daysInMonth();
-
-    endDate = moment_timezone(startDate).format("YYYY-MM-"+endDays+" 23:59:59");
-
-    paymentDate = moment_timezone(nowDate).format("YYYY-MM-16 00:00:00");
-  }
-  else if(nowDate.date() > 16){
-    startDate = moment_timezone(nowDate).format("YYYY-MM-01 00:00:00");
-    endDate = moment_timezone(nowDate).format("YYYY-MM-15 23:59:59");
-
-    paymentDate = moment_timezone(nowDate).add(1, 'months').format("YYYY-MM-01 00:00:00");
-  }
-
-  // const selectQuery = mysql.format("SELECT orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
-
-  const selectQuery = mysql.format("SELECT orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND orders_item.currency_code=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate, Types.currency_code.Won]);
-
-  db.SELECT(selectQuery, {}, (result) => {
-
-    for(let i = 0 ; i < result.length ; i++){
-      result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
-      result[i].commission = result[i].total_price * (COMMISION_PERCENTAGE/100);
-      result[i].payment_price = result[i].total_price - result[i].commission;
-    }
-
-    return res.json({
-      result: {
-        state: res_state.success,
-        next_deposit_date: paymentDate,
-        standard_payment_date_start: startDate,
-        standard_payment_date_end: endDate,
-        list: result
-      }
-    })
-  })
-});
-
-const COMMISION_DONATION_PERCENTAGE = 3.5;
 router.post("/manager/payment/info/v1", function(req, res){
   const store_id = req.body.data.store_id;
   const sort_state = req.body.data.sort_state;
 
-  const nowDate = moment_timezone();
-  // const nowDate = moment_timezone('2022-02-14 00:00:00');
+  // const nowDate = moment_timezone();
+  const nowDate = moment_timezone('2022-03-01 00:00:00');
   //범위 구하기
   let startDate = '';
   let endDate = '';
@@ -2335,15 +2280,19 @@ router.post("/manager/payment/info/v1", function(req, res){
     //상점, 전체 일때는 해당 쿼리
     // selectQuery = mysql.format("SELECT orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND orders_item.currency_code=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate, Types.currency_code.Won]);
 
-    selectQuery = mysql.format("SELECT orders_item.price_USD, orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
+    // selectQuery = mysql.format("SELECT orders_item.commision, orders_item.price_USD, orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
+
+    selectQuery = mysql.format("SELECT orders_item.commision, orders_item.price_USD, orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND (orders_item.total_price <> 0 OR orders_item.total_price_USD <> 0) ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
   }
 
   db.SELECT(selectQuery, {}, (result) => {
 
+    const default_commision = Commision.Default + Commision.Default_PG;
+    const default_commision_pg = Commision.Default_PG;
     if(sort_state === Types_Sort.account.donation){
       for(let i = 0 ; i < result.length ; i++){
         result[i].confirm_at = moment_timezone(result[i].created_at).format("YYYY-MM-DD");
-        result[i].commission = Math.floor(result[i].total_price * (COMMISION_DONATION_PERCENTAGE/100));
+        result[i].commission = Math.floor(result[i].total_price * (default_commision_pg/100));
         result[i].payment_price = result[i].total_price - result[i].commission;
       }
   
@@ -2359,11 +2308,18 @@ router.post("/manager/payment/info/v1", function(req, res){
     }
     else if(sort_state === Types_Sort.account.stores){
       for(let i = 0 ; i < result.length ; i++){
+        const data = result[i];
+
+        let commition_percentage = data.commision
+        if(!data.commision){
+          commition_percentage = default_commision;
+        }
+
         result[i].total_price = result[i].price;  //정산시에는 실 상품 구매 가격이 나와야함. 도네이션 작업 했으므로 total_price를 쓸 수 없음. 프론트에서 total_price를 쓰고 있어서 값 교체
         result[i].total_price_USD = result[i].price_USD;
 
         result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
-        result[i].commission = result[i].total_price * (COMMISION_PERCENTAGE/100);
+        result[i].commission = result[i].total_price * (commition_percentage/100);
         result[i].payment_price = result[i].total_price - result[i].commission;
       }
   
@@ -2379,12 +2335,19 @@ router.post("/manager/payment/info/v1", function(req, res){
     }else{
       //전체 일 경우 도네이션까지 조회
       for(let i = 0 ; i < result.length ; i++){
+        const data = result[i];
+
+        let commition_percentage = data.commision
+        if(!data.commision){
+          commition_percentage = default_commision;
+        }
+
         result[i].total_price = result[i].price;  //정산시에는 실 상품 구매 가격이 나와야함. 도네이션 작업 했으므로 total_price를 쓸 수 없음. 프론트에서 total_price를 쓰고 있어서 값 교체
         result[i].total_price_USD = result[i].price_USD;
 
         result[i].ori_confirm_at = result[i].confirm_at;
         result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
-        result[i].commission = result[i].total_price * (COMMISION_PERCENTAGE/100);
+        result[i].commission = result[i].total_price * (commition_percentage/100);
         result[i].payment_price = result[i].total_price - result[i].commission;
         result[i].sort_at = moment_timezone(result[i].ori_confirm_at).format('x');
 
@@ -2397,7 +2360,7 @@ router.post("/manager/payment/info/v1", function(req, res){
         for(let i = 0 ; i < result_donation.length ; i++){
           result_donation[i].ori_confirm_at = result_donation[i].confirm_at;
           result_donation[i].confirm_at = moment_timezone(result_donation[i].ori_confirm_at).format("YYYY-MM-DD");
-          result_donation[i].commission = Math.floor(result_donation[i].total_price * (COMMISION_DONATION_PERCENTAGE/100));
+          result_donation[i].commission = Math.floor(result_donation[i].total_price * (default_commision_pg/100));
           result_donation[i].payment_price = result_donation[i].total_price - result_donation[i].commission;
           result_donation[i].sort_at = moment_timezone(result_donation[i].ori_confirm_at).format('x');
 

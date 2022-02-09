@@ -8,6 +8,8 @@ const res_state = use('lib/res_state.js');
 const moment_timezone = require('moment-timezone');
 moment_timezone.tz.setDefault("Asia/Seoul");
 
+const Commision = use('lib/Commision.js');
+
 // const moment = require('moment');
 
 var mysql = require('mysql');
@@ -160,6 +162,87 @@ router.post('/any/item/isadult', function(req, res){
     })
   })
 });
+
+router.post('/manager/commision/info', function(req, res){
+  const store_id = req.body.data.store_id;
+
+  // const default_commision = Commision.Default + Commision.Default_PG;
+  if(!store_id){
+    return res.json({
+      state: res_state.error,
+      message: '플레이스 ID 조회 오류 (commision info)',
+      result: {}
+    });
+  }
+
+  let commisionData = {
+    default: Commision.Default,
+    default_pg: Commision.Default_PG,
+    default_promotion_value: null,
+    promotion_start_at: null,
+    promotion_end_at: null
+  }
+
+  const querySelect = mysql.format("SELECT value, start_at, end_at FROM commisions WHERE store_id=?", [store_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      console.log('조회된 값이 없음');
+      // return callback(default_commision);
+      return res.json({
+        result: {
+          state: res_state.success,
+          ...commisionData
+        }
+      })
+    }
+
+    const data = result[0];
+    if(data.start_at === null && data.end_at === null){
+      commisionData = {
+        ...commisionData,
+        default_promotion_value: data.value,
+        promotion_start_at: null,
+        promotion_end_at: null
+      }
+
+      return res.json({
+        result: {
+          state: res_state.success,
+          ...commisionData
+        }
+      })
+    }
+    
+    const now_at_x = moment_timezone().format('x');
+    const start_at_x = moment_timezone(data.start_at).format('x');
+    const end_at_x = moment_timezone(data.end_at).format('x');
+
+    if(start_at_x <= now_at_x &&
+      now_at_x <= end_at_x ){
+      commisionData = {
+        ...commisionData,
+        default_promotion_value: data.value,
+        promotion_start_at: moment_timezone(data.start_at).format('YY.MM.DD'),
+        promotion_end_at: moment_timezone(data.end_at).format('YY.MM.DD')
+      }
+    }else{
+      commisionData = {
+        ...commisionData,
+        default_promotion_value: null,
+        promotion_start_at: null,
+        promotion_end_at: null
+      }
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        ...commisionData
+      }
+    })
+  })
+})
 
 /*
 router.post('/file/size/s3', function(req, res){
