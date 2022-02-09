@@ -2319,7 +2319,7 @@ router.post("/manager/payment/info/v1", function(req, res){
         result[i].total_price_USD = result[i].price_USD;
 
         result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
-        result[i].commission = result[i].total_price * (commition_percentage/100);
+        result[i].commission = Math.floor(result[i].total_price * (commition_percentage/100));
         result[i].payment_price = result[i].total_price - result[i].commission;
       }
   
@@ -2347,7 +2347,7 @@ router.post("/manager/payment/info/v1", function(req, res){
 
         result[i].ori_confirm_at = result[i].confirm_at;
         result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
-        result[i].commission = result[i].total_price * (commition_percentage/100);
+        result[i].commission = Math.floor(result[i].total_price * (commition_percentage/100));
         result[i].payment_price = result[i].total_price - result[i].commission;
         result[i].sort_at = moment_timezone(result[i].ori_confirm_at).format('x');
 
