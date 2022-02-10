@@ -654,8 +654,7 @@ app.post("/any/call/certify/number", function(req, res){
           }
 
           Global_Func.sendSMS(contact, countryCode, content, (result) => {
-              // console.log(result);
-              if(result.status === '200'){
+              if(result.statusCode === '202'){
                   return res.json({
                       result:{
                           state: res_state.success,
