@@ -1970,7 +1970,10 @@ router.post("/ticket/showdate", function(req, res){
 
 router.post("/any/info", function(req, res){
   const project_id = req.body.data.project_id;
-  const querySelect = mysql.format("SELECT project.id AS project_id, project.user_id, title, project_type, temporary_date, city.name AS city_name, poster_renew_url, poster_url, description, alias, funding_closing_at FROM projects AS project LEFT JOIN cities AS city ON city.id=project.city_id WHERE project.id=? GROUP BY project.id", [project_id]);
+
+  const querySelect = mysql.format("SELECT store.id AS store_id, store.title AS store_title, project.concert_hall, project.id AS project_id, project.user_id, project.title, project.project_type, project.temporary_date, city.name AS city_name, project.poster_renew_url, project.poster_url, project.description, project.alias, project.funding_closing_at FROM projects AS project LEFT JOIN stores AS store ON project.user_id=store.user_id LEFT JOIN cities AS city ON city.id=project.city_id WHERE project.id=? GROUP BY project.id", [project_id]);
+
+  // const querySelect = mysql.format("SELECT project.concert_hall, project.id AS project_id, project.user_id, title, project_type, temporary_date, city.name AS city_name, poster_renew_url, poster_url, description, alias, funding_closing_at FROM projects AS project LEFT JOIN cities AS city ON city.id=project.city_id WHERE project.id=? GROUP BY project.id", [project_id]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2000,6 +2003,23 @@ router.post("/any/ticket/showdate", function(req, res){
       result: {
         state: res_state.success,
         list: result
+      }
+    })
+  })
+})
+
+router.post("/any/ticket/price", function(req, res){
+  const project_id = req.body.data.project_id;
+  const language_code = req.body.data.language_code;
+
+  const querySelect = mysql.format("SELECT price FROM tickets WHERE project_id=? ORDER BY price", [project_id])
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result,
+        language_code: language_code
       }
     })
   })

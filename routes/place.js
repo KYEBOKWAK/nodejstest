@@ -4,6 +4,7 @@ const use = require('abrequire');
 var db = use('lib/db_sql.js');
 
 var Types = use('lib/types.js');
+var Types_Sort = use('lib/Types_Sort.js');
 const res_state = use('lib/res_state.js');
 const moment_timezone = require('moment-timezone');
 moment_timezone.tz.setDefault("Asia/Seoul");
@@ -239,6 +240,58 @@ router.post('/manager/commision/info', function(req, res){
       result: {
         state: res_state.success,
         ...commisionData
+      }
+    })
+  })
+})
+
+router.get('/any/fanevent/list', function(req, res){
+  const store_user_id = Number(req.query.store_user_id);
+  const sort_type = Number(req.query.sort_type);
+  // console.log(store_user_id);
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  let selectQuery = '';
+  if(sort_type === Types_Sort.place_event.all){
+    selectQuery = mysql.format("SELECT id, project_type, poster_url, poster_renew_url FROM projects WHERE user_id=? AND state=? AND funding_closing_at IS NOT NULL", [store_user_id, Types.project.STATE_APPROVED]);
+  }else if(sort_type === Types_Sort.place_event.playing){
+    selectQuery = mysql.format("SELECT id, project_type, poster_url, poster_renew_url FROM projects WHERE user_id=? AND state=? AND funding_closing_at >= ?", [store_user_id, Types.project.STATE_APPROVED, date]);
+  }else{
+    selectQuery = mysql.format("SELECT id, project_type, poster_url, poster_renew_url FROM projects WHERE user_id=? AND state=? AND funding_closing_at < ?", [store_user_id, Types.project.STATE_APPROVED, date]);
+  }
+
+  db.SELECT(selectQuery, {}, 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.get('/any/fanevent/count', function(req, res){
+  const store_user_id = Number(req.query.store_user_id);
+
+  const selectQuery = mysql.format("SELECT COUNT(id) AS project_count FROM projects WHERE user_id=? AND state=? AND funding_closing_at IS NOT NULL", [store_user_id, Types.project.STATE_APPROVED]);
+
+  db.SELECT(selectQuery, {}, 
+  (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        count: result[0].project_count
       }
     })
   })

@@ -122,21 +122,28 @@ router.post('/any/detail/info', function(req, res){
   const store_id = req.body.data.store_id;
   const store_alias = req.body.data.store_alias;
 
-  const querySelect = mysql.format("SELECT store.contact, store.representative_item_id, store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
+  const querySelect = mysql.format("SELECT store.representative_type, store.contact, store.representative_item_id, store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
 
   db.SELECT(querySelect, {}, (result) => {
-    if(result.length === 0){
+    if(!result || result.length === 0){
       return res.json({
         state: res_state.error,
         message: '상점 정보 조회 불가'
       })
     }
 
+    let data = result[0];
+    if(data.representative_type === null){
+      //null인 경우는 이전 데이터 이므로 item을 강제 셋팅 한다.
+      data.representative_type = Types.representative.item
+    }
+
+
     return res.json({
       result:{
         state: res_state.success,
         data: {
-          ...result[0]
+          ...data
         }
       }
     })
@@ -3169,7 +3176,7 @@ router.post("/any/item/count", function(req, res){
   const querySelect = mysql.format("SELECT COUNT(item.id) AS item_count FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.store_id=? AND item.state!=? AND item.order_number IS NOT NULL", [store_id, Types.item_state.SALE_STOP]);
 
   db.SELECT(querySelect, {}, (result) => {
-    if(result.length === 0){
+    if(!result || result.length === 0){
       return res.json({
         result:{
           state: res_state.success,
@@ -3179,7 +3186,7 @@ router.post("/any/item/count", function(req, res){
     }
 
     const data = result[0];
-
+    
     return res.json({
       result:{
         state: res_state.success,
@@ -3258,9 +3265,13 @@ router.post("/any/view/count", function(req, res){
 
 router.post("/representativeitem/set", function(req, res){
   let store_id = req.body.data.store_id;
-  let representative_item_id = req.body.data.representative_item_id
+  let representative_item_id = req.body.data.representative_item_id;
+  let representative_type = req.body.data.representative_type;
+  if(!representative_type){
+    representative_type = Types.representative.item;
+  }
 
-  db.UPDATE("UPDATE stores SET representative_item_id=? WHERE id=?", [representative_item_id, store_id], 
+  db.UPDATE("UPDATE stores SET representative_item_id=?, representative_type=? WHERE id=?", [representative_item_id, representative_type, store_id], 
   (result) => {
     return res.json({
       result: {
