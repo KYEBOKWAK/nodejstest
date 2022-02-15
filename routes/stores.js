@@ -607,7 +607,7 @@ router.post("/item/delete/v1", function(req, res){
       })
     }
 
-    db.UPDATE("UPDATE stores SET representative_item_id=? WHERE id=? AND representative_item_id=?", [null, store_id, item_id], (result_update) => {
+    db.UPDATE("UPDATE stores SET representative_item_id=?, representative_type=? WHERE id=? AND representative_item_id=?", [null, null, store_id, item_id], (result_update) => {
       db.DELETE("DELETE FROM items WHERE id=?", item_id, (result_delete) => {
         return res.json({
           result:{
@@ -806,7 +806,7 @@ router.post("/item/add", function(req, res){
     db.INSERT("INSERT INTO items SET ?", itemData, 
     (result_insert) => {
       if(item_count === 0){
-        db.UPDATE("UPDATE stores SET representative_item_id=? WHERE id=?", [result_insert.insertId, store_id], 
+        db.UPDATE("UPDATE stores SET representative_item_id=?, representative_type=? WHERE id=?", [result_insert.insertId, Types.representative.item, store_id], 
         (result) => {
           return res.json({
             result: {
