@@ -254,11 +254,11 @@ router.get('/any/fanevent/list', function(req, res){
 
   let selectQuery = '';
   if(sort_type === Types_Sort.place_event.all){
-    selectQuery = mysql.format("SELECT id, project_type, poster_url, poster_renew_url FROM projects WHERE user_id=? AND state=? AND funding_closing_at IS NOT NULL", [store_user_id, Types.project.STATE_APPROVED]);
+    selectQuery = mysql.format("SELECT id, project_type, poster_url, poster_renew_url FROM projects WHERE user_id=? AND state=? AND funding_closing_at IS NOT NULL ORDER BY funding_closing_at DESC", [store_user_id, Types.project.STATE_APPROVED]);
   }else if(sort_type === Types_Sort.place_event.playing){
-    selectQuery = mysql.format("SELECT id, project_type, poster_url, poster_renew_url FROM projects WHERE user_id=? AND state=? AND funding_closing_at >= ?", [store_user_id, Types.project.STATE_APPROVED, date]);
+    selectQuery = mysql.format("SELECT id, project_type, poster_url, poster_renew_url FROM projects WHERE user_id=? AND state=? AND funding_closing_at >= ? ORDER BY funding_closing_at DESC", [store_user_id, Types.project.STATE_APPROVED, date]);
   }else{
-    selectQuery = mysql.format("SELECT id, project_type, poster_url, poster_renew_url FROM projects WHERE user_id=? AND state=? AND funding_closing_at < ?", [store_user_id, Types.project.STATE_APPROVED, date]);
+    selectQuery = mysql.format("SELECT id, project_type, poster_url, poster_renew_url FROM projects WHERE user_id=? AND state=? AND funding_closing_at < ? ORDER BY funding_closing_at DESC", [store_user_id, Types.project.STATE_APPROVED, date]);
   }
 
   db.SELECT(selectQuery, {}, 
