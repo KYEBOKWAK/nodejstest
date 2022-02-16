@@ -1971,7 +1971,7 @@ router.post("/ticket/showdate", function(req, res){
 router.post("/any/info", function(req, res){
   const project_id = req.body.data.project_id;
 
-  const querySelect = mysql.format("SELECT store.id AS store_id, store.title AS store_title, project.concert_hall, project.id AS project_id, project.user_id, project.title, project.project_type, project.temporary_date, city.name AS city_name, project.poster_renew_url, project.poster_url, project.description, project.alias, project.funding_closing_at FROM projects AS project LEFT JOIN stores AS store ON project.user_id=store.user_id LEFT JOIN cities AS city ON city.id=project.city_id WHERE project.id=? GROUP BY project.id", [project_id]);
+  const querySelect = mysql.format("SELECT project.state, store.id AS store_id, store.title AS store_title, project.concert_hall, project.id AS project_id, project.user_id, project.title, project.project_type, project.temporary_date, city.name AS city_name, project.poster_renew_url, project.poster_url, project.description, project.alias, project.funding_closing_at FROM projects AS project LEFT JOIN stores AS store ON project.user_id=store.user_id LEFT JOIN cities AS city ON city.id=project.city_id WHERE project.id=? GROUP BY project.id", [project_id]);
 
   // const querySelect = mysql.format("SELECT project.concert_hall, project.id AS project_id, project.user_id, title, project_type, temporary_date, city.name AS city_name, poster_renew_url, poster_url, description, alias, funding_closing_at FROM projects AS project LEFT JOIN cities AS city ON city.id=project.city_id WHERE project.id=? GROUP BY project.id", [project_id]);
 
