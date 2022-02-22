@@ -390,7 +390,7 @@ function payStoreComplite(req, res, serializer_uid){
                     imp_uid: imp_uid  
                   }).then(function(result_import){
                     // To do
-                    // /////test/////
+                    ///////test/////
                     return  res.json({
                       result:{
                           state: res_state.error,
@@ -550,6 +550,16 @@ payISPComplite = (req, res, serializer_uid) => {
             imp_uid: imp_uid  
             }).then(function(result_import){
             // To do
+
+             ///////test/////
+            return  res.json({
+              result:{
+                  state: res_state.error,
+                  message: '주문정보 업데이트 실패'
+              }
+            })
+            ////////////////
+
             const status = result_import.status;
             if(result_import.amount === checkTotalPrice){
               let orderState = '';
@@ -1982,14 +1992,6 @@ router.post('/store/send/message', function(req, res){
 //?imp_uid=xxxxxxx&merchant_uid=yyyyyyy
 //iamport webhook verify
 router.post('/any/payments/complete', function(req, res){
-
-    //test//
-    return res.json({
-      state: 'error',
-      message: '증명되지 않은 IP 입니다.'
-    })
-    ////////
-  
     let yourIP = getUserIP(req);
     let webHookIPList = [];
     if(process.env.APP_TYPE === 'local'){
