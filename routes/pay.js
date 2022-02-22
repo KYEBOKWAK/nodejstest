@@ -390,6 +390,14 @@ function payStoreComplite(req, res, serializer_uid){
                     imp_uid: imp_uid  
                   }).then(function(result_import){
                     // To do
+                    // /////test/////
+                    return  res.json({
+                      result:{
+                          state: res_state.error,
+                          message: '주문정보 업데이트 실패'
+                      }
+                    })
+                    // //////////////
                     const status = result_import.status;
                     //이곳의 결제 금액이 다름
                     if(result_import.amount === total_price){
@@ -1974,6 +1982,13 @@ router.post('/store/send/message', function(req, res){
 //?imp_uid=xxxxxxx&merchant_uid=yyyyyyy
 //iamport webhook verify
 router.post('/any/payments/complete', function(req, res){
+
+    //test//
+    return res.json({
+      state: 'error',
+      message: '증명되지 않은 IP 입니다.'
+    })
+    ////////
   
     let yourIP = getUserIP(req);
     let webHookIPList = [];
@@ -2019,16 +2034,16 @@ router.post('/any/payments/complete', function(req, res){
       // To do
       req.body.amount = result_import.amount;
 
-      this.webhookOrderCheck(req, res, (isComplite) => {
+      webhookOrderCheck(req, res, (isComplite) => {
         if(isComplite){
           return res.json({
             state: 'success'
           })
         }
   
-        this.webhookOrderItemCheck(req, res, (isComplite) => {
+        webhookOrderItemCheck(req, res, (isComplite) => {
 
-          this.webhookDonationCheck(req, res, (isComplite) => {
+          webhookDonationCheck(req, res, (isComplite) => {
             return res.json({
               state: 'success'
             })
@@ -2060,7 +2075,7 @@ router.post('/any/payments/complete', function(req, res){
     });
 });
 
-webhookOrderCheck = (req, res, successCallBack, errorCallBack) => {
+function webhookOrderCheck (req, res, successCallBack, errorCallBack) {
   const imp_uid = req.body.imp_uid;
   const merchant_uid = req.body.merchant_uid;
   const status = req.body.status;
@@ -2093,7 +2108,7 @@ webhookOrderCheck = (req, res, successCallBack, errorCallBack) => {
   })    
 }
 
-webhookOrderItemCheck = (req, res, successCallBack, errorCallBack) => {
+function webhookOrderItemCheck (req, res, successCallBack, errorCallBack) {
   const imp_uid = req.body.imp_uid;
   const merchant_uid = req.body.merchant_uid;
   const status = req.body.status;
@@ -2164,7 +2179,7 @@ webhookOrderItemCheck = (req, res, successCallBack, errorCallBack) => {
   })
 }
 
-webhookDonationCheck = (req, res, successCallBack, errorCallBack) => { 
+function webhookDonationCheck (req, res, successCallBack, errorCallBack) { 
   const imp_uid = req.body.imp_uid;
   const merchant_uid = req.body.merchant_uid;
   const status = req.body.status;
