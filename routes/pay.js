@@ -390,14 +390,6 @@ function payStoreComplite(req, res, serializer_uid){
                     imp_uid: imp_uid  
                   }).then(function(result_import){
                     // To do
-                    ///////test/////
-                    return  res.json({
-                      result:{
-                          state: res_state.error,
-                          message: '주문정보 업데이트 실패'
-                      }
-                    })
-                    // //////////////
                     const status = result_import.status;
                     //이곳의 결제 금액이 다름
                     if(result_import.amount === total_price){
@@ -550,16 +542,6 @@ payISPComplite = (req, res, serializer_uid) => {
             imp_uid: imp_uid  
             }).then(function(result_import){
             // To do
-
-             ///////test/////
-            return  res.json({
-              result:{
-                  state: res_state.error,
-                  message: '주문정보 업데이트 실패'
-              }
-            })
-            ////////////////
-
             const status = result_import.status;
             if(result_import.amount === checkTotalPrice){
               let orderState = '';
