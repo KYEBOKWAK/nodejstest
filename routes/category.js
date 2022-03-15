@@ -23,6 +23,7 @@ router.post('/any/top/list', function(req, res){
   })
 });
 
+
 router.post('/any/sub/list', function(req, res){
   const category_top_id = req.body.data.category_top_id;
 
@@ -219,6 +220,67 @@ router.post('/any/store/list', function(req, res){
   })
 });
 
+router.post('/any/place/list/select', function(req, res){
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+
+  // const category_top_item_id = req.body.data.category_top_item_id;
+  const category_item_ids = req.body.data.category_item_ids;
+
+  const creator_sort_select_type = req.body.data.creator_sort_select_type;
+
+  // console.log(category_item_ids)
+  // console.log(creator_sort_select_type)
+
+  let queryString = ""
+  let query_category_top_item_id = ''
+  let query_category_item_ids = '';
+  let datas = [Types.store.STATE_APPROVED];
+
+  if(category_item_ids.length === 1 && category_item_ids[0] === 0){
+    query_category_item_ids = '';
+  }else{
+    query_category_item_ids = 'AND select_category_place.categories_place_id IN (?)';
+    datas.push(category_item_ids);
+  }
+    
+  datas.push(limit);
+  datas.push(skip);
+
+  let query_order_by = '';
+  if(creator_sort_select_type === Types.sort_category.SORT_POPULAR){
+    // query_order_by = 'ORDER BY COUNT(CASE WHEN orders_item.state < 100 THEN 1 END) DESC, item.view_count DESC';
+    query_order_by = 'ORDER BY COUNT(CASE WHEN orders_item.state < 100 THEN 1 END) DESC';
+  }
+  else if(creator_sort_select_type === Types.sort_category.SORT_NEW){
+    query_order_by = 'ORDER BY store.id DESC';
+  }
+  else if(creator_sort_select_type === Types.sort_category.SORT_NAME_HIGH){
+    query_order_by = 'ORDER BY store.title';
+  }
+  else if(creator_sort_select_type === Types.sort_category.SORT_NAME_LOW){
+    query_order_by = 'ORDER BY store.title DESC';
+  }
+  else{
+    query_order_by = 'ORDER BY store.id DESC';
+  }
+
+  // const querySelect = mysql.format("SELECT FROM select_category_places AS select_category_place LEFT JOIN ")
+  // const querySelect = mysql.format(`SELECT store.id AS store_id FROM select_category_places AS select_category_place LEFT JOIN orders_items AS orders_item ON select_category_place.store_id=orders_item.store_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE store.state=? ${query_category_item_ids} GROUP BY select_category_place.store_id ${query_order_by} LIMIT ? OFFSET ?`, datas);
+
+  const querySelect = mysql.format(`SELECT select_category_place.store_id AS store_id FROM select_category_places AS select_category_place LEFT JOIN stores AS store ON select_category_place.store_id=store.id LEFT JOIN orders_items AS orders_item ON select_category_place.store_id=orders_item.store_id WHERE store.state=? ${query_category_item_ids} GROUP BY select_category_place.store_id ${query_order_by} LIMIT ? OFFSET ?`, datas);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+/*
 router.post('/any/top/info', function(req, res){
   const category_top_item_id = req.body.data.category_top_item_id;
   const language_code = req.body.data.language_code;
@@ -248,7 +310,9 @@ router.post('/any/top/info', function(req, res){
     })
   })
 })
+*/
 
+/*
 router.post('/any/sub/info', function(req, res){
   const category_sub_item_id = req.body.data.category_sub_item_id;
   const language_code = req.body.data.language_code;
@@ -278,6 +342,7 @@ router.post('/any/sub/info', function(req, res){
     })
   })
 })
+*/
 
 router.post('/any/list/get/item', function(req, res){
   const store_id = req.body.data.store_id;
@@ -296,6 +361,105 @@ router.post('/any/list/get/item', function(req, res){
 
 router.post('/ad/list', function(req, res){
   const querySelect = mysql.format('SELECT id, title FROM categories_ads ORDER BY order_number ASC')
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.get('/any/place/list', function(req, res){
+  const querySelect = mysql.format("SELECT id, text FROM categories_places ORDER BY order_number");
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+const CATEGORY_PLACE_COUNT_MAX = 5;
+router.post('/place/set', function(req, res){
+  const store_id = req.body.data.store_id;
+  const category_id = req.body.data.category_id;
+
+  if(!store_id || !category_id){
+    return res.json({
+      state: res_state.error,
+      message: '카테고리 추가 에러 (id값 오류)',
+      result: {}
+    })
+  }
+
+  const querySelect = mysql.format("SELECT COUNT(id) AS count FROM select_category_places WHERE store_id=?", [store_id]);
+
+  db.SELECT(querySelect, {}, (result_select) => {
+    console.log(result_select);
+
+    if(result_select[0].count >= CATEGORY_PLACE_COUNT_MAX) {
+      return res.json({
+        state: res_state.error,
+        message: '최대 5개만 선택 가능합니다',
+        result: {}
+      });
+    }
+
+    const insertData = {
+      store_id: store_id,
+      categories_place_id: category_id
+    }
+
+    db.INSERT("INSERT INTO select_category_places SET ?", insertData, 
+    (result_insert) => {
+      return res.json({
+        result: {
+          state: res_state.success
+        }
+      });
+    }, (result_error) => {
+      return res.json({
+        state: res_state.error,
+        message: '카테고리 추가 에러',
+        result: {}
+      })
+    })
+  })
+})
+
+router.post('/place/delete', function(req, res){
+  const store_id = req.body.data.store_id;
+  const category_id = req.body.data.category_id;
+
+  db.DELETE("DELETE FROM select_category_places WHERE store_id=? AND categories_place_id=?", [store_id, category_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+
+  })
+})
+
+router.post('/place/select/list', function(req, res){
+  const store_id = req.body.data.store_id;
+  if(!store_id){
+    return res.json({
+      state: res_state.error,
+      message: '카테고리 조회 에러 (id값 오류)',
+      result: {}
+    })
+  }
+
+  const querySelect = mysql.format("SELECT categories_place_id AS id FROM select_category_places WHERE store_id=?", [store_id]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({

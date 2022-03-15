@@ -42,6 +42,40 @@ var s3 = new aws.S3({
 });
 */
 
+
+function setPlaceCategory(store_id, select_category_datas, callback) {
+  if(select_category_datas === undefined || select_category_datas.length === 0){
+    return callback();
+  }
+
+  let _insertQueryArray = [];
+  let _insertOptionArray = [];
+
+  for(let i = 0 ; i < select_category_datas.length ; i++){
+    const data = select_category_datas[i];
+    let queryObject = {
+      key: i,
+      value: "INSERT INTO select_category_places SET ?;"
+    }
+
+    let insertObject = {
+      key: i,
+      value: {
+        store_id: store_id,
+        categories_place_id: data.id
+      }
+    }
+
+    _insertQueryArray.push(queryObject);
+    _insertOptionArray.push(insertObject);
+  }
+
+  db.INSERT_MULITPLEX(_insertQueryArray, _insertOptionArray, (result) => {
+    return callback();
+  }, (error) => {
+    return callback();
+  })
+}
 const Global_Func = use("lib/global_func.js");
 
 router.post('/create', function(req, res){
@@ -68,7 +102,12 @@ router.post('/create', function(req, res){
     const alias = req.body.data.alias;
     const collect_join_path = req.body.data.collect_join_path;
     const collect_channel = req.body.data.collect_channel;
-    const collect_category = req.body.data.collect_category;
+
+    let select_category_datas = req.body.data.select_category_data;
+    if(select_category_datas === undefined){
+      select_category_datas = [];
+    }
+    // const collect_category = req.body.data.collect_category;
 
     let channel_url = req.body.data.channel_url;
     if(channel_url === undefined){
@@ -91,38 +130,83 @@ router.post('/create', function(req, res){
       account_bank: '',
       collect_join_path: collect_join_path,
       collect_channel: collect_channel,
-      collect_category: collect_category,
+      collect_category: null,
       created_at: created_at,
       updated_at: updated_at
     }
 
     db.INSERT("INSERT INTO stores SET ?", placeData, 
     (result_insert) => {
+      
+      setPlaceCategory(result_insert.insertId, select_category_datas, () => {
+        let collect_category = [];
+        for(let i = 0 ; i < select_category_datas.length ; i++){
+          const _data = select_category_datas[i];
+          collect_category.push(_data.text);
+        }
 
-      slack.webhook({
-        channel: "#bot-플레이스신청",
-        username: "신청bot",
-        text: `[플레이스신청]\n플레이스명: ${title}\n이메일: ${email}\n연락처: ${contact}\n가입경로: ${collect_join_path}\n활동채널: ${collect_channel}\n채널주소: ${channel_url}\n카테고리: ${collect_category}\nalias: https://ctee.kr/place/${alias}`
-      }, function(err, response) {
-        console.log(err);
-      });
+        if(process.env.APP_TYPE !== 'local'){
+          slack.webhook({
+            channel: "#bot-플레이스신청",
+            username: "신청bot",
+            text: `[플레이스신청]\n플레이스명: ${title}\n이메일: ${email}\n연락처: ${contact}\n가입경로: ${collect_join_path}\n활동채널: ${collect_channel}\n채널주소: ${channel_url}\n카테고리: ${collect_category.toString()}\nalias: https://ctee.kr/place/${alias}`
+          }, function(err, response) {
+            console.log(err);
+          });
+    
+          const mailMSG = {
+            to: email,
+            from: '크티<contact@ctee.kr>',
+            subject: Templite_email.email_join_place.subject,
+            html: Templite_email.email_join_place.html(title)
+          }
+          sgMail.send(mailMSG).then((result) => {
+              // console.log(result);
+          }).catch((error) => {
+              // console.log(error);
+          })
+    
+          Global_Func.sendKakaoAlimTalk({
+            templateCode: 'Kalarm15v1',
+            to: contact
+          })
+        }
+  
+        return res.json({
+          result: {
+            state: res_state.success,
+            store_id: result_insert.insertId
+          }
+        })
+      })
 
-      const mailMSG = {
-        to: email,
-        from: '크티<contact@ctee.kr>',
-        subject: Templite_email.email_join_place.subject,
-        html: Templite_email.email_join_place.html(title)
+      /*
+      if(process.env.APP_TYPE !== 'local'){
+        slack.webhook({
+          channel: "#bot-플레이스신청",
+          username: "신청bot",
+          text: `[플레이스신청]\n플레이스명: ${title}\n이메일: ${email}\n연락처: ${contact}\n가입경로: ${collect_join_path}\n활동채널: ${collect_channel}\n채널주소: ${channel_url}\n카테고리: ${collect_category}\nalias: https://ctee.kr/place/${alias}`
+        }, function(err, response) {
+          console.log(err);
+        });
+  
+        const mailMSG = {
+          to: email,
+          from: '크티<contact@ctee.kr>',
+          subject: Templite_email.email_join_place.subject,
+          html: Templite_email.email_join_place.html(title)
+        }
+        sgMail.send(mailMSG).then((result) => {
+            // console.log(result);
+        }).catch((error) => {
+            // console.log(error);
+        })
+  
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'Kalarm15v1',
+          to: contact
+        })
       }
-      sgMail.send(mailMSG).then((result) => {
-          // console.log(result);
-      }).catch((error) => {
-          // console.log(error);
-      })
-
-      Global_Func.sendKakaoAlimTalk({
-        templateCode: 'Kalarm15v1',
-        to: contact
-      })
 
       return res.json({
         result: {
@@ -130,6 +214,7 @@ router.post('/create', function(req, res){
           store_id: result_insert.insertId
         }
       })
+      */
     }, (error) => {
       return res.json({
         state: res_state.error,
@@ -292,6 +377,29 @@ router.get('/any/fanevent/count', function(req, res){
       result: {
         state: res_state.success,
         count: result[0].project_count
+      }
+    })
+  })
+})
+
+router.get('/any/title/rand', function(req, res){
+  const querySelect = mysql.format("SELECT title FROM stores WHERE state=? ORDER BY RAND() LIMIT 1", [Types.store.STATE_APPROVED]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          store_title: ''
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        store_title: data.title
       }
     })
   })

@@ -2776,7 +2776,7 @@ router.post("/alias/check", function(req, res){
     return res.json({
       result: {
         state: res_state.success,
-        warning_text: '이 상점 링크는 이미 존재합니다.'
+        warning_text: '이 플레이스 링크는 이미 존재합니다.'
       }
     })
   })

@@ -25,7 +25,7 @@ var Slack = require('slack-node');
  
 webhookUri = process.env.CROWDTICKET_SLACK_WEBHOOK_URI;
  
-slack = new Slack();
+let slack = new Slack();
 slack.setWebhook(webhookUri);
 ////////////
 
@@ -589,7 +589,7 @@ router.post("/manager/list", function(req, res){
   })
 })
 
-cancelDonation = (orders_donation_id, successCallBack, errorCallBack) => {
+function cancelDonation (orders_donation_id, successCallBack, errorCallBack) {
   if(orders_donation_id === undefined || orders_donation_id === null){
     return successCallBack();
   }
@@ -661,7 +661,7 @@ router.post("/cancel", function(req, res){
           amount: amount
         }).then(function(result_iamport){
           
-          this.cancelDonation(donation_order_id, 
+          cancelDonation(donation_order_id, 
           (success) => {
             return  res.json({
               result:{

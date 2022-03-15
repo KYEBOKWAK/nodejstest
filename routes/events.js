@@ -157,5 +157,33 @@ router.post('/any/items', function(req, res){
   })
 });
 
+router.post('/any/ishome/tag', function(req, res){
+  const querySelect = mysql.format("SELECT text, text_eng, color_bg, color_text FROM event_pages WHERE is_home=? AND row_type=?", [true, Types.event_row_type.tag]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          text: null,
+          text_eng: null,
+          color_bg: null,
+          color_text: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        text: data.text,
+        text_eng: data.text_eng,
+        color_bg: data.color_bg,
+        color_text: data.color_text
+      }
+    })
+  });
+})
 
 module.exports = router;
