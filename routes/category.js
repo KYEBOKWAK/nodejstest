@@ -373,7 +373,7 @@ router.post('/ad/list', function(req, res){
 })
 
 router.get('/any/place/list', function(req, res){
-  const querySelect = mysql.format("SELECT id, text FROM categories_places ORDER BY order_number");
+  const querySelect = mysql.format("SELECT id, text, text_eng FROM categories_places ORDER BY order_number");
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({

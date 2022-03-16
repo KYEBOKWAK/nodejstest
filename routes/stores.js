@@ -3138,21 +3138,67 @@ router.post("/order/doller/count", function(req, res){
 
 router.post("/any/items/otherstore/get", function(req, res){
   const store_id = req.body.data.store_id;
-  const item_id = req.body.data.item_id;
-  const category_sub_item_id = req.body.data.category_sub_item_id;
+  // const item_id = req.body.data.item_id;
 
-  // const querySelect = mysql.format("SELECT id, title, img_url, price, price_USD, currency_code FROM items WHERE store_id<>? AND id<>? AND category_sub_item_id=? AND state=? AND currency_code=? ORDER BY RAND() LIMIT ?", [store_id, item_id, category_sub_item_id, Types.item_state.SALE, currency_code, 8])
+  const querySelectCategory = mysql.format("SELECT categories_place_id FROM select_category_places WHERE store_id=?", [store_id]);
 
-  const querySelect = mysql.format("SELECT item.id, item.title, item.img_url, item.price, item.price_USD, item.currency_code FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.store_id<>? AND item.id<>? AND store.tier<>? AND item.category_sub_item_id=? AND item.state=? ORDER BY RAND() LIMIT ?", [store_id, item_id, Types.tier_store.close, category_sub_item_id, Types.item_state.SALE, 8])
+  db.SELECT(querySelectCategory, {}, (result_category) => {
+    if(!result_category || result_category.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          list: []
+        }
+      })
+    }
 
-  db.SELECT(querySelect, {}, (result) => {
-    return res.json({
-      result: {
-        state: res_state.success,
-        list: result
+    let category_place_ids = [];
+    for(let i = 0 ; i < result_category.length ; i++){
+      const data = result_category[i];
+      category_place_ids.push(data.categories_place_id);
+    }
+
+    const querySelect = mysql.format("SELECT store_id FROM select_category_places WHERE store_id <> ? AND categories_place_id IN (?) GROUP BY store_id", [store_id, category_place_ids]);
+
+    db.SELECT(querySelect, {}, (result) => {
+      if(!result || result.length === 0){
+        return res.json({
+          result: {
+            state: res_state.success,
+            list: []
+          }
+        })
       }
+
+      let store_ids = [];
+      for(let i = 0 ; i < result.length ; i++){
+        const data = result[i];
+        store_ids.push(data.store_id);
+      }
+
+      // const querySelectItems = mysql.format("SELECT FROM items WHERE store_id IN (?)", [store_ids])
+      const querySelectItems = mysql.format("SELECT store.id AS store_id, item.id, item.title, item.img_url, item.price, item.price_USD, item.currency_code FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.store_id IN (?) AND store.tier<>? AND item.state=? ORDER BY RAND() LIMIT ?", [store_ids, Types.tier_store.close, Types.item_state.SALE, 8])
+
+      db.SELECT(querySelectItems, {}, (result_items) => {
+        if(!result_items || result_items.length === 0){
+          return res.json({
+            result: {
+              state: res_state.success,
+              // list: result
+              list: []
+            }
+          })  
+        }
+
+        return res.json({
+          result: {
+            state: res_state.success,
+            list: result_items
+          }
+        })
+      })
     })
-  })  
+  })
 });
 
 router.post('/any/download/file/list', function(req, res){
