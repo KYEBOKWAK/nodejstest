@@ -155,7 +155,7 @@ app.use(function (req, res, next) {
       _jwt.READ(req.body.data.access_token, function(result){
         //console.log(result);
         if(result.state === 'success'){
-          req.body.data.user_id = result.id;
+          req.body.data.user_id = Number(result.id);
           return next();
         }else{
           //만기이거나 에러인 경우 재로그인 요청

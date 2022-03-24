@@ -2411,7 +2411,7 @@ router.post("/store/state/confirm/ok/v1", function(req, res){
 
 router.post("/store/owner/check", function(req, res){
   const store_order_id = req.body.data.store_order_id;
-  const user_id = Number(req.body.data.user_id);
+  const user_id = req.body.data.user_id;
 
   console.log('스토어 order id: ' + store_order_id);
   console.log('유저 id : ' + user_id);
