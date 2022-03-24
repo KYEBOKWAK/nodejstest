@@ -2413,9 +2413,6 @@ router.post("/store/owner/check", function(req, res){
   const store_order_id = req.body.data.store_order_id;
   const user_id = req.body.data.user_id;
 
-  console.log('스토어 order id: ' + store_order_id);
-  console.log('유저 id : ' + user_id);
-
   const querySelect = mysql.format("SELECT user_id FROM orders_items WHERE id=?", store_order_id);
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -2427,8 +2424,6 @@ router.post("/store/owner/check", function(req, res){
     }
 
     const data = result[0];
-
-    console.log(data.user_id);
     if(user_id === data.user_id){
       console.log('성공!');
       return res.json({
@@ -2443,8 +2438,6 @@ router.post("/store/owner/check", function(req, res){
         }
       })
     }
-
-    console.log('실패!');
 
     return res.json({
       state: res_state.error,

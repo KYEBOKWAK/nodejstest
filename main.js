@@ -175,7 +175,7 @@ app.use(function (req, res, next) {
         //console.log(result);
         if(result.state === 'success'){
           //지금까진 any에 user_id를 체크 하진 않았지만, 어딘가에서 user_id를 보낼수도 있으므로, any를 붙여준다.
-          req.body.data.user_id_any = result.id;
+          req.body.data.user_id_any = Number(result.id);
           return next();          
         }else{
           return next();    
