@@ -2413,6 +2413,9 @@ router.post("/store/owner/check", function(req, res){
   const store_order_id = req.body.data.store_order_id;
   const user_id = req.body.data.user_id;
 
+  console.log('스토어 order id: ' + store_order_id);
+  console.log('유저 id : ' + user_id);
+
   const querySelect = mysql.format("SELECT user_id FROM orders_items WHERE id=?", store_order_id);
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
