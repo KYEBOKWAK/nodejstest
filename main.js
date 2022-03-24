@@ -107,100 +107,87 @@ app.use(cors());
 
 //여기서부터 새로운 코드 간다!! START
 
-function makeRefreshToken(id, data, before_refresh_token, res){
-  console.log('makeRefreshToken and AccessToken');
-  _jwt.CREATE(jwtType.TYPE_JWT_REFRESH_TOKEN, 
-    {
-      id: id,
-      type: jwtType.TYPE_JWT_REFRESH_TOKEN
-    }, 
-    EXPIRE_REFRESH_TOKEN, function(value){
-    if(value.state === 'error'){
+app.use(function (req, res, next) {
+  // console.log(req.headers.origin);
+  // console.log(process.env.CROWDTICKET_WEB_REFERER);
+
+  if(req.headers.origin){
+    if(
+        process.env.APP_TYPE === 'local' ||
+        process.env.CROWDTICKET_WEB_REFERER === req.headers.origin ||
+        process.env.CROWDTICKET_WEB_REFERER_WEB === req.headers.origin ||
+        process.env.CROWDTICKET_WEB_REFERER_WEB_QA_R === req.headers.origin ||
+        process.env.CROWDTICKET_WEB_REFERER_WEB_QA === req.headers.origin ||
+        process.env.CTEE_WEB_REFERER_WEB === req.headers.origin ||
+        process.env.CTEE_WEB_REFERER_WEB_QA_R === req.headers.origin ||
+        process.env.CTEE_WEB_REFERER_WEB_QA === req.headers.origin
+      ){
+        //통과
+      }else{
+        return res.json({
+          state: 'error',
+          message: '정상 접근이 아닙니다. access is abnormal'
+        });      
+      }
+  }
+  
+  let url = req.url;
+  let indexAnyString = url.indexOf('/any/');
+  if(indexAnyString < 0){
+    //any가 없으면 무조건 token 체크를 한다.
+    if(req.body.data === undefined){
       return res.json({
-        result: {
-          state: 'error',
-          message: value.message
-        }
+        state: 'error',
+        message: '데이터 없음. 다시 로그인 해주세요.',
+        result: {}
       })
-    }else{
-      console.log('정상 리프래시 토큰 재발급!!');
-      let _refresh_token = value.token;
-
-      _jwt.CREATE(jwtType.TYPE_JWT_ACCESS_TOKEN, 
-        {
-          id: id,
-          type: jwtType.TYPE_JWT_ACCESS_TOKEN
-        }, 
-        EXPIRE_ACCESS_TOKEN, function(value){
-        if(value.state === 'error'){
-          return res.json({
-            result: {
-              state: 'error',
-              message: value.message
-            }
-          })
+    }
+    else if(!req.body.data.access_token){
+      // console.log('none!!');
+      //엑세스토큰이 없다면 완전 오류임!!
+      return res.json({
+        state: 'error',
+        message: '토큰 정보가 없음. 다시 로그인 해주세요.',
+        result: {}
+      })
+    }
+    else{
+      _jwt.READ(req.body.data.access_token, function(result){
+        //console.log(result);
+        if(result.state === 'success'){
+          req.body.data.user_id = result.id;
+          return next();
         }else{
-          console.log('리프래시 and 액세스 재발급 성공!!');
-          //db update 해야함.
-          var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-          db.UPDATE("UPDATE devices SET refresh_token=?, updated_at=? WHERE refresh_token=? AND user_id=?", 
-          [_refresh_token, date, before_refresh_token, id],
-          function(result){
-            return res.json({
-              result: {
-                ...data,
-                access_token: value.token,
-                refresh_token: _refresh_token
-              }
-            });
-          }, function(error){
-            return res.json({
-              state: res_state.error,
-              message: error,
-              result: {}
-            })
-          });
+          //만기이거나 에러인 경우 재로그인 요청
+          //console.log('만기!!');
+          return res.json({
+            state: 'error',
+            message: '토큰 에러. 다시 로그인 해주세요.',
+            result: {}
+          })
         }
       });
-      /*
-      res.json({
-        result: {
-          ...data,
-          access_token: value.token
-        }
-      });
-      */
     }
-  });
-}
-
-function makeAccessToken(id, data, res){
-  //console.log('maekadsf', id);
-  _jwt.CREATE(jwtType.TYPE_JWT_ACCESS_TOKEN, 
-    {
-      id: id,
-      type: jwtType.TYPE_JWT_ACCESS_TOKEN
-    }, 
-    EXPIRE_ACCESS_TOKEN, function(value){
-    if(value.state === 'error'){
-      res.json({
-        result: {
-          state: 'error',
-          message: value.message
+  }else{
+    //any가 붙은 url 이지만 로그인을 했으면, 로그인 정보를 넘겨준다.
+    if(req.body.data && req.body.data.access_token && req.body.data.access_token !== ''){
+      _jwt.READ(req.body.data.access_token, function(result){
+        //console.log(result);
+        if(result.state === 'success'){
+          //지금까진 any에 user_id를 체크 하진 않았지만, 어딘가에서 user_id를 보낼수도 있으므로, any를 붙여준다.
+          req.body.data.user_id_any = result.id;
+          return next();          
+        }else{
+          return next();    
         }
-      })
+      });
     }else{
-      console.log('정상발급!!');
-      res.json({
-        result: {
-          ...data,
-          access_token: value.token
-        }
-      });
+      return next();
     }
-  });
-}
+  }
+});
 
+/*
 app.use(function (req, res, next) {
   // console.log(req.headers.origin);
   // console.log(process.env.CROWDTICKET_WEB_REFERER);
@@ -288,14 +275,14 @@ app.use(function (req, res, next) {
                 //day로 비교할때
                 if(get_day <= renowLastDay){
                   //refresh, access토큰 재갱신
-                  //console.log("Refresh access 재갱신!");
+                  console.log("Refresh access 재갱신!");
                   let _data = {
                     state: 'setAllAccessToken'
                   }
                   makeRefreshToken(db_result[0].user_id, _data, db_result[0].refresh_token, res);
                 }else{
                   //access토큰만 갱신
-                  //console.log("access 재갱신!!");
+                  console.log("access 1  재갱신!!");
                   let _data = {
                     state: 'setReAccessToken'
                   }
@@ -312,33 +299,14 @@ app.use(function (req, res, next) {
                   makeRefreshToken(db_result[0].user_id, _data, db_result[0].refresh_token, res);
                 }else{
                   //access토큰만 갱신
-                  //console.log("access 재갱신!!");
+                  console.log("access 2 재갱신!!");
                   let _data = {
                     state: 'setReAccessToken'
                   }
                   makeAccessToken(db_result[0].user_id, _data, res);
                 }
-              }
-              /*
-              if(get_day <= renowLastDay){
-                //refresh, access토큰 재갱신
-                //console.log("Refresh access 재갱신!");
-                let _data = {
-                  state: 'setAllAccessToken'
-                }
-                makeRefreshToken(db_result[0].user_id, _data, db_result[0].refresh_token, res);
-              }else{
-                //access토큰만 갱신
-                //console.log("access 재갱신!!");
-                let _data = {
-                  state: 'setReAccessToken'
-                }
-                makeAccessToken(db_result[0].user_id, _data, res);
-              }
-              */
-              
+              }              
             });
-            // const user_id = result.data.id;
           }
           // makeAccessToken(user.id, res);
           //리프레스 토큰이 만료 날짜가 거의 다 왔는지 확인한다.
@@ -411,6 +379,7 @@ app.use(function (req, res, next) {
     }
   }  
 });
+*/
 
 let main = require('./routes/main');
 app.use('/main', main);

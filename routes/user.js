@@ -65,12 +65,7 @@ function makeAccessToken(id, data, res){
         }
       })
     }else{
-      res.json({
-        result: {
-          ...data,
-          access_token: value.token
-        }
-      });
+      
     }
   });
 }
@@ -81,23 +76,18 @@ router.post("/any/login", function(req, res){
   // const email = req.body.data.id;
   // const sns_id = req.body.data.sns_id;
   // const sns_type = req.body.data.sns_type;
-  const deviceOS = req.body.data.os;
-  let push_token = null;
+  // const deviceOS = req.body.data.os;
+  // let push_token = null;
 
-  if(req.body.data.push_token !== ""){
-    push_token = req.body.data.push_token;
-  }
+  // if(req.body.data.push_token !== ""){
+  //   push_token = req.body.data.push_token;
+  // }
 
   let userQuery = mysql.format("SELECT id FROM users WHERE id=?", [user_id]);
 
   db.SELECT(userQuery, {}, (result_select_user) => {
 
-    var data = {
-      state : 'error',
-      message : 'none'
-    };
-
-    if(result_select_user.length === 0){
+    if(!result_select_user || result_select_user.length === 0){
       return res.json({
         state: res_state.error,
         message: '유저 정보 조회 오류',
@@ -105,75 +95,34 @@ router.post("/any/login", function(req, res){
       })
     }
 
-    var user = result_select_user[0];
-    jwt.sign({
-      id: user.id,
-      type: jwtType.TYPE_JWT_REFRESH_TOKEN
-      // email: user.email
-    }, 
-    process.env.TOKEN_SECRET, 
-    { 
-      // expiresIn: '60m',
-      expiresIn: EXPIRE_REFRESH_TOKEN,
-      issuer: process.env.JWT_TOKEN_ISSUER,
-      //issuer: 'localhost:8000',
-      subject: 'userRefresh'
-    }, function(err, token){
-      if (err) 
-      {
-        data.state = 'error';
-        data.message = err;
-  
-        //return res.send(data);
-        return res.json({
-          result: {
-            ...data
-          }
-        })
-      }
-      else
-      {
-        data.state = 'success';
-        data.refresh_token = token;
-  
-        //insert db start
-        var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-        const inactive_at = moment_timezone(date).add(1, 'years').format('YYYY-MM-DD HH:mm:ss');
-  
-        var refreshTokenObject = {
-          user_id : user.id,
-          refresh_token : token,
-          os : deviceOS,
-          push_token: push_token,
-          created_at : date,
-          updated_at: date
-        };
-  
-        let updateUserInfo = {
-          updated_at: date,
-          inactive_at: inactive_at,
-          inactive: false//이건 추후 ui 붙일때 조건으로 작업 해야함 일단 로그인하면 무조건 false 만들게 수정
-        }
+    // var user = result_select_user[0];
 
-        db.UPDATE("UPDATE users SET ? WHERE id=?", [updateUserInfo, user_id], (result_user_update) => {
-          db.INSERT("INSERT INTO devices SET ? ", refreshTokenObject, function(result){
-            makeAccessToken(user.id, data, res);
-          }, (error) => {
-            return res.json({
-              state: res_state.error,
-              message: error,
-              result:{}
-            })
-          });
-        }, (result_user_update_error) => {
-          return res.json({
-            state: res_state.error,
-            message: '유저 정보 업데이트 오류',
-            result:{}
-          })
-        })
-      }
-    });
+    // data.state = 'success';
+    // data.refresh_token = token;
+
+    //insert db start
+    var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+    const inactive_at = moment_timezone(date).add(1, 'years').format('YYYY-MM-DD HH:mm:ss');
+
+    let updateUserInfo = {
+      updated_at: date,
+      inactive_at: inactive_at,
+      inactive: false//이건 추후 ui 붙일때 조건으로 작업 해야함 일단 로그인하면 무조건 false 만들게 수정
+    }
+
+    db.UPDATE("UPDATE users SET ? WHERE id=?", [updateUserInfo, user_id], (result_user_update) => {
+      return res.json({
+        result: {
+          state: res_state.success
+        }
+      });
+    }, (result_user_update_error) => {
+      return res.json({
+        state: res_state.error,
+        message: '유저 정보 업데이트 오류',
+        result:{}
+      })
+    })
   })
 });
 
