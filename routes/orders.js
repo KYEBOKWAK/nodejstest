@@ -2428,7 +2428,9 @@ router.post("/store/owner/check", function(req, res){
 
     const data = result[0];
 
+    console.log(data);
     if(user_id === data.user_id){
+      console.log('성공!');
       return res.json({
         result: {
           state: res_state.success
@@ -2441,6 +2443,8 @@ router.post("/store/owner/check", function(req, res){
         }
       })
     }
+
+    console.log('실패!');
 
     return res.json({
       state: res_state.error,

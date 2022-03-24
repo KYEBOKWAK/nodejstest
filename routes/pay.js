@@ -986,14 +986,14 @@ function getCommisionInfo(store_id, callback){
 
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
-      console.log('조회된 값이 없음');
+      // console.log('조회된 값이 없음');
       return callback(default_commision);
     }
 
     const data = result[0];
     let commision_value = data.value + Commision.Default_PG;
     if(data.start_at === null && data.end_at === null){
-      console.log('기한 없음.');
+      // console.log('기한 없음.');
       return callback(commision_value);
     }
     
@@ -1003,9 +1003,9 @@ function getCommisionInfo(store_id, callback){
 
     if(start_at_x <= now_at_x &&
       now_at_x <= end_at_x ){
-      console.log('기간임');
+      // console.log('기간임');
     }else{
-      console.log('시간 넘어감');
+      // console.log('시간 넘어감');
       commision_value = default_commision;
     }
 
