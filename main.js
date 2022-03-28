@@ -5,7 +5,7 @@ const phoneRandNumExpire = 180;
 
 
 const EXPIRE_REFRESH_TOKEN = '365d';
-const EXPIRE_ACCESS_TOKEN = '1h';
+const EXPIRE_ACCESS_TOKEN = '10m'; //php에서 발급하는 accesstoken과 동일한 시간으로 해야함. TOKEN_EXPIRED_PLUS_TIME_SECOND
 
 const EXPIRE_DOWNLOAD_FILE_TOKEN = '2h';
 // const EXPIRE_REFRESH_TOKEN = '5m';
@@ -158,13 +158,30 @@ app.use(function (req, res, next) {
           req.body.data.user_id = Number(result.id);
           return next();
         }else{
-          //만기이거나 에러인 경우 재로그인 요청
-          //console.log('만기!!');
-          return res.json({
-            state: 'error',
-            message: '토큰 에러. 다시 로그인 해주세요.',
-            result: {}
-          })
+          //만기이거나 에러인 경우 임시 토큰을 발급한다.
+          if(req.body.__user_id === 0 || req.body.__user_id === undefined){
+            return res.json({
+              state: 'error',
+              message: '유저 ID 0, 토큰 생성 오류. 해당 오류가 반복 되는 경우 재로그인 해주세요.',
+              result: {}
+            })
+          }
+
+          _jwt.CREATE(jwtType.TYPE_JWT_ACCESS_TOKEN, 
+          {
+            id: req.body.__user_id,
+            type: jwtType.TYPE_JWT_ACCESS_TOKEN
+          }, 
+          EXPIRE_ACCESS_TOKEN, function(value){
+            let access_token = value.token;
+            return res.json({
+              state: 'access_token_reset',
+              result: {
+                user_id: req.body.__user_id,
+                access_token: access_token
+              }
+            })
+          });
         }
       });
     }
@@ -178,7 +195,30 @@ app.use(function (req, res, next) {
           req.body.data.user_id_any = Number(result.id);
           return next();          
         }else{
-          return next();    
+
+          if(req.body.__user_id === 0 || req.body.__user_id === undefined){
+            return res.json({
+              state: 'error',
+              message: '유저 ID 0, 토큰 생성 오류. 해당 오류가 반복 되는 경우 재로그인 해주세요.',
+              result: {}
+            })
+          }
+
+          _jwt.CREATE(jwtType.TYPE_JWT_ACCESS_TOKEN, 
+          {
+            id: req.body.__user_id,
+            type: jwtType.TYPE_JWT_ACCESS_TOKEN
+          }, 
+          EXPIRE_ACCESS_TOKEN, function(value){
+            let access_token = value.token;
+            return res.json({
+              state: 'access_token_reset',
+              result: {
+                user_id: req.body.__user_id,
+                access_token: access_token
+              }
+            })
+          });
         }
       });
     }else{
