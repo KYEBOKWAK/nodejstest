@@ -9,6 +9,8 @@ const res_state = use('lib/res_state.js');
 const moment_timezone = require('moment-timezone');
 moment_timezone.tz.setDefault("Asia/Seoul");
 
+const global = use('lib/global_const.js');
+
 var mysql = require('mysql');
 
 router.post('/any/top/list', function(req, res){
@@ -235,7 +237,7 @@ router.post('/any/place/list/select', function(req, res){
   let queryString = ""
   let query_category_top_item_id = ''
   let query_category_item_ids = '';
-  let datas = [Types.store.STATE_APPROVED];
+  let datas = [Types.store.STATE_APPROVED, global.except_place_id];
 
   if(category_item_ids.length === 1 && category_item_ids[0] === 0){
     query_category_item_ids = '';
@@ -265,11 +267,13 @@ router.post('/any/place/list/select', function(req, res){
     query_order_by = 'ORDER BY store.id DESC';
   }
 
-  // const querySelect = mysql.format("SELECT FROM select_category_places AS select_category_place LEFT JOIN ")
-  // const querySelect = mysql.format(`SELECT store.id AS store_id FROM select_category_places AS select_category_place LEFT JOIN orders_items AS orders_item ON select_category_place.store_id=orders_item.store_id LEFT JOIN stores AS store ON orders_item.store_id=store.id WHERE store.state=? ${query_category_item_ids} GROUP BY select_category_place.store_id ${query_order_by} LIMIT ? OFFSET ?`, datas);
-
-  const querySelect = mysql.format(`SELECT select_category_place.store_id AS store_id FROM select_category_places AS select_category_place LEFT JOIN stores AS store ON select_category_place.store_id=store.id LEFT JOIN orders_items AS orders_item ON select_category_place.store_id=orders_item.store_id WHERE store.state=? ${query_category_item_ids} GROUP BY select_category_place.store_id ${query_order_by} LIMIT ? OFFSET ?`, datas);
-
+  //원코드
+  // const querySelect = mysql.format(`SELECT select_category_place.store_id AS store_id FROM select_category_places AS select_category_place LEFT JOIN stores AS store ON select_category_place.store_id=store.id LEFT JOIN orders_items AS orders_item ON select_category_place.store_id=orders_item.store_id WHERE store.state=? ${query_category_item_ids} GROUP BY select_category_place.store_id ${query_order_by} LIMIT ? OFFSET ?`, datas);
+  
+  //특수한 이슈
+  //상단에 global.except_place_id 이거 배열에서 빼야함.
+  const querySelect = mysql.format(`SELECT select_category_place.store_id AS store_id FROM select_category_places AS select_category_place LEFT JOIN stores AS store ON select_category_place.store_id=store.id LEFT JOIN orders_items AS orders_item ON select_category_place.store_id=orders_item.store_id WHERE store.state=? AND store.id<>? ${query_category_item_ids} GROUP BY select_category_place.store_id ${query_order_by} LIMIT ? OFFSET ?`, datas);
+  
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
       result: {

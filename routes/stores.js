@@ -3140,6 +3140,17 @@ router.post("/any/items/otherstore/get", function(req, res){
   const store_id = req.body.data.store_id;
   // const item_id = req.body.data.item_id;
 
+  //except_place_id start
+  if(store_id === global.except_place_id){
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: []
+      }
+    })
+  }
+  //except_place_id end
+
   const querySelectCategory = mysql.format("SELECT categories_place_id FROM select_category_places WHERE store_id=?", [store_id]);
 
   db.SELECT(querySelectCategory, {}, (result_category) => {

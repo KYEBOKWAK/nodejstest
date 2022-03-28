@@ -11,6 +11,8 @@ const Util = use('lib/util.js');
 const moment_timezone = require('moment-timezone');
 moment_timezone.tz.setDefault("Asia/Seoul");
 
+const global = use('lib/global_const.js');
+
 router.post('/wait/order', function(req, res){
   const user_id = req.body.data.user_id;
   
@@ -269,7 +271,10 @@ router.post('/any/recommand/creator', function(req, res){
 
 router.post('/any/recommand/creator/v1', function(req, res){
 
-  const querySelect = mysql.format("SELECT store.user_id AS store_user_id, store.title AS store_title, store.id AS store_id, store.alias, store.view_count, user.profile_photo_url, COUNT(comment.id) AS comment_count FROM stores AS store LEFT JOIN comments AS comment ON comment.commentable_id=store.id AND comment.commentable_type=? LEFT JOIN users AS user ON store.user_id=user.id WHERE store.tier=? AND store.state=? GROUP BY store.id ORDER BY RAND() LIMIT ?", ['App\\Models\\Store', Types.tier_store.sale_keep, Types.store.STATE_APPROVED, 6])
+  //원코드
+  // const querySelect = mysql.format("SELECT store.user_id AS store_user_id, store.title AS store_title, store.id AS store_id, store.alias, store.view_count, user.profile_photo_url, COUNT(comment.id) AS comment_count FROM stores AS store LEFT JOIN comments AS comment ON comment.commentable_id=store.id AND comment.commentable_type=? LEFT JOIN users AS user ON store.user_id=user.id WHERE store.tier=? AND store.state=? GROUP BY store.id ORDER BY RAND() LIMIT ?", ['App\\Models\\Store', Types.tier_store.sale_keep, Types.store.STATE_APPROVED, 6])
+
+  const querySelect = mysql.format("SELECT store.user_id AS store_user_id, store.title AS store_title, store.id AS store_id, store.alias, store.view_count, user.profile_photo_url, COUNT(comment.id) AS comment_count FROM stores AS store LEFT JOIN comments AS comment ON comment.commentable_id=store.id AND comment.commentable_type=? LEFT JOIN users AS user ON store.user_id=user.id WHERE store.tier=? AND store.state=? AND store.id<>? GROUP BY store.id ORDER BY RAND() LIMIT ?", ['App\\Models\\Store', Types.tier_store.sale_keep, Types.store.STATE_APPROVED, global.except_place_id, 6])
 
   // const querySelect = mysql.format("SELECT id AS store_id FROM stores AS store WHERE store.state=? GROUP BY store.id ORDER BY RAND() LIMIT ?", [Types.store.STATE_APPROVED, 9])
 
