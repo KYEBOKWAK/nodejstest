@@ -1368,11 +1368,7 @@ router.post('/store/onetime', function(req, res){
                   // console.log(result);
                   //status: 'paid',
                   if(result.status === 'paid'){
-                      //결제 성공
-                      if(process.env.APP_TYPE !== 'local'){
-                        senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
-                      }
-  
+                      //결제 성공  
                       req.body.data.merchant_uid = result.merchant_uid;
                       req.body.data.imp_uid = result.imp_uid;
 
@@ -1381,6 +1377,10 @@ router.post('/store/onetime', function(req, res){
                       // req.body.data.pay_method = result.pay_method;
 
                       setDonation(req, res, (donation_order_id) => {
+                        if(process.env.APP_TYPE !== 'local'){
+                          senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
+                        }
+
                         payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
                       }, (error) => {
 
