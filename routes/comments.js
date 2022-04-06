@@ -52,7 +52,7 @@ router.post("/", function(req, res){
 router.post("/detail", function(req, res){
   const comment_id = req.body.data.comment_id;
 
-  db.SELECT("SELECT comment.user_id, comment.created_at, comment.id AS comment_id, nick_name, profile_photo_url, commentscomment.commentable_id, comment.contents, count(commentscomment.id) AS comments_comment_count FROM comments AS comment" + 
+  db.SELECT("SELECT comment.is_heart, comment.user_id, comment.created_at, comment.id AS comment_id, nick_name, profile_photo_url, commentscomment.commentable_id, comment.contents, count(commentscomment.id) AS comments_comment_count FROM comments AS comment" + 
             " LEFT JOIN users AS user" +
             " ON comment.user_id=user.id" +
             " LEFT JOIN comments AS commentscomment" +
@@ -167,7 +167,8 @@ router.post("/add", function(req, res){
   db.INSERT("INSERT INTO comments SET ?", commentObject, function(result_insert_comments){
     return res.json({
       result: {
-        state: res_state.success
+        state: res_state.success,
+        comment_id: result_insert_comments.insertId
       }
     })
   }, (error) => {
@@ -286,6 +287,91 @@ router.post("/remove", function(req, res){
   });
 });
 
+router.post("/remove/v1", function(req, res){
+  const comment_id = req.body.data.comment_id;
+  const user_id = req.body.data.user_id;
+
+  db.SELECT("SELECT user_id, commentable_type, commentable_id FROM comments WHERE id=?", [comment_id], function(result_comment_select){
+
+    if(!result_comment_select || result_comment_select.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: "댓글 정보를 찾을 수 없습니다.",
+        result: {}
+      })
+    }
+
+    const data = result_comment_select[0];
+    let querySelectStore = '';
+    if(data.commentable_type === 'App\\Models\\Store'){
+      //스토어에 걸려 있는 댓글
+      //스토어에 걸려 있으면 상점주 인지 확인한다.
+      querySelectStore = mysql.format('SELECT user_id AS store_user_id FROM stores WHERE id=?', data.commentable_id);
+      // console.log(data.commentable_type);
+    }else if(data.commentable_type === 'App\\Models\\Comment'){
+      //대댓글에 걸려있는 댓글
+      querySelectStore = mysql.format('SELECT store.user_id AS store_user_id FROM comments AS comment LEFT JOIN comments AS comment_store ON comment.commentable_id=comment_store.id LEFT JOIN stores AS store ON comment_store.commentable_id=store.id WHERE comment.id=?', comment_id);
+    }else{
+    }
+
+    db.SELECT(querySelectStore, {}, (result_comment_select_store) => {
+      if(!result_comment_select_store || result_comment_select_store.length === 0){
+        return res.json({
+          state: res_state.error,
+          message: "댓글 삭제 불가. 상점 정보가 없습니다.",
+          result: {}
+        })
+      }
+
+      // console.log(result_comment_select_store[0]);
+
+      const data_store = result_comment_select_store[0];
+      let isDelete = false;
+      if(user_id === data.user_id){
+        //삭제 요청 유저 id와 코멘트 유저 id가 같으면 글쓴 유저
+        isDelete = true;
+        // console.log(result_comment_select[0].user_id);
+      }else{
+        //코멘트 유저 id가 다르면 상점주 인지 확인한다.
+        if(user_id === data_store.store_user_id){
+          isDelete = true;
+        }
+      }
+
+      if(!isDelete){
+        return res.json({
+          state: res_state.error,
+          message: "댓글 삭제 불가. 작성자만 삭제 가능합니다.",
+          result: {}
+        })
+      }
+
+      //대댓글이 있으면 우선 삭제
+    db.DELETE("DELETE FROM comments WHERE commentable_id=? AND commentable_type='App\\\\Models\\\\Comment'", [comment_id], function(result_commentsComment_delete){
+      db.DELETE("DELETE FROM comments WHERE id=?", [comment_id], function(result_comment_delete){
+          return res.json({
+            result: {
+              state: res_state.success
+            }
+          });
+        }, (error) => {
+          return res.json({
+            state: res_state.error,
+            message: error,
+            result:{}
+          })
+        });
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: error,
+          result:{}
+        })
+      });
+    })
+  });
+});
+
 router.post('/any/list', function(req, res){
   
   // let querySelect = mysql.format("SELECT * FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id ORDER BY item.id DESC LIMIT ? OFFSET ?", [limit, skip]);
@@ -344,7 +430,7 @@ router.post('/any/list/buyer/v1', function(req, res){
 
   let commentable_type = this.getCommentableType(commentType);
   
-  let querySelect = mysql.format("SELECT comment.user_id, comment.created_at, comment.id AS comment_id, user.nick_name, user.name, user.profile_photo_url, comment.contents, comment.second_target_id FROM comments AS comment LEFT JOIN orders_items AS orders_item ON orders_item.id=comment.second_target_id LEFT JOIN users AS user ON comment.user_id=user.id WHERE orders_item.item_id=? AND comment.commentable_id=? AND comment.commentable_type=? AND comment.second_target_id IS NOT NULL GROUP BY comment.id ORDER BY comment.id DESC LIMIT ? OFFSET ?", [item_id, target_id, commentable_type, limit, skip]);
+  let querySelect = mysql.format("SELECT comment.is_heart, comment.user_id, comment.created_at, comment.id AS comment_id, user.nick_name, user.name, user.profile_photo_url, comment.contents, comment.second_target_id FROM comments AS comment LEFT JOIN orders_items AS orders_item ON orders_item.id=comment.second_target_id LEFT JOIN users AS user ON comment.user_id=user.id WHERE orders_item.item_id=? AND comment.commentable_id=? AND comment.commentable_type=? AND comment.second_target_id IS NOT NULL GROUP BY comment.id ORDER BY comment.id DESC LIMIT ? OFFSET ?", [item_id, target_id, commentable_type, limit, skip]);
 
   
   db.SELECT(querySelect, [], function(result){
@@ -453,7 +539,8 @@ router.post("/second/add/check", function(req, res){
 
     return res.json({
       state: res_state.error,
-      message: '이미 해당 상품의 후기를 작성했습니다.',
+      // message: '이미 해당 상품의 후기를 작성했습니다.',
+      message: 's623',
       result: {}
     })
   })
@@ -485,6 +572,139 @@ router.post("/order/item/check", function(req, res){
       result: {
         state: res_state.success,
         store_order_id: data.id
+      }
+    })
+  })
+})
+
+router.post("/any/comments/list", function(req, res){
+  //코멘트의 코멘트 찾기
+  const comment_id = req.body.data.comment_id;
+
+  const querySelect = mysql.format("SELECT id, user_id, contents, created_at FROM comments WHERE commentable_type='App\\\\Models\\\\Comment' AND commentable_id=?", [comment_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          list: []
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post('/heart/set', function(req, res){
+  const comment_id = req.body.data.comment_id;
+  const is_heart = req.body.data.is_heart;
+
+  db.UPDATE("UPDATE comments SET is_heart=? WHERE id=?", [is_heart, comment_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+
+  })
+})
+
+router.post("/manager/item/list", function(req, res){
+  const store_id = req.body.data.store_id;
+  // const sort_state = req.body.data.sort_state;
+
+  let querySelect = '';
+
+  querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number ASC, item.id DESC", [store_id]);
+
+  /*
+  if(sort_state === null){
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id]);
+  }else{
+    querySelect = mysql.format("SELECT item.price_USD, item.currency_code, item.type_contents, store.title AS store_title, item.state, item.order_number, item.id, item.store_id, price, item.title, item.img_url, nick_name FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.store_id=? AND item.state=? AND item.order_number IS NOT NULL ORDER BY item.order_number", [store_id, sort_state]);
+  }
+  */
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post('/manager/list', function(req, res){
+  const store_id = req.body.data.store_id;
+  const item_id = req.body.data.item_id;
+
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip
+
+  let querySelect = '';
+  if(item_id === null){
+    querySelect = mysql.format("SELECT comment.id, comment.user_id, comment.is_heart FROM comments AS comment WHERE comment.commentable_id=? AND comment.commentable_type=? AND comment.second_target_id IS NOT NULL ORDER BY comment.id DESC LIMIT ? OFFSET ?", [store_id, 'App\\Models\\Store', limit, skip]);
+  }else{
+    querySelect = mysql.format("SELECT comment.id, comment.user_id, comment.is_heart FROM comments AS comment LEFT JOIN orders_items AS orders_item ON orders_item.id=comment.second_target_id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE comment.commentable_id=? AND comment.commentable_type=? AND second_target_id IS NOT NULL AND item.id=? GROUP BY comment.id ORDER BY comment.id DESC LIMIT ? OFFSET ?", [store_id, 'App\\Models\\Store', item_id, limit, skip]);
+  }
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+  
+});
+
+router.post('/manager/item/count', function(req, res){
+  //상품id에 따른 코멘트 수를 불러온다.
+  const store_id = req.body.data.store_id;
+
+  const querySelect = mysql.format("SELECT item.id, item.title, COUNT(comment.id) AS comment_count FROM comments AS comment LEFT JOIN orders_items AS orders_item ON orders_item.id=comment.second_target_id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE comment.commentable_id=? AND comment.commentable_type=? AND second_target_id IS NOT NULL GROUP BY item.id", [store_id, 'App\\Models\\Store']);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post('/item/info', function(req, res){
+  const comment_id = req.body.data.comment_id;
+  
+  const querySelect = mysql.format("SELECT item.title FROM comments AS comment LEFT JOIN orders_items AS orders_item ON comment.second_target_id=orders_item.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE comment.id=?", [comment_id])
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          title: ''
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        title: data.title
       }
     })
   })
