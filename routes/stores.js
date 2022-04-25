@@ -330,7 +330,7 @@ router.post('/any/item/info', function(req, res){
 router.post('/info/userid', function(req, res){
   // const user_id = req.body.data.user_id;
   const store_user_id = req.body.data.store_user_id;
-  const querySelect = mysql.format("SELECT store.thumb_img_url, store.download_file_max, store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name, user.profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", store_user_id);
+  const querySelect = mysql.format("SELECT store.business_number, store.is_business, store.thumb_img_url, store.download_file_max, store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name, user.profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", store_user_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -1530,7 +1530,17 @@ router.post("/manager/account/info/set", function(req, res){
   const email = req.body.data.email;
   const contact = req.body.data.contact;
 
-  db.UPDATE("UPDATE stores SET account_name=?, account_number=?, account_bank=?, email=?, contact=? WHERE id=?", [account_name, account_number, account_bank, email, contact, store_id], 
+  let business_number = req.body.data.business_number;
+  if(business_number === undefined || business_number === null || business_number === ''){
+    business_number = null;
+  }
+
+  let is_business = req.body.data.is_business;
+  if(is_business === undefined){
+    is_business = false;
+  }
+
+  db.UPDATE("UPDATE stores SET is_business=?, business_number=?, account_name=?, account_number=?, account_bank=?, email=?, contact=? WHERE id=?", [is_business, business_number, account_name, account_number, account_bank, email, contact, store_id], 
   (result) => {
     return res.json({
       result: {

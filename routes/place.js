@@ -405,6 +405,38 @@ router.get('/any/title/rand', function(req, res){
   })
 })
 
+router.post("/file/download/delete", function(req, res){
+  const files_downloads_id = req.body.data.files_downloads_id;
+  db.DELETE("DELETE FROM files WHERE id=?", files_downloads_id, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '이미지 DB 삭제 실패',
+      result:{}
+    })
+  })
+});
+
+router.post("/file/business/get", function(req, res){
+  const target_id = req.body.data.target_id;
+
+  const querySelect = mysql.format("SELECT id, originalname, target_type FROM files WHERE target_id=? AND (target_type=? OR target_type=?)", [target_id, Types.file_upload_target_type.business_card, Types.file_upload_target_type.business_bank_copy]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
 /*
 router.post('/file/size/s3', function(req, res){
 
