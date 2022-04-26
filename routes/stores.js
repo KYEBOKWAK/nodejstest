@@ -3151,7 +3151,8 @@ router.post("/any/items/otherstore/get", function(req, res){
   // const item_id = req.body.data.item_id;
 
   //except_place_id start
-  if(store_id === global.except_place_id){
+  if(store_id === global.except_place_id ||
+    store_id === global.except_place_id_otherstore){
     return res.json({
       result: {
         state: res_state.success,
