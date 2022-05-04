@@ -1803,4 +1803,16 @@ router.post('/any/temp/certification/token/validate', function(req, res){
   });
 })
 
+router.post("/any/decode/jwt/google", function(req, res){
+  const token = req.body.data.google_token;
+
+  var decoded = jwt.decode(token, {complete: true});
+  return res.json({
+    result:{
+      state: res_state.success,
+      data: decoded.payload
+    }
+  })
+})
+
 module.exports = router;
