@@ -792,7 +792,7 @@ router.post('/any/list/get/thumb', function(req, res){
   let limit = req.body.data.limit;
   let skip = req.body.data.skip;
   
-  const querySelect = mysql.format("SELECT orders_donation.id AS donation_id, donation_comment.is_secret, donation_comment.text, user.name, user.nick_name, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, orders_donation.is_heart FROM orders_donations AS orders_donation LEFT JOIN users AS user ON orders_donation.user_id=user.id LEFT JOIN donation_comments AS donation_comment ON donation_comment.id=orders_donation.donation_comment_id WHERE orders_donation.store_id=? AND orders_donation.state=? ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, limit, skip]);
+  const querySelect = mysql.format("SELECT donation_comment.answer_comment_id, orders_donation.is_hide, orders_donation.created_at, orders_donation.id AS donation_id, donation_comment.is_secret, donation_comment.text, user.name, user.nick_name, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, orders_donation.is_heart FROM orders_donations AS orders_donation LEFT JOIN users AS user ON orders_donation.user_id=user.id LEFT JOIN donation_comments AS donation_comment ON donation_comment.id=orders_donation.donation_comment_id WHERE orders_donation.store_id=? AND orders_donation.state=? AND orders_donation.is_hide=? ORDER BY orders_donation.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, false,limit, skip]);
   
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -811,7 +811,7 @@ router.post('/any/list/get/thumb/last', function(req, res){
   let limit = req.body.data.limit;
   let skip = req.body.data.skip;
   
-  const querySelect = mysql.format("SELECT orders_donation.id AS donation_id, donation_comment.is_secret, donation_comment.text, user.name, user.nick_name, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, orders_donation.is_heart FROM orders_donations AS orders_donation LEFT JOIN users AS user ON orders_donation.user_id=user.id LEFT JOIN donation_comments AS donation_comment ON donation_comment.id=orders_donation.donation_comment_id WHERE orders_donation.store_id=? AND orders_donation.state=? ORDER BY orders_donation.id ASC LIMIT 1", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION]);
+  const querySelect = mysql.format("SELECT orders_donation.id AS donation_id, donation_comment.is_secret, donation_comment.text, user.name, user.nick_name, orders_donation.user_id, orders_donation.donation_comment_id, orders_donation.count, orders_donation.is_heart FROM orders_donations AS orders_donation LEFT JOIN users AS user ON orders_donation.user_id=user.id LEFT JOIN donation_comments AS donation_comment ON donation_comment.id=orders_donation.donation_comment_id WHERE orders_donation.store_id=? AND orders_donation.state=? AND orders_donation.is_hide=? ORDER BY orders_donation.id ASC LIMIT 1", [store_id, Types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION, false]);
   
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
@@ -1003,6 +1003,30 @@ router.post('/manager/answer/set', function(req, res){
     return res.json({
       state: res_state.error,
       message: '도네이션 메시지 추가 에러',
+      result: {}
+    })
+  })
+})
+
+router.post('/hide/set', function(req, res){
+  const donation_id = req.body.data.donation_id;
+  const is_hide = req.body.data.is_hide;
+
+  const orders_donation_data = {
+    is_hide: is_hide
+  }
+
+  db.UPDATE("UPDATE orders_donations SET ? WHERE id=?", [orders_donation_data, donation_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '후원 숨기기 에러',
       result: {}
     })
   })

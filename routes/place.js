@@ -76,6 +76,39 @@ function setPlaceCategory(store_id, select_category_datas, callback) {
     return callback();
   })
 }
+
+function createOnOffData(store_id, callback) {
+  let _insertQueryArray = [];
+  let _insertOptionArray = [];
+
+  for(let i = 0 ; i < Types.default_onoff_datas.length ; i++){
+    const data = Types.default_onoff_datas[i];
+    let queryObject = {
+      key: i,
+      value: "INSERT INTO onoffs SET ?;"
+    }
+
+    let insertObject = {
+      key: i,
+      value: {
+        store_id: store_id,
+        type: data.type,
+        is_on: false,
+        order_number: data.order_number
+      }
+    }
+
+    _insertQueryArray.push(queryObject);
+    _insertOptionArray.push(insertObject);
+  }
+
+  db.INSERT_MULITPLEX(_insertQueryArray, _insertOptionArray, (result) => {
+    return callback();
+  }, (error) => {
+    return callback();
+  })
+}
+
 const Global_Func = use("lib/global_func.js");
 
 router.post('/create', function(req, res){
@@ -138,83 +171,49 @@ router.post('/create', function(req, res){
     db.INSERT("INSERT INTO stores SET ?", placeData, 
     (result_insert) => {
       
-      setPlaceCategory(result_insert.insertId, select_category_datas, () => {
-        let collect_category = [];
-        for(let i = 0 ; i < select_category_datas.length ; i++){
-          const _data = select_category_datas[i];
-          collect_category.push(_data.text);
-        }
-
-        if(process.env.APP_TYPE !== 'local'){
-          slack.webhook({
-            channel: "#bot-플레이스신청",
-            username: "신청bot",
-            text: `[플레이스신청]\n플레이스명: ${title}\n이메일: ${email}\n연락처: ${contact}\n가입경로: ${collect_join_path}\n활동채널: ${collect_channel}\n채널주소: ${channel_url}\n카테고리: ${collect_category.toString()}\nalias: https://ctee.kr/place/${alias}`
-          }, function(err, response) {
-            console.log(err);
-          });
-    
-          const mailMSG = {
-            to: email,
-            from: '크티<contact@ctee.kr>',
-            subject: Templite_email.email_join_place.subject,
-            html: Templite_email.email_join_place.html(title)
+      createOnOffData(result_insert.insertId, () => {
+        setPlaceCategory(result_insert.insertId, select_category_datas, () => {
+          let collect_category = [];
+          for(let i = 0 ; i < select_category_datas.length ; i++){
+            const _data = select_category_datas[i];
+            collect_category.push(_data.text);
           }
-          sgMail.send(mailMSG).then((result) => {
-              // console.log(result);
-          }).catch((error) => {
-              // console.log(error);
-          })
-    
-          Global_Func.sendKakaoAlimTalk({
-            templateCode: 'Kalarm15v1',
-            to: contact
-          })
-        }
   
-        return res.json({
-          result: {
-            state: res_state.success,
-            store_id: result_insert.insertId
+          if(process.env.APP_TYPE !== 'local'){
+            slack.webhook({
+              channel: "#bot-플레이스신청",
+              username: "신청bot",
+              text: `[플레이스신청]\n플레이스명: ${title}\n이메일: ${email}\n연락처: ${contact}\n가입경로: ${collect_join_path}\n활동채널: ${collect_channel}\n채널주소: ${channel_url}\n카테고리: ${collect_category.toString()}\nalias: https://ctee.kr/place/${alias}`
+            }, function(err, response) {
+              console.log(err);
+            });
+      
+            const mailMSG = {
+              to: email,
+              from: '크티<contact@ctee.kr>',
+              subject: Templite_email.email_join_place.subject,
+              html: Templite_email.email_join_place.html(title)
+            }
+            sgMail.send(mailMSG).then((result) => {
+                // console.log(result);
+            }).catch((error) => {
+                // console.log(error);
+            })
+      
+            Global_Func.sendKakaoAlimTalk({
+              templateCode: 'Kalarm15v1',
+              to: contact
+            })
           }
+    
+          return res.json({
+            result: {
+              state: res_state.success,
+              store_id: result_insert.insertId
+            }
+          })
         })
-      })
-
-      /*
-      if(process.env.APP_TYPE !== 'local'){
-        slack.webhook({
-          channel: "#bot-플레이스신청",
-          username: "신청bot",
-          text: `[플레이스신청]\n플레이스명: ${title}\n이메일: ${email}\n연락처: ${contact}\n가입경로: ${collect_join_path}\n활동채널: ${collect_channel}\n채널주소: ${channel_url}\n카테고리: ${collect_category}\nalias: https://ctee.kr/place/${alias}`
-        }, function(err, response) {
-          console.log(err);
-        });
-  
-        const mailMSG = {
-          to: email,
-          from: '크티<contact@ctee.kr>',
-          subject: Templite_email.email_join_place.subject,
-          html: Templite_email.email_join_place.html(title)
-        }
-        sgMail.send(mailMSG).then((result) => {
-            // console.log(result);
-        }).catch((error) => {
-            // console.log(error);
-        })
-  
-        Global_Func.sendKakaoAlimTalk({
-          templateCode: 'Kalarm15v1',
-          to: contact
-        })
-      }
-
-      return res.json({
-        result: {
-          state: res_state.success,
-          store_id: result_insert.insertId
-        }
-      })
-      */
+      });
     }, (error) => {
       return res.json({
         state: res_state.error,
@@ -436,6 +435,135 @@ router.post("/file/business/get", function(req, res){
     })
   })
 });
+
+router.post("/any/onoff/list", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const querySelect = mysql.format("SELECT store_id, type, is_on, order_number FROM onoffs WHERE store_id=? ORDER BY order_number", store_id);
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          list: []
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post("/onoff/set", function(req, res){
+  const store_id = req.body.data.store_id;
+  const type = req.body.data.type;
+  const is_on = req.body.data.is_on;
+  const order_number = req.body.data.order_number;
+
+  let onoffData = {
+    store_id: store_id,
+    type: type,
+    is_on: is_on,
+    order_number: order_number
+  }
+
+  const querySelect = mysql.format("SELECT id FROM onoffs WHERE store_id=? AND type=?", [store_id, type])
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      //값이 없으면 insert
+      db.INSERT("INSERT INTO onoffs SET ?", [onoffData], (result) => {
+        return res.json({
+          result: {
+            state: res_state.success
+          }
+        })
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: 'on off insert 실패',
+          result: {}
+        })
+      })
+    }else{
+      //값이 있으면 update
+      db.UPDATE("UPDATE onoffs SET ? WHERE store_id=? AND type=?", [onoffData, store_id, type], (result) => {
+        return res.json({
+          result: {
+            state: res_state.success
+          }
+        })
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: 'on off update 실패',
+          result: {}
+        })
+      })
+    }
+  })
+})
+
+router.post("/any/home/item/list", function(req, res){
+  const store_id = req.body.data.store_id;
+//order_number
+  const querySelect = mysql.format("SELECT id FROM items WHERE store_id=? ORDER BY order_number LIMIT ?", [store_id, 3]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post("/any/home/fanevent/list", function(req, res){
+  // const store_id = req.body.data.store_id;
+  const store_user_id = req.body.data.store_user_id;
+//order_number
+  const querySelect = mysql.format("SELECT id, project_type, poster_url, poster_renew_url FROM projects WHERE user_id=? AND state=? AND funding_closing_at IS NOT NULL ORDER BY funding_closing_at DESC LIMIT ?", [store_user_id, Types.project.STATE_APPROVED, 3]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post('/bg/get', function(req, res){
+  const store_id = req.body.data.store_id;
+  const store_alias = req.body.data.store_alias;
+
+  const querySelect = mysql.format("SELECT thumb_img_url FROM stores WHERE id=? OR alias=?", [store_id, store_alias]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '상점 정보 조회 불가'
+      })
+    }
+
+    let data = result[0];
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        thumb_img_url: data.thumb_img_url
+      }
+    })
+  })
+})
 
 /*
 router.post('/file/size/s3', function(req, res){
