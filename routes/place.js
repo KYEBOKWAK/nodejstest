@@ -540,7 +540,7 @@ router.post('/any/onoff/get', function(req, res){
 router.post("/any/home/item/list", function(req, res){
   const store_id = req.body.data.store_id;
 //order_number
-  const querySelect = mysql.format("SELECT id FROM items WHERE store_id=? AND state=? ORDER BY order_number LIMIT ?", [store_id, Types.item_state.SALE, 3]);
+  const querySelect = mysql.format("SELECT id FROM items WHERE store_id=? AND state<>? ORDER BY order_number LIMIT ?", [store_id, Types.item_state.SALE_STOP, 3]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
