@@ -365,8 +365,6 @@ router.post('/any/search/stores', function(req, res){
     }
   }
 
-  // let querySelect = mysql.format("SELECT store.id AS store_id FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.state=? AND store.title REGEXP ?", [Types.project.STATE_APPROVED, '타이틀|크햄']);
-
   let querySelect = mysql.format(`SELECT store.id AS store_id FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.state=? AND (${queryTail})`, [Types.project.STATE_APPROVED]);
 
   db.SELECT(querySelect, {}, (result) => {
@@ -395,8 +393,6 @@ router.post('/any/search/items', function(req, res){
     })
   }
 
-  // const querySelect = mysql.format("SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE store.state=? AND item.state<>? AND item.title LIKE ? GROUP BY item.id LIMIT ? OFFSET ?", [Types.store.STATE_APPROVED, Types.item_state.SALE_STOP, "%"+search_text+"%", limit, skip]);
-
   let queryTail = '';
   for(let i = 0 ; i < search_text.length ; i++){
     const data = search_text[i];
@@ -407,7 +403,9 @@ router.post('/any/search/items', function(req, res){
     }
   }
 
-  const querySelect = mysql.format(`SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE store.state=? AND item.state<>? AND (${queryTail}) GROUP BY item.id LIMIT ? OFFSET ?`, [Types.store.STATE_APPROVED, Types.item_state.SALE_STOP, limit, skip]);
+  // const querySelect = mysql.format(`SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE store.state=? AND item.state<>? AND (${queryTail}) GROUP BY item.id LIMIT ? OFFSET ?`, [Types.store.STATE_APPROVED, Types.item_state.SALE_STOP, limit, skip]);
+
+  const querySelect = mysql.format(`SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN onoffs AS onoff ON onoff.store_id=store.id AND onoff.type=? WHERE (onoff.is_on IS NULL OR onoff.is_on=?) AND store.state=? AND item.state<>? AND (${queryTail}) GROUP BY item.id LIMIT ? OFFSET ?`, ['store', true, Types.store.STATE_APPROVED, Types.item_state.SALE_STOP, limit, skip]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -433,8 +431,6 @@ router.post('/any/search/items/count', function(req, res){
     })
   }
 
-  // const querySelect = mysql.format("SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE store.state=? AND item.state<>? AND item.title LIKE ? GROUP BY item.id", [Types.store.STATE_APPROVED, Types.item_state.SALE_STOP, "%"+search_text+"%"]);
-
   let queryTail = '';
   for(let i = 0 ; i < search_text.length ; i++){
     const data = search_text[i];
@@ -445,7 +441,9 @@ router.post('/any/search/items/count', function(req, res){
     }
   }
 
-  const querySelect = mysql.format(`SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE store.state=? AND item.state<>? AND (${queryTail}) GROUP BY item.id`, [Types.store.STATE_APPROVED, Types.item_state.SALE_STOP]);
+  // const querySelect = mysql.format(`SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE store.state=? AND item.state<>? AND (${queryTail}) GROUP BY item.id`, [Types.store.STATE_APPROVED, Types.item_state.SALE_STOP]);
+
+  const querySelect = mysql.format(`SELECT item.id AS item_id FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id LEFT JOIN onoffs AS onoff ON onoff.store_id=store.id AND onoff.type=? WHERE (onoff.is_on IS NULL OR onoff.is_on=?) AND store.state=? AND item.state<>? AND (${queryTail}) GROUP BY item.id`, ['store', true, Types.store.STATE_APPROVED, Types.item_state.SALE_STOP]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({

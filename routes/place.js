@@ -509,10 +509,38 @@ router.post("/onoff/set", function(req, res){
   })
 })
 
+router.post('/any/onoff/get', function(req, res){
+  const store_id = req.body.data.store_id;
+  const type = req.body.data.type;
+
+  const querySelect = mysql.format("SELECT id, is_on FROM onoffs WHERE store_id=? AND type=?", [store_id, type]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      //값이 없으면 기본으로 on 이다.
+      return res.json({
+        state: res_state.success,
+        result: {
+          is_on: true
+        }
+      })
+    }
+    
+    const data = result[0];
+    return res.json({
+      state: res_state.success,
+      result: {
+        is_on: data.is_on
+      }
+    })
+  })
+
+});
+
 router.post("/any/home/item/list", function(req, res){
   const store_id = req.body.data.store_id;
 //order_number
-  const querySelect = mysql.format("SELECT id FROM items WHERE store_id=? ORDER BY order_number LIMIT ?", [store_id, 3]);
+  const querySelect = mysql.format("SELECT id FROM items WHERE store_id=? AND state=? ORDER BY order_number LIMIT ?", [store_id, Types.item_state.SALE, 3]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
