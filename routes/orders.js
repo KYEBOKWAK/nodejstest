@@ -1691,7 +1691,11 @@ router.post('/store/item/list', function(req, res){
 })
 
 router.post('/store/item/list/get', function(req, res){
-  const user_id = req.body.data.user_id;
+  let user_id = req.body.data.user_id;
+  const _user_id = req.body.data._user_id;
+  if(_user_id){
+    user_id = _user_id;
+  }
 
   let limit = req.body.data.limit;
   let skip = req.body.data.skip;
