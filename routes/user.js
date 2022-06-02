@@ -1718,7 +1718,7 @@ router.post('/any/location/get', function(req, res){
       }
 
       //test//
-      countryCode = 'US';
+      // countryCode = 'US';
       ////////
 
       return res.json({
