@@ -1709,6 +1709,7 @@ router.post('/any/location/get', function(req, res){
   axios.get(`http://whois.kisa.or.kr/openapi/ipascc.jsp?query=${myIp}&key=${process.env.WHOIS_API_KEY}&answer=json`).then((result) => {
     
     // console.log(result.data.whois.countryCode);
+    console.log(result.data);
 
     if(result.status === 200){
       let countryCode = result.data.whois.countryCode;
