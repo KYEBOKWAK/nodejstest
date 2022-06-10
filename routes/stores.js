@@ -3219,7 +3219,7 @@ router.post("/any/items/otherstore/get", function(req, res){
 router.post('/any/download/file/list', function(req, res){
   const store_item_id = req.body.data.store_item_id;
 
-  const querySelect = mysql.format("SELECT originalname FROM files_downloads WHERE target_id=? AND target_type=?", [store_item_id, Types.file_upload_target_type.download_file]);
+  const querySelect = mysql.format("SELECT originalname FROM files_downloads WHERE target_id=? AND target_type=? AND state=?", [store_item_id, Types.file_upload_target_type.download_file, Types.files_downloads.none]);
 
   db.SELECT(querySelect, {}, (result) => {    
     return res.json({
