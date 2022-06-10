@@ -2996,7 +2996,6 @@ router.post('/expired/download/valid', function(req, res){
     }
 
     let isExpired = Util.isExpireTime(down_expired_at);
-    console.log(isExpired);
     // const _down_expired_at = moment_timezone(down_expired_at).format('YYYY-MM-DD');
 
     return res.json({

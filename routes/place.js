@@ -593,6 +593,46 @@ router.post('/bg/get', function(req, res){
   })
 })
 
+router.post("/file/download/list", function(req, res){
+  const store_item_id = req.body.data.store_item_id;
+  const file_upload_target_type = req.body.data.file_upload_target_type;
+
+  const querySelect = mysql.format("SELECT id, url, size, originalname, file_s3_key FROM files_downloads WHERE target_id=? AND target_type=? AND state=?", [store_item_id, file_upload_target_type, Types.files_downloads.none]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post("/file/delete/salefile", function(req, res){
+  //판매중인 상품을 삭제 요청하기. state를 바꿔서 주기체크에서 확인 후 삭제함.
+  const files_download_id = req.body.data.files_download_id;
+  const target_type = req.body.data.target_type;
+
+  db.UPDATE("UPDATE files_downloads SET state=? WHERE id=?", [Types.files_downloads.delete, files_download_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })  
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '파일 삭제 실패(update state)',
+      result: {}
+    })  
+  })
+
+  
+  
+})
+
 /*
 router.post('/file/size/s3', function(req, res){
 
