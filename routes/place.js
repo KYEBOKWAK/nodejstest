@@ -628,9 +628,87 @@ router.post("/file/delete/salefile", function(req, res){
       result: {}
     })  
   })
+})
 
+router.post("/manager/commision/item/info", function(req, res){
+  const item_id = req.body.data.item_id;
+  const store_id = req.body.data.store_id;
+
+  const querySelect = mysql.format("SELECT value FROM item_commisions WHERE store_id=? AND item_id=?", [store_id, item_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          value: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        value: data.value
+      }
+    })
+  })
+})
+
+router.post("/manager/commision/item/info/onlyplace", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+  const querySelect = mysql.format("SELECT id, start_at, end_at FROM item_commisions WHERE store_id=? AND start_at <= ? AND end_at > ?", [store_id, nowDate, nowDate]);
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          id: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        id: data.id
+      }
+    })
+  })
+});
+
+router.post("/manager/order/list", function(req, res){
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+
+  const store_id = req.body.data.store_id;
+
+  // const sort_state = req.body.data.sort_state;
+  // const sort_item_id = req.body.data.sort_item_id;
+
+  const state_currency_code = req.body.data.state_currency_code;
+
+  let querySelect = '';
+
+  if(state_currency_code === null){
+    querySelect = mysql.format("SELECT orders_item.type_commision, orders_item.price_USD, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+  }else{
+    querySelect = mysql.format("SELECT orders_item.type_commision, orders_item.price_USD, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.currency_code=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, state_currency_code, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+  }
   
-  
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
 })
 
 /*

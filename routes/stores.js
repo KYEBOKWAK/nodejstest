@@ -2255,7 +2255,7 @@ router.post("/manager/payment/info/v1", function(req, res){
   const sort_state = req.body.data.sort_state;
 
   const nowDate = moment_timezone();
-  // const nowDate = moment_timezone('2022-03-01 00:00:00');
+  // const nowDate = moment_timezone('2022-06-20 00:00:00');
   //범위 구하기
   let startDate = '';
   let endDate = '';
@@ -2293,7 +2293,7 @@ router.post("/manager/payment/info/v1", function(req, res){
 
     // selectQuery = mysql.format("SELECT orders_item.commision, orders_item.price_USD, orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
 
-    selectQuery = mysql.format("SELECT orders_item.commision, orders_item.price_USD, orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND (orders_item.total_price <> 0 OR orders_item.total_price_USD <> 0) ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
+    selectQuery = mysql.format("SELECT orders_item.type_commision, orders_item.commision, orders_item.price_USD, orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND (orders_item.total_price <> 0 OR orders_item.total_price_USD <> 0) ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
   }
 
   db.SELECT(selectQuery, {}, (result) => {
