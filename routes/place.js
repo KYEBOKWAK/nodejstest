@@ -660,7 +660,7 @@ router.post("/manager/commision/item/info/onlyplace", function(req, res){
   const store_id = req.body.data.store_id;
 
   const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-  const querySelect = mysql.format("SELECT id, start_at, end_at FROM item_commisions WHERE store_id=? AND start_at <= ? AND end_at > ?", [store_id, nowDate, nowDate]);
+  const querySelect = mysql.format("SELECT id, start_at, end_at FROM item_commisions WHERE store_id=? AND (start_at <= ? AND end_at > ?) OR (start_at IS NULL AND end_at IS NULL)", [store_id, nowDate, nowDate]);
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
       return res.json({
