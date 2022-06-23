@@ -228,11 +228,16 @@ router.post('/any/place/list/select', function(req, res){
 
   // const category_top_item_id = req.body.data.category_top_item_id;
   const category_item_ids = req.body.data.category_item_ids;
+  if(category_item_ids.length === 0){
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: []
+      }
+    })
+  }
 
   const creator_sort_select_type = req.body.data.creator_sort_select_type;
-
-  // console.log(category_item_ids)
-  // console.log(creator_sort_select_type)
 
   let queryString = ""
   let query_category_top_item_id = ''
@@ -283,6 +288,62 @@ router.post('/any/place/list/select', function(req, res){
     })
   })
 });
+
+router.post('/any/place/list/select/isshow', function(req, res){
+  const store_ids = req.body.data.store_ids;
+  if(store_ids.length === 0){
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: []
+      }
+    })
+  }
+
+  const querySelect = mysql.format("SELECT select_category_place.store_id, select_category_place.categories_place_id, categories_place.is_show FROM select_category_places AS select_category_place LEFT JOIN categories_places AS categories_place ON select_category_place.categories_place_id=categories_place.id WHERE select_category_place.store_id IN (?)", [store_ids]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    let list = [];
+    let delete_list = [];
+    for(let i = 0 ; i < result.length ; i++){
+      const data = result[i];
+      
+      const dataIndex = list.findIndex((value) => {
+        return value.store_id === data.store_id;
+      });
+
+      const deleteDataIndex = delete_list.findIndex((value) => {
+        return value.store_id === data.store_id;
+      });
+
+      if(deleteDataIndex >= 0){
+        //삭제해야할 데이터임
+        continue;
+      }
+
+      if(dataIndex < 0){
+        if(data.is_show){
+          list.push(data);
+        }
+        
+      }else{
+        //값이 있는데 is_show가 false면 삭제
+        if(!data.is_show){
+          delete_list.push(data);
+          list.splice(dataIndex, 1);
+        }
+      }
+    }
+
+    // console.log(list);
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: list
+      }
+    })
+  })
+})
 
 /*
 router.post('/any/top/info', function(req, res){
@@ -377,7 +438,7 @@ router.post('/ad/list', function(req, res){
 })
 
 router.get('/any/place/list', function(req, res){
-  const querySelect = mysql.format("SELECT id, text, text_eng FROM categories_places ORDER BY order_number");
+  const querySelect = mysql.format("SELECT id, text, text_eng, is_show FROM categories_places ORDER BY order_number");
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -405,8 +466,6 @@ router.post('/place/set', function(req, res){
   const querySelect = mysql.format("SELECT COUNT(id) AS count FROM select_category_places WHERE store_id=?", [store_id]);
 
   db.SELECT(querySelect, {}, (result_select) => {
-    console.log(result_select);
-
     if(result_select[0].count >= CATEGORY_PLACE_COUNT_MAX) {
       return res.json({
         state: res_state.error,
