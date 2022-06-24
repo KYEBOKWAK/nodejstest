@@ -13,6 +13,8 @@ moment_timezone.tz.setDefault("Asia/Seoul");
 
 const global = use('lib/global_const.js');
 
+// const ogs = require('open-graph-scraper');
+
 router.post('/wait/order', function(req, res){
   const user_id = req.body.data.user_id;
   
@@ -230,6 +232,21 @@ router.post('/any/thumbnails/list', function(req, res){
   const thumbnails_type = req.body.data.thumbnails_type;
 
   const querySelect = mysql.format("SELECT target_id, type, thumb_img_url, first_text, second_text, first_text_eng, second_text_eng FROM main_thumbnails WHERE type=?", [thumbnails_type]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post('/any/thumbnails/list/order', function(req, res){
+  const thumbnails_type = req.body.data.thumbnails_type;
+
+  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url, first_text, second_text, first_text_eng, second_text_eng FROM main_thumbnails WHERE type=? ORDER BY order_number", [thumbnails_type]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -665,5 +682,30 @@ router.post('/any/event/list', function(req, res){
     })
   })
 })
+
+/*
+router.post('/any/ogs', function(req, res){
+  const link_url = req.body.data.link_url;
+  // const link_url = 'https://naver.com';
+
+  ogs({url : link_url},(err,ret)=>{
+    let data = null;
+    if(!err) {
+      data = {
+        ...ret
+      }
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: data
+      }
+    })
+    
+    // fn(err,ret);
+  });
+})
+*/
 
 module.exports = router;

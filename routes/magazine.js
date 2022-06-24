@@ -102,5 +102,32 @@ router.post("/any/list/hidden", function(req, res){
   });
 });
 
+router.post("/any/detail", function(req, res){
+  const magazine_id = req.body.data.magazine_id;
+
+  let queryMagazine = mysql.format("SELECT title, subtitle, thumb_img_url FROM magazines WHERE id=?", magazine_id);
+  db.SELECT(queryMagazine, {}, (result) => {
+    if(result.length === 0){
+      return res.json({
+        result:{
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+
+    const data = result[0];
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+});
+
 
 module.exports = router;
