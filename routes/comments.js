@@ -307,7 +307,6 @@ router.post("/remove/v1", function(req, res){
       //스토어에 걸려 있는 댓글
       //스토어에 걸려 있으면 상점주 인지 확인한다.
       querySelectStore = mysql.format('SELECT user_id AS store_user_id FROM stores WHERE id=?', data.commentable_id);
-      // console.log(data.commentable_type);
     }else if(data.commentable_type === 'App\\Models\\Comment'){
       //대댓글에 걸려있는 댓글
       querySelectStore = mysql.format('SELECT store.user_id AS store_user_id FROM comments AS comment LEFT JOIN comments AS comment_store ON comment.commentable_id=comment_store.id LEFT JOIN stores AS store ON comment_store.commentable_id=store.id WHERE comment.id=?', comment_id);
@@ -318,7 +317,7 @@ router.post("/remove/v1", function(req, res){
       if(!result_comment_select_store || result_comment_select_store.length === 0){
         return res.json({
           state: res_state.error,
-          message: "댓글 삭제 불가. 상점 정보가 없습니다.",
+          message: "댓글 삭제 불가. 플레이스 정보가 없습니다.",
           result: {}
         })
       }
@@ -395,6 +394,99 @@ router.post('/any/list', function(req, res){
     });
   });    
 })
+
+router.post("/remove/v2", function(req, res){
+  const comment_id = req.body.data.comment_id;
+  const user_id = req.body.data.user_id;
+  const componentType = req.body.data.componentType;
+
+  db.SELECT("SELECT user_id, commentable_type, commentable_id FROM comments WHERE id=?", [comment_id], function(result_comment_select){
+
+    if(!result_comment_select || result_comment_select.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: "댓글 정보를 찾을 수 없습니다.",
+        result: {}
+      })
+    }
+
+    const data = result_comment_select[0];
+    let querySelectStore = '';
+    
+    if(data.commentable_type === 'App\\Models\\Store'){
+      //스토어에 걸려 있는 댓글
+      //스토어에 걸려 있으면 상점주 인지 확인한다.
+      querySelectStore = mysql.format('SELECT user_id AS store_user_id FROM stores WHERE id=?', data.commentable_id);
+    }else if(data.commentable_type === 'App\\Models\\Comment'){
+      //대댓글에 걸려있는 댓글 //현재 스토어에 붙은 댓글만 삭제 가능
+      if(componentType === types.comment.componentType.post) {
+        querySelectStore = mysql.format('SELECT post.user_id AS store_user_id FROM comments AS comment LEFT JOIN comments AS comment_post ON comment.commentable_id=comment_post.id LEFT JOIN posts AS post ON comment_post.commentable_id=post.id WHERE comment.id=?', comment_id);
+      }else {
+        querySelectStore = mysql.format('SELECT store.user_id AS store_user_id FROM comments AS comment LEFT JOIN comments AS comment_store ON comment.commentable_id=comment_store.id LEFT JOIN stores AS store ON comment_store.commentable_id=store.id WHERE comment.id=?', comment_id);
+      }
+    }else if(data.commentable_type === 'App\\Models\\Post'){
+      querySelectStore = mysql.format('SELECT user_id AS store_user_id FROM posts WHERE id=?', data.commentable_id);
+    }
+    else{
+    }
+
+    db.SELECT(querySelectStore, {}, (result_comment_select_store) => {
+      if(!result_comment_select_store || result_comment_select_store.length === 0){
+        return res.json({
+          state: res_state.error,
+          message: "댓글 삭제 불가. 플레이스 정보가 없습니다.",
+          result: {}
+        })
+      }
+
+      // console.log(result_comment_select_store[0]);
+
+      const data_store = result_comment_select_store[0];
+      let isDelete = false;
+      if(user_id === data.user_id){
+        //삭제 요청 유저 id와 코멘트 유저 id가 같으면 글쓴 유저
+        isDelete = true;
+        // console.log(result_comment_select[0].user_id);
+      }else{
+        //코멘트 유저 id가 다르면 상점주 인지 확인한다.
+        if(user_id === data_store.store_user_id){
+          isDelete = true;
+        }
+      }
+
+      if(!isDelete){
+        return res.json({
+          state: res_state.error,
+          message: "댓글 삭제 불가. 작성자만 삭제 가능합니다.",
+          result: {}
+        })
+      }
+
+      //대댓글이 있으면 우선 삭제
+    db.DELETE("DELETE FROM comments WHERE commentable_id=? AND commentable_type='App\\\\Models\\\\Comment'", [comment_id], function(result_commentsComment_delete){
+      db.DELETE("DELETE FROM comments WHERE id=?", [comment_id], function(result_comment_delete){
+          return res.json({
+            result: {
+              state: res_state.success
+            }
+          });
+        }, (error) => {
+          return res.json({
+            state: res_state.error,
+            message: error,
+            result:{}
+          })
+        });
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: error,
+          result:{}
+        })
+      });
+    })
+  });
+});
 
 router.post('/any/list/buyer', function(req, res){
   
@@ -705,6 +797,71 @@ router.post('/item/info', function(req, res){
       result: {
         state: res_state.success,
         title: data.title
+      }
+    })
+  })
+})
+
+router.post('/any/post/list', function(req, res){
+  const commentType = req.body.data.commentType;
+  const target_id = req.body.data.target_id;
+
+  let commentable_type = this.getCommentableType(commentType);
+
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip
+
+  const querySelect = mysql.format("SELECT id, user_id, contents, created_at FROM comments WHERE commentable_id=? AND commentable_type=? ORDER BY id DESC LIMIT ? OFFSET ?", [target_id, commentable_type, limit, skip]);
+
+  //test용
+  // const querySelect = mysql.format("SELECT id FROM comments GROUP BY id LIMIT ? OFFSET ?", [limit, skip]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          list: []
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+//commentable_id 기준으로 count만 가져온다.
+router.post('/any/count/all', function(req, res){
+  const commentType = req.body.data.commentType;
+  const target_id = req.body.data.target_id;
+
+  let commentable_type = this.getCommentableType(commentType);
+
+  const querySelect = mysql.format("SELECT COUNT(id) AS comment_count FROM comments WHERE commentable_id=? AND commentable_type=?", [target_id, commentable_type]);
+
+  //test용
+  // const querySelect = mysql.format("SELECT COUNT(id) AS comment_count FROM comments", [target_id, commentable_type]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          comment_count: 0
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        comment_count: data.comment_count
       }
     })
   })

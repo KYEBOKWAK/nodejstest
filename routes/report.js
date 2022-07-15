@@ -35,6 +35,8 @@ router.post('/add', function(req, res){
   const target_store_title = req.body.data.target_store_title;
   const target_item_title = req.body.data.target_item_title;
 
+  const contents = req.body.data.contents;
+
   var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let reportData = {
@@ -53,10 +55,15 @@ router.post('/add', function(req, res){
       let slack_text = '';
 
       if(target_type === Types.report.comment){
-        slack_title = '[코멘트]'
+        slack_title = '[코멘트]';
       }
 
-      slack_text = `${slack_title}\n플레이스명: ${target_store_title}\n상품명: ${target_item_title}\n코멘트: ${target_content}\n신고이유: ${reason}`;
+      if(contents){
+        //기존 신고 방식 수정하기 귀찮아서 그냥 contents 추가함.
+        slack_text = `${contents}`;
+      }else{
+        slack_text = `${slack_title}\n플레이스명: ${target_store_title}\n상품명: ${target_item_title}\n코멘트: ${target_content}\n신고이유: ${reason}`;
+      }
 
       slack.webhook({
         channel: "#bot-신고하기",

@@ -122,13 +122,13 @@ router.post('/any/detail/info', function(req, res){
   const store_id = req.body.data.store_id;
   const store_alias = req.body.data.store_alias;
 
-  const querySelect = mysql.format("SELECT store.representative_type, store.contact, store.representative_item_id, store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
+  const querySelect = mysql.format("SELECT store.representative_post_id, store.representative_type, store.contact, store.representative_item_id, store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
       return res.json({
         state: res_state.error,
-        message: '상점 정보 조회 불가'
+        message: '플레이스 정보 조회 불가.'
       })
     }
 
@@ -330,7 +330,7 @@ router.post('/info/userid', function(req, res){
     if(result.length === 0){
       return res.json({
         state: res_state.error,
-        message: '상점 주인만 접근 가능합니다.',
+        message: '플레이스 크리에이터가 아닙니다.',
         result:{}
       })
     }
@@ -1553,7 +1553,7 @@ router.post("/manager/account/info/set", function(req, res){
 router.post("/any/info/storeid", function(req, res){
   const store_id = req.body.data.store_id;
 
-  const querySelect = mysql.format("SELECT user_id AS store_user_id, title FROM stores WHERE id=?", store_id);
+  const querySelect = mysql.format("SELECT user_id AS store_user_id, title, representative_post_id FROM stores WHERE id=?", store_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){

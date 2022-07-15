@@ -143,7 +143,7 @@ router.post("/create", function(req, res){
     if(result_select_likes.length > 0){
       return res.json({
         state: res_state.error,
-        message: '이미 좋아요를 했습니다. 문제가 계속 되면 앱을 다시 실행해주세요.',
+        message: '이미 좋아요를 했습니다.',
         result: {
         }
       })
@@ -168,25 +168,10 @@ router.post("/create", function(req, res){
         });
       }
 
-      let queryLikeCount = mysql.format("SELECT COUNT(id) AS like_count FROM likes WHERE like_type=? AND target_id=?", [like_type, target_id]);
-      db.SELECT(queryLikeCount, {}, (result_select_query) => {
-        if(result_select_query.length === 0){
-          return res.json({
-            result: {
-              state: res_state.success,
-              count: 0
-            }
-          })
+      return res.json({
+        result:{
+          state: res_state.success
         }
-
-        const likeData = result_select_query[0]
-        return res.json({
-          result:{
-            state: res_state.success,
-            count: likeData.like_count
-          }
-        })
-        
       })
     }, (error) => {
       return res.json({
@@ -196,51 +181,6 @@ router.post("/create", function(req, res){
       })
     })
   })
-
-  /*
-  const user_id = req.body.data.user_id;
-  const like_type = req.body.data.like_type;
-  const target_id = req.body.data.target_id;
-
-  let queryLikes = mysql.format("SELECT id FROM likes WHERE user_id=? AND like_type=? AND target_id=?", [user_id, like_type, target_id]);
-  db.SELECT(queryLikes, {}, (result_select_likes) => {
-    if(result_select_likes.length > 0){
-      return res.json({
-        state: res_state.error,
-        message: '이미 좋아요를 했습니다. 문제가 계속 되면 앱을 다시 실행해주세요.',
-        result: {
-        }
-      })
-    }
-
-    const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-
-    let likesInsertData = {
-      user_id: user_id,
-      like_type: like_type,
-      target_id: target_id,
-      created_at: date
-    }
-
-    db.INSERT("INSERT INTO likes SET ?;", likesInsertData, function(result_insert_likes){
-      if(result_insert_likes === undefined){
-        return res.json({
-          state: 'error',
-          message: 'likes insert error!',
-          result: {
-          }
-        });
-      }
-
-      return res.json({
-        result: {
-          state: res_state.success,
-          isLike: true
-        }
-      });
-    })
-  })
-  */
 });
 
 router.post("/cancel", function(req, res){
@@ -249,25 +189,10 @@ router.post("/cancel", function(req, res){
   const target_id = req.body.data.target_id;
 
   db.DELETE("DELETE FROM likes WHERE user_id=? AND like_type=? AND target_id=?", [user_id, like_type, target_id], function(result_likes_delete){
-    let queryLikeCount = mysql.format("SELECT COUNT(id) AS like_count FROM likes WHERE like_type=? AND target_id=?", [like_type, target_id]);
-    db.SELECT(queryLikeCount, {}, (result_select_query) => {
-      if(result_select_query.length === 0){
-        return res.json({
-          result: {
-            state: res_state.success,
-            count: 0
-          }
-        })
+    return res.json({
+      result:{
+        state: res_state.success
       }
-
-      const likeData = result_select_query[0]
-      return res.json({
-        result:{
-          state: res_state.success,
-          count: likeData.like_count
-        }
-      })
-      
     })
   }, (error) => {
     return res.json({
@@ -317,6 +242,33 @@ router.post("/chatting", function(req, res){
       }
     })
 
+  })
+});
+
+router.post("/any/count", function(req, res){
+  // const user_id = req.body.data.user_id;
+  const like_type = req.body.data.like_type;
+  const target_id = req.body.data.target_id;
+
+  let queryLikeCount = mysql.format("SELECT COUNT(id) AS like_count FROM likes WHERE like_type=? AND target_id=?", [like_type, target_id]);
+  db.SELECT(queryLikeCount, {}, (result_select_query) => {
+    if(result_select_query.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          count: 0
+        }
+      })
+    }
+
+    const likeData = result_select_query[0]
+    return res.json({
+      result:{
+        state: res_state.success,
+        count: likeData.like_count
+      }
+    })
+    
   })
 });
 

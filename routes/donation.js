@@ -81,6 +81,11 @@ router.post('/pay/isp', function(req, res){
   const currency_code = req.body.data.currency_code;
   let pg = req.body.data.pg;
 
+  let post_id = req.body.data.post_id;
+  if(post_id === undefined || post_id === null){
+    post_id = null;
+  }
+
   const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   if(store_id === undefined || store_id === null || store_id === ''){
@@ -126,6 +131,8 @@ router.post('/pay/isp', function(req, res){
 
       donation_comment_id: donation_comment_id,
       is_heart: false,
+
+      post_id: post_id,
       // imp_uid: imp_uid,
   
       created_at: date,
@@ -181,6 +188,11 @@ router.post('/pay/onetime', function(req, res){
 
   const store_title = req.body.data.store_title;
   const store_contact = req.body.data.store_contact;
+
+  let post_id = req.body.data.post_id;
+  if(post_id === undefined || post_id === null){
+    post_id = null;
+  }
 
   const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
@@ -263,6 +275,7 @@ router.post('/pay/onetime', function(req, res){
             imp_meta: _imp_meta,
             donation_comment_id: donation_comment_id,
             is_heart: false,
+            post_id: post_id,
 
             created_at: date,
             updated_at: date,

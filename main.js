@@ -503,6 +503,9 @@ app.use('/donation', routerDonation);
 let routerReport = require('./routes/report');
 app.use('/report', routerReport);
 
+let routerPost = require('./routes/post');
+app.use('/post', routerPost);
+
 let routerSlack = require('./routes/slack');
 app.use('/slack', routerSlack);
 
