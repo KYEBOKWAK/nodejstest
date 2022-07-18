@@ -200,7 +200,7 @@ router.post('/create', function(req, res){
     db.INSERT("INSERT INTO stores SET ?", placeData, 
     (result_insert) => {
       
-      insertPost(place_user_id, result_insert.insertId, '👏 크햄님이 플레이스를 개설하였습니다.', '', Types.post.none, (isSuccess, fail_message) => {
+      insertPost(place_user_id, result_insert.insertId, `👏 ${title}님이 플레이스를 개설하였습니다.`, '', Types.post.none, (isSuccess, fail_message) => {
         if(!isSuccess){
           return res.json({
             state: res_state.error,
