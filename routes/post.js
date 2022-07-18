@@ -209,6 +209,7 @@ router.post("/write/init", function(req, res){
       //플레이스 주인이다.
       return res.json({
         result: {
+          state: res_state.success,
           isInit: true,
           isAdmin: false
         }
@@ -221,6 +222,7 @@ router.post("/write/init", function(req, res){
           //주인은 아닌데 admin이면 고고
           return res.json({
             result: {
+              state: res_state.success,
               isInit: true,
               isAdmin: true
             }
@@ -228,6 +230,7 @@ router.post("/write/init", function(req, res){
         }else{
           return res.json({
             result: {
+              state: res_state.success,
               isInit: false,
               isAdmin: false
             }
@@ -419,11 +422,18 @@ router.post("/any/list/menu", function(req, res){
   const store_id = req.body.data.store_id;
   const representative_post_id = req.body.data.representative_post_id;
 
+  let queryStateString = '';
+  const isMaster = req.body.data.isMaster;
+  if(!isMaster){
+    //일반 유저일 경우 비밀글은 제외 된다. 일 경우 비밀 포스트까지 나온다.
+    queryStateString = ` AND state=${Types.post.none}`
+  }
+
   let querySelect = '';
   if(representative_post_id === null){
-    querySelect = mysql.format("SELECT store_id, id, page_id, user_id, title, story, created_at, state FROM posts WHERE store_id=? AND page_id IS NOT NULL ORDER BY id DESC", [store_id]);
+    querySelect = mysql.format(`SELECT store_id, id, page_id, user_id, title, story, created_at, state FROM posts WHERE store_id=? ${queryStateString} AND page_id IS NOT NULL ORDER BY id DESC`, [store_id]);
   }else{
-    querySelect = mysql.format("SELECT store_id, id, page_id, user_id, title, story, created_at, state FROM posts AS post WHERE store_id=? AND page_id IS NOT NULL ORDER BY FIELD(id, ?) DESC, id DESC", [store_id, representative_post_id]);
+    querySelect = mysql.format(`SELECT store_id, id, page_id, user_id, title, story, created_at, state FROM posts AS post WHERE store_id=? ${queryStateString} AND page_id IS NOT NULL ORDER BY FIELD(id, ?) DESC, id DESC`, [store_id, representative_post_id]);
   }
 
   db.SELECT(querySelect, {}, (result) => {
@@ -453,18 +463,26 @@ router.post("/any/list", function(req, res){
 
   const representative_post_id = req.body.data.representative_post_id;
 
+  let queryStateString = '';
+  const isMaster = req.body.data.isMaster;
+  if(!isMaster){
+    //일반 유저일 경우 비밀글은 제외 된다. 일 경우 비밀 포스트까지 나온다.
+    queryStateString = ` AND state=${Types.post.none}`
+  }
+
   let querySelect = '';
+  if(representative_post_id === null){
+    querySelect = mysql.format(`SELECT store_id, id, page_id, user_id, title, story, created_at, state FROM posts WHERE store_id=? ${queryStateString} AND page_id IS NOT NULL ORDER BY id DESC LIMIT ? OFFSET ?`, [store_id, limit, skip]);
+  }else{
+    querySelect = mysql.format(`SELECT store_id, id, page_id, user_id, title, story, created_at, state FROM posts AS post WHERE store_id=? ${queryStateString} AND page_id IS NOT NULL ORDER BY FIELD(id, ?) DESC, id DESC LIMIT ? OFFSET ?`, [store_id, representative_post_id, limit, skip]);
+  }
+  /*
   if(representative_post_id === null){
     querySelect = mysql.format("SELECT store_id, id, page_id, user_id, title, story, created_at, state FROM posts WHERE store_id=? AND state=? AND page_id IS NOT NULL ORDER BY id DESC LIMIT ? OFFSET ?", [store_id, Types.post.none, limit, skip]);
   }else{
     querySelect = mysql.format("SELECT store_id, id, page_id, user_id, title, story, created_at, state FROM posts AS post WHERE store_id=? AND state=? AND page_id IS NOT NULL ORDER BY FIELD(id, ?) DESC, id DESC LIMIT ? OFFSET ?", [store_id, Types.post.none, representative_post_id, limit, skip]);
   }
-
-  // const querySelect = mysql.format("SELECT store_id, id, page_id, user_id, title, story, created_at FROM posts WHERE store_id=? AND state=? AND page_id IS NOT NULL ORDER BY id DESC LIMIT ? OFFSET ?", [store_id, Types.post.none, limit, skip]);
-
-  // const querySelect = mysql.format("SELECT post.store_id, post.id, post.page_id, post.user_id, post.title, post.story, post.created_at FROM posts AS post LEFT JOIN stores AS store ON post.store_id=store.id WHERE (store.representative_post_id <> post.id OR store.representative_post_id IS NULL) AND post.store_id=? AND post.state=? AND post.page_id IS NOT NULL ORDER BY post.id DESC LIMIT ? OFFSET ?", [store_id, Types.post.none, limit, skip]);
-
-  // const querySelect = mysql.format("SELECT post.store_id, post.id, post.page_id, post.user_id, post.title, post.story, post.created_at FROM posts AS post LEFT JOIN stores AS store ON post.store_id=store.id WHERE post.store_id=? AND post.state=? AND post.page_id IS NOT NULL ORDER BY FIELD(post.id, 9) DESC, post.id DESC LIMIT ? OFFSET ?", [store_id, Types.post.none, limit, skip]);
+  */
 
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
@@ -509,6 +527,33 @@ router.post("/any/detail", function(req, res){
       }
     })
   });
+})
+
+router.post("/any/detail/id", function(req, res){
+  const post_id = req.body.data.post_id;
+
+  const querySelect = mysql.format("SELECT page_id, title FROM posts WHERE id=?", [post_id]);
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+    
+  })
 })
 
 function setRepresentativePost(store_id, post_id, callBack = (isSuccess) => {}){
@@ -606,6 +651,104 @@ router.post("/representative/post/set", function(req, res){
     }
   })
 });
+
+router.post('/any/onoff', function(req, res){
+  const store_id = req.body.data.store_id;
+  const querySelect = mysql.format("SELECT is_on FROM onoffs WHERE store_id=? AND type=?", [store_id, 'post']);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          is_on: false
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        is_on: data.is_on
+      }
+    })
+  })
+})
+
+router.post('/any/secret', function(req, res){
+  const page_id = req.body.data.page_id;
+  const user_id = req.body.data._user_id;
+  const store_id = req.body.data.store_id;
+
+  const querySelect = mysql.format("SELECT id, state FROM posts WHERE store_id=? AND page_id=?", [store_id, page_id])
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '존재하지 않는 포스트 입니다.',
+        result: {}
+      })
+    }
+
+    const data = result[0];
+    if(data.state === Types.post.secret){
+      //비밀글인데, 유저 id가 없으면 미로그인 유저임
+      if(user_id === undefined || user_id === null || user_id === 0){
+        return res.json({
+          result: {
+            state: res_state.success,
+            is_master: false,
+            post_state: data.state
+          }
+        })
+      }
+      //비밀글이면 크리에이터나 admin만 접속 가능하다.
+      isPlaceMaster(user_id, store_id, (isPlaceMaster) => {
+        if(isPlaceMaster){
+          //플레이스 주인이다.
+          return res.json({
+            result: {
+              state: res_state.success,
+              is_master: true,
+              post_state: data.state
+            }
+          })
+        }else {
+          //플레이스 주인이 아니다. admin인지 확인한다.
+          isAdmin(user_id, (isAdmin) => {
+            if(isAdmin){
+              // console.log('근데 어디민임');
+              //주인은 아닌데 admin이면 고고
+              return res.json({
+                result: {
+                  state: res_state.success,
+                  is_master: true,
+                  post_state: data.state
+                }
+              })
+            }else{
+              return res.json({
+                result: {
+                  state: res_state.success,
+                  is_master: false,
+                  post_state: data.state
+                }
+              })
+            }
+          })
+        }
+      })
+    }else{
+      return res.json({
+        result: {
+          state: res_state.success,
+          post_state: data.state
+        }
+      })
+    }
+  })
+})
 
 router.post('/any/test', function(req, res){
   const store_id = req.body.data.store_id;

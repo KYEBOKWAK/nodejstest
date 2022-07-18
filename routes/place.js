@@ -93,7 +93,7 @@ function createOnOffData(store_id, callback) {
       value: {
         store_id: store_id,
         type: data.type,
-        is_on: false,
+        is_on: data.is_on,
         order_number: data.order_number
       }
     }
@@ -107,6 +107,35 @@ function createOnOffData(store_id, callback) {
   }, (error) => {
     return callback();
   })
+}
+
+function insertPost(user_id, store_id, title, story, state, callBack = (isSuccess, fail_message = '') => {}){
+  
+  // let state = Types.post.none;
+  // if(isSecret){
+  //   state = Types.post.secret
+  // }
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  const postData = {
+    page_id: 1,
+    user_id: user_id,
+    store_id: store_id,
+    donation_id: null,  //생각해보니 이거 필요 없음.. 나중에 빼야지
+    state: state,
+    title: title,
+    story: story,
+    created_at: date,
+    updated_at: date
+  }
+
+  db.INSERT("INSERT INTO posts SET ?", postData, 
+  (result) => {
+    return callBack(true, '');
+  }, (error) => {
+    return callBack(false,'포스트 추가 실패(1)');
+  })  
 }
 
 const Global_Func = use("lib/global_func.js");
@@ -171,49 +200,59 @@ router.post('/create', function(req, res){
     db.INSERT("INSERT INTO stores SET ?", placeData, 
     (result_insert) => {
       
-      createOnOffData(result_insert.insertId, () => {
-        setPlaceCategory(result_insert.insertId, select_category_datas, () => {
-          let collect_category = [];
-          for(let i = 0 ; i < select_category_datas.length ; i++){
-            const _data = select_category_datas[i];
-            collect_category.push(_data.text);
-          }
-  
-          if(process.env.APP_TYPE !== 'local'){
-            slack.webhook({
-              channel: "#bot-플레이스신청",
-              username: "신청bot",
-              text: `[플레이스신청]\n플레이스명: ${title}\n이메일: ${email}\n연락처: ${contact}\n가입경로: ${collect_join_path}\n활동채널: ${collect_channel}\n채널주소: ${channel_url}\n카테고리: ${collect_category.toString()}\nalias: https://ctee.kr/place/${alias}`
-            }, function(err, response) {
-              console.log(err);
-            });
-      
-            const mailMSG = {
-              to: email,
-              from: '크티<contact@ctee.kr>',
-              subject: Templite_email.email_join_place.subject,
-              html: Templite_email.email_join_place.html(title)
-            }
-            sgMail.send(mailMSG).then((result) => {
-                // console.log(result);
-            }).catch((error) => {
-                // console.log(error);
-            })
-      
-            Global_Func.sendKakaoAlimTalk({
-              templateCode: 'Kalarm15v1',
-              to: contact
-            })
-          }
-    
+      insertPost(place_user_id, result_insert.insertId, '👏 크햄님이 플레이스를 개설하였습니다.', '', Types.post.none, (isSuccess, fail_message) => {
+        if(!isSuccess){
           return res.json({
-            result: {
-              state: res_state.success,
-              store_id: result_insert.insertId
-            }
+            state: res_state.error,
+            message: '플레이스 추가 에러 (최초 포스트 등록 실패)',
+            result: {}
           })
-        })
-      });
+        }
+
+        createOnOffData(result_insert.insertId, () => {
+          setPlaceCategory(result_insert.insertId, select_category_datas, () => {
+            let collect_category = [];
+            for(let i = 0 ; i < select_category_datas.length ; i++){
+              const _data = select_category_datas[i];
+              collect_category.push(_data.text);
+            }
+    
+            if(process.env.APP_TYPE !== 'local'){
+              slack.webhook({
+                channel: "#bot-플레이스신청",
+                username: "신청bot",
+                text: `[플레이스신청]\n플레이스명: ${title}\n이메일: ${email}\n연락처: ${contact}\n가입경로: ${collect_join_path}\n활동채널: ${collect_channel}\n채널주소: ${channel_url}\n카테고리: ${collect_category.toString()}\nalias: https://ctee.kr/place/${alias}`
+              }, function(err, response) {
+                console.log(err);
+              });
+        
+              const mailMSG = {
+                to: email,
+                from: '크티<contact@ctee.kr>',
+                subject: Templite_email.email_join_place.subject,
+                html: Templite_email.email_join_place.html(title)
+              }
+              sgMail.send(mailMSG).then((result) => {
+                  // console.log(result);
+              }).catch((error) => {
+                  // console.log(error);
+              })
+        
+              Global_Func.sendKakaoAlimTalk({
+                templateCode: 'Kalarm15v1',
+                to: contact
+              })
+            }
+      
+            return res.json({
+              result: {
+                state: res_state.success,
+                store_id: result_insert.insertId
+              }
+            })
+          })
+        });
+      })
     }, (error) => {
       return res.json({
         state: res_state.error,
