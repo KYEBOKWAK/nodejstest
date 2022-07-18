@@ -657,22 +657,51 @@ router.post('/any/onoff', function(req, res){
   const querySelect = mysql.format("SELECT is_on FROM onoffs WHERE store_id=? AND type=?", [store_id, 'post']);
 
   db.SELECT(querySelect, {}, (result) => {
+    //값 자체가 없으면 insert 해준다.
     if(!result || result.length === 0){
+      const onoffDefaultData = Types.default_onoff_datas.find((value) => {
+        return value.type === 'post';
+      });
+
+      if(!onoffDefaultData){
+        return res.json({
+          result: {
+            state: res_state.success,
+            is_on: false
+          }
+        })
+      }
+
+      let onoffData = {
+        store_id: store_id,
+        type: onoffDefaultData.type,
+        is_on: onoffDefaultData.is_on,
+        order_number: onoffDefaultData.order_number
+      }
+
+      db.INSERT("INSERT INTO onoffs SET ?", [onoffData], (result) => {
+        return res.json({
+          result: {
+            state: res_state.success,
+            is_on: true
+          }
+        })
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: 'on off insert 실패 (onoff체크)',
+          result: {}
+        })
+      })
+    }else{
+      const data = result[0];
       return res.json({
         result: {
           state: res_state.success,
-          is_on: false
+          is_on: data.is_on
         }
       })
     }
-
-    const data = result[0];
-    return res.json({
-      result: {
-        state: res_state.success,
-        is_on: data.is_on
-      }
-    })
   })
 })
 
