@@ -642,14 +642,15 @@ router.post("/order/item/check", function(req, res){
   const user_id = req.body.data.user_id;
   const item_id = req.body.data.item_id;
 
-  const querySelect = mysql.format("SELECT id FROM orders_items WHERE user_id=? AND item_id=? AND state>=? AND state<?", [user_id, item_id, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_PAY_END]);
+  const querySelect = mysql.format("SELECT orders_item.created_at, orders_item.id, item.id AS item_id, item.img_url, item.title AS item_title, orders_item.total_price AS total_price, orders_item.total_price_USD AS total_price_USD, orders_item.currency_code FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.user_id=? AND orders_item.item_id=? AND orders_item.state>=? AND orders_item.state<? AND orders_item.state<>?", [user_id, item_id, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_PAY_END, types.order.ORDER_STATE_APP_STORE_STANBY]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
       return res.json({
         result: {
           state: res_state.error,
-          store_order_id: null
+          store_order_id: null,
+          list: []
         }
       })
       // return res.json({
@@ -663,10 +664,32 @@ router.post("/order/item/check", function(req, res){
     return res.json({
       result: {
         state: res_state.success,
-        store_order_id: data.id
+        store_order_id: data.id,
+        list: result
       }
     })
   })
+})
+
+router.post("/order/wrote/check", function(req, res){
+  //주문에 코멘트가 달렸는지 확인 해본다.
+  const order_list = req.body.data.order_list;
+  const store_id = req.body.data.store_id;
+  const user_id = req.body.data.user_id;
+
+  const querySelect = mysql.format("SELECT id, second_target_id FROM comments WHERE user_id=? AND commentable_id=? AND commentable_type=? AND second_target_type=? AND second_target_id IN (?)", [user_id, store_id, 'App\\Models\\Store', 'App\\Models\\Store_order', order_list]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+
+
+
 })
 
 router.post("/any/comments/list", function(req, res){
