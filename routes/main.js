@@ -600,14 +600,23 @@ router.post('/any/stores/count', function(req, res){
   const querySelect = mysql.format("SELECT COUNT(id) AS store_count FROM stores", []);
 
   db.SELECT(querySelect, {}, (result) => {
-    return res.json({
-      result: {
-        state: res_state.success,
-        data: {
-          store_count: result[0].store_count
+    console.log('여기로 넘어옴???');
+    if(result[0].store_count){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: {
+            store_count: result[0].store_count
+          }
         }
-      }
+      })
+    }
+
+    return res.json({
+      state: res_state.error,
+      message: 'eeee'
     })
+    
   }, (error) => {
     return res.json({
       state: res_state.error,
