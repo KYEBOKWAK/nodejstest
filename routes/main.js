@@ -608,6 +608,11 @@ router.post('/any/stores/count', function(req, res){
         }
       }
     })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: 'dddd'
+    })
   })
 })
 
