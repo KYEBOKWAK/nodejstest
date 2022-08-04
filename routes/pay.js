@@ -1099,68 +1099,9 @@ sendStoreMasterSMSOrder = (store_id, item_title, total_price, name) => {
     })
 }
 
-sendStoreOrderNineAMEvent = (store_order_id) => {
-    const querySelect = mysql.format("SELECT orders_item.email, orders_item.requestContent, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, created_at, requestContent, language_code, currency_code) => {
 
-    db.SELECT(querySelect, {}, 
-    (result) => {
-        if(result.length === 0){
-            return;
-        }
-
-        const data = result[0];
-        const requestContent = data.requestContent;
-        const item_title = data.item_title;
-        const name = data.customer_name;
-        const creator_name = data.creator_name;
-        const contact = data.contact;
-        const email = data.email;
-
-        const _requestContents = Util.getReplaceBRTagToEnter(requestContent);
-    
-        let _html = `
-                    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-                    <html xmlns="http://www.w3.org/1999/xhtml">
-                        <head>
-                        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-                        <title>콘텐츠 상점 주문서</title>
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-                        </head>
-                        <body style="margin:0%">
-                        상품명 : ${item_title} <br>
-                        크리에이터명: ${creator_name} <br><br>
-                        주문자 정보 
-                        이름 : ${name} <br>
-                        연락처 : ${contact} <br>
-                        이메일 : ${email} <br><br>
-                        요청사항:<br>
-                        ${_requestContents}
-                        </body>
-                    </html>
-                    `
-
-        const msg = {
-            to: '크라우드티켓<event@ctee.kr>',
-            from: 'contact@ctee.kr',
-            subject: `콘텐츠 상점 주문 [${item_title}]`,
-            html: _html,
-        };
-
-        sgMail.send(msg).then((result) => {
-                            
-        }).catch((error) => {
-        
-        });
-    }, (error) => {
-        
-    })
-
-    
-}
-
-sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, created_at, requestContent) => {
-
-    const querySelect = mysql.format("SELECT user.nick_name, user.name, user.email AS user_email, store.email AS store_user_email FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=?", store_id);
+    const querySelect = mysql.format("SELECT store.title AS store_title, user.nick_name, user.name, user.email AS user_email, store.email AS store_user_email FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=?", store_id);
     db.SELECT(querySelect, {}, (result) => {
         const data = result[0];
 
@@ -1169,9 +1110,13 @@ sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, creat
             toEmail = data.user_email;
         }
 
-        let store_manager_name = data.nick_name;
-        if(!data.nick_name || data.nick_name === ''){
-            store_manager_name = data.name;
+        let store_manager_name = data.store_title;
+
+        let _item_price = '';
+        if(currency_code === types.currency_code.Won){
+          _item_price = Util.getStr('es20', language_code, [item_price]);
+        }else{
+          _item_price = Util.getStr('es21', language_code, [total_price_usd]);
         }
 
         // //test
@@ -1181,9 +1126,10 @@ sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, creat
         
         const mailMSG = {
             to: toEmail,
-            from: '크티<contact@ctee.kr>',
-            subject: Templite_email.email_store_creator_order.subject,
-            html: Templite_email.email_store_creator_order.html(store_manager_name, order_name, item_title, item_price, created_at, _requestContents)
+            from: Templite_email.from(language_code),
+            subject: Templite_email.email_store_creator_order.subject(language_code),
+            //html로 넘기는 파라미터 확인 해야함.
+            html: Templite_email.email_store_creator_order.html(store_manager_name, order_name, item_title, _item_price, created_at, _requestContents, language_code)
         }
         sgMail.send(mailMSG).then((result) => {
             // console.log(result);
@@ -1193,14 +1139,21 @@ sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, creat
     })
 }
 
-sendStoreOrderCompliteEmail = (user_id, to_email, item_title, item_price, order_name, created_at, requestContent) => {
+sendStoreOrderCompliteEmail = (user_id, to_email, item_title, item_price, order_name, created_at, requestContent, currency_code, total_price_usd, language_code) => {
     let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
+
+    let _item_price = '';
+    if(currency_code === types.currency_code.Won){
+      _item_price = Util.getStr('es20', language_code, [item_price]);
+    }else{
+      _item_price = Util.getStr('es21', language_code, [total_price_usd]);
+    }
 
     const mailMSG = {
         to: to_email,
-        from: '크티<contact@ctee.kr>',
-        subject: Templite_email.email_store_order_requested.subject,
-        html: Templite_email.email_store_order_requested.html(user_id, order_name, item_title, item_price, created_at, _requestContents)
+        from: Templite_email.from(language_code),
+        subject: Templite_email.email_store_order_requested.subject(language_code),
+        html: Templite_email.email_store_order_requested.html(user_id, order_name, item_title, _item_price, created_at, _requestContents, language_code)
     }
     sgMail.send(mailMSG).then((result) => {
         // console.log(result);
@@ -1398,9 +1351,7 @@ router.post('/store/onetime', function(req, res){
       
               if(_data.total_price === 0){
                   //0원이면 iamport 안함.
-                  if(process.env.APP_TYPE !== 'local'){
-                    senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
-                  }
+                  senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent, currency_code, total_price_usd);
       
                   req.body.data.merchant_uid = merchant_uid;
                   req.body.data.imp_uid = 0;
@@ -1423,9 +1374,8 @@ router.post('/store/onetime', function(req, res){
                         // req.body.data.pay_method = result.pay_method;
   
                         setDonation(req, res, (donation_order_id) => {
-                          if(process.env.APP_TYPE !== 'local'){
-                            senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
-                          }
+                          
+                          senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent, currency_code, total_price_usd);
   
                           payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
                         }, (error) => {
@@ -1465,199 +1415,37 @@ router.post('/store/onetime', function(req, res){
         })
       })
     })
-
-    /*
-    getCommisionInfo(store_id, (commision_value) => {
-
-      const insertOrderItemData = {
-        store_id: store_id,
-        item_id: item_id,
-        user_id: user_id,
-        state: types.order.ORDER_STATE_STAY,
-        count: 1,
-        price: item_price,
-        price_USD: price_usd,
-        total_price: total_price,
-        total_price_USD: total_price_usd,
-        currency_code: currency_code,
-        name: name,
-        contact: contact,
-        email: email,
-        requestContent: requestContent,
-        merchant_uid: merchant_uid,
-        pay_method: pay_method,
-        created_at: date,
-        updated_at: date,
-        commision: commision_value,
-        pg: pg
-      }
-    
-      db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
-        const item_order_id = result_insert_orders_items.insertId;
-        req.body.data.order_id = item_order_id;
-        // let payingDate = moment_timezone(date).add(7, 'days');
-        // payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
-        // payingDate = moment_timezone(payingDate).format("X");
-
-        ///////////품절 됐는지 확인한다.//////////
-
-        isSoldOutCheck(item_id, item_order_id, (isSoldOut) => {
-            if(isSoldOut){
-                let _updateQueryArray = [];
-                let _updateOptionArray = [];
-
-                _updateQueryArray.push({
-                    key: 0,
-                    value: "UPDATE orders_items SET ? WHERE id=?;"
-                })
-
-                _updateOptionArray.push({
-                    key: 0,
-                    value: [
-                        {state: types.order.ORDER_STATE_ERROR_TICKET_OVER_COUNT},
-                        item_order_id
-                    ]
-                })
-
-                _updateQueryArray.push({
-                    key: 1,
-                    value: "UPDATE items SET ? WHERE id=?;"
-                })
-
-                _updateOptionArray.push({
-                    key: 1,
-                    value: [
-                        {state: types.item_state.SALE_LIMIT},
-                        item_id
-                    ]
-                })
-
-                db.UPDATE_MULITPLEX(_updateQueryArray, _updateOptionArray, 
-                (result_update) => {
-                    return res.json({
-                        state: res_state.error,
-                        message: '해당 상품은 품절되었습니다.',
-                    })
-                }, (error_update) => {
-                    return res.json({
-                        state: res_state.error,
-                        message: '해당 상품은 품절되었습니다.(상태 업데이트 에러)',
-                    })
-                })
-
-                return;
-            }
-
-            const paymentData = {
-                store_id: store_id,
-                card_number: _data.card_number,
-                expiry: Util.getCardExpire(_data.card_yy, _data.card_mm),
-                amount: _data.total_price, //onetime total_price는 order_id의 db 조회해서 total_price와 비교한다.
-                merchant_uid: merchant_uid,
-                birth: _data.card_birth,
-                customer_uid: customer_uid,
-                pwd_2digit: _data.card_pw_2digit,
-                name: _data.title,
-                buyer_name: _data.name,
-                buyer_email: _data.email,
-                buyer_tel: _data.contact
-            }; 
-    
-            if(_data.total_price === 0){
-                //0원이면 iamport 안함.
-                if(process.env.APP_TYPE !== 'local'){
-                  senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
-                }
-    
-                req.body.data.merchant_uid = merchant_uid;
-                req.body.data.imp_uid = 0;
-                payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
-    
-            }else{
-              iamport.subscribe.onetime({
-                  ...paymentData
-              }).then((result) => {
-                  // To do
-                  // console.log(result);
-                  //status: 'paid',
-                  if(result.status === 'paid'){
-                      //결제 성공  
-                      req.body.data.merchant_uid = result.merchant_uid;
-                      req.body.data.imp_uid = result.imp_uid;
-
-                      req.body.data.pay_isp_type = types.pay_isp_type.onetime_donation;
-                      req.body.data.created_at = date;
-                      // req.body.data.pay_method = result.pay_method;
-
-                      setDonation(req, res, (donation_order_id) => {
-                        if(process.env.APP_TYPE !== 'local'){
-                          senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent);
-                        }
-
-                        payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
-                      }, (error) => {
-
-                      })
-                      
-                  }else{
-                      // console.log("success");
-                      return res.json({
-                          state: res_state.error,
-                          message: result.fail_reason,
-                      });
-                  }
-                  // console.log(result);
-              }).catch((error) => {
-                  // handle error
-                  // console.log(error);
-                  //ORDER_STATE_ERROR_PAY
-                  
-                  db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_ERROR_PAY, req.body.data.order_id], (result) => {
-                    return res.json({
-                        state: res_state.error,
-                        message: error.message,
-                    })
-                  }, (error) => {
-                    return res.json({
-                        state: res_state.error,
-                        message: error.message,
-                    })
-                  })
-                  
-                  // console.log(error);
-              });
-            }
-        });
-        /////////////////////////////////////
-      })
-    })
-    */
 });
 
-function senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent){
-    const querySelect = mysql.format("SELECT type_contents FROM items WHERE id=?", [item_id]);
-    
-    db.SELECT(querySelect, {}, (result) => {
-        if(result.length === 0){
-            return;
-        }
+function senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent, currency_code, total_price_usd){
 
-        const data = result[0];
-        this.sendSlackAlim(req, item_order_id);
-        if(data.type_contents === types.contents.completed){
-            return;
-        }
+  if(process.env.APP_TYPE === 'local'){
+    return;
+  }
 
-        // this.sendStoreOrderNineAMEvent(item_order_id);
+  const querySelect = mysql.format("SELECT type_contents FROM items WHERE id=?", [item_id]);
+  
+  db.SELECT(querySelect, {}, (result) => {
+      if(result.length === 0){
+          return;
+      }
 
-        this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+      const data = result[0];
+      this.sendSlackAlim(req, item_order_id);
+      if(data.type_contents === types.contents.completed){
+          return;
+      }
 
-        this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
+      let language_code = req.body.data.language_code;
 
-        this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+      this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent, language_code, currency_code);
 
-        this.sendStoreOrderCompliteKakaoAlim(item_order_id);
-    })
+      this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
+
+      this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent, currency_code, total_price_usd, language_code);
+
+      this.sendStoreOrderCompliteKakaoAlim(item_order_id);
+  })
 }
 
 sendSlackAlim = (req, item_order_id) => {
@@ -1696,7 +1484,9 @@ sendSlackAlim = (req, item_order_id) => {
         username: "알림bot",
         text: `(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}\n주문ID: ${item_order_id}\n주문위치: ${req.body.data.bug_check_message}\n디바이스정보: ${req.body.data.userAgent}`
       }, function(err, response) {
-        console.log(err);
+        if(err){
+          console.log(err);
+        }
       });
     })
 }
@@ -2240,6 +2030,7 @@ router.post('/isp/error', function(req, res){
 
 router.post('/store/send/message', function(req, res){
     //결제 성공
+    
     if(process.env.APP_TYPE === 'local'){
       return res.json({
           result: {
@@ -2247,11 +2038,11 @@ router.post('/store/send/message', function(req, res){
           }
       })
     }
-
     
     const store_order_id = req.body.data.store_order_id;
+    const language_code = req.body.data.language_code;
 
-    const querySelect = mysql.format("SELECT orders_donation.total_price AS donation_total_price, item.type_contents, orders_item.total_price, orders_item.email, orders_item.requestContent, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN orders_donations AS orders_donation ON orders_item.orders_donation_id=orders_donation.id WHERE orders_item.id=?", store_order_id);
+    const querySelect = mysql.format("SELECT orders_item.currency_code, orders_item.total_price_USD, orders_donation.total_price AS donation_total_price, item.type_contents, orders_item.total_price, orders_item.email, orders_item.requestContent, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, orders_item.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id LEFT JOIN orders_donations AS orders_donation ON orders_item.orders_donation_id=orders_donation.id WHERE orders_item.id=?", store_order_id);
 
     db.SELECT(querySelect, {}, 
     (result) => {
@@ -2291,15 +2082,14 @@ router.post('/store/send/message', function(req, res){
         const date = moment_timezone(data.requested_at).format('YYYY-MM-DD HH:mm:ss');
         const user_id = data.user_id;
 
-        
+        const currency_code = data.currency_code;
+        const total_price_USD = data.total_price_USD;
 
-        // this.sendStoreOrderNineAMEvent(store_order_id);
-
-        this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent);
+        this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent, language_code, currency_code);
 
         this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
 
-        this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent);
+        this.sendStoreOrderCompliteEmail(user_id, email, item_title, total_price, name, date, requestContent, currency_code, total_price_USD, language_code);
 
         this.sendStoreOrderCompliteKakaoAlim(store_order_id);
 

@@ -1866,8 +1866,8 @@ router.post("/store/cancel", function(req, res){
   
 })
 
-sendStoreRefundEmail = (store_order_id, refund_reason) => {
-  const querySelect = mysql.format("SELECT orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
+sendStoreRefundEmail = (store_order_id, refund_reason, language_code) => {
+  const querySelect = mysql.format("SELECT store.title AS store_title, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
   db.SELECT(querySelect, {}, (result) => {
       const data = result[0];
 
@@ -1878,16 +1878,13 @@ sendStoreRefundEmail = (store_order_id, refund_reason) => {
       //     toEmail = data.user_email;
       // }
 
-      let store_manager_name = data.nick_name;
-      if(!data.nick_name || data.nick_name === ''){
-          store_manager_name = data.name;
-      }
+      let store_manager_name = data.store_title;
       
       const mailMSG = {
           to: toEmail,
-          from: '크티<contact@ctee.kr>',
-          subject: Templite_email.email_store_order_rejected.subject,
-          html: Templite_email.email_store_order_rejected.html(store_manager_name, data.order_name, data.item_title, refund_reason)
+          from: Templite_email.from(language_code),
+          subject: Templite_email.email_store_order_rejected.subject(language_code),
+          html: Templite_email.email_store_order_rejected.html(store_manager_name, data.order_name, data.item_title, refund_reason, language_code)
       }
       sgMail.send(mailMSG).then((result) => {
           // console.log(result);
@@ -1942,11 +1939,12 @@ sendStoreRefundSMSOrderUser = (store_order_id) => {
 router.post("/store/state/refund", function(req, res){
   const store_order_id = req.body.data.store_order_id;
   const refund_reason = req.body.data.refund_reason;
+  const language_code = req.body.data.language_code;
 
   db.UPDATE("UPDATE orders_items SET state=?, refund_reason=? WHERE id=?", [types.order.ORDER_STATE_CANCEL_STORE_RETURN, refund_reason, store_order_id], 
   (result) => {
 
-    this.sendStoreRefundEmail(store_order_id, refund_reason);
+    this.sendStoreRefundEmail(store_order_id, refund_reason, language_code);
     this.sendStoreRefundSMSOrderUser(store_order_id);
     return res.json({
       result: {
@@ -1965,8 +1963,8 @@ router.post("/store/state/refund", function(req, res){
   });
 });
 
-sendStoreApproveEmail = (store_order_id) => {
-  const querySelect = mysql.format("SELECT orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
+sendStoreApproveEmail = (store_order_id, language_code) => {
+  const querySelect = mysql.format("SELECT store.title AS store_title, orders_item.created_at, orders_item.requestContent, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
   db.SELECT(querySelect, {}, (result) => {
       const data = result[0];
 
@@ -1977,16 +1975,15 @@ sendStoreApproveEmail = (store_order_id) => {
       //     toEmail = data.user_email;
       // }
 
-      let store_manager_name = data.nick_name;
-      if(!data.nick_name || data.nick_name === ''){
-          store_manager_name = data.name;
-      }
+      let store_manager_name = data.store_title;
+      
+      let created_at = moment_timezone(data.created_at).format('YYYY-MM-DD HH:mm');
       
       const mailMSG = {
           to: toEmail,
-          from: '크티<contact@ctee.kr>',
-          subject: Templite_email.email_store_order_approved.subject,
-          html: Templite_email.email_store_order_approved.html(store_manager_name, data.order_name, data.item_title, data.order_user_id)
+          from: Templite_email.from(language_code),
+          subject: Templite_email.email_store_order_approved.subject(language_code),
+          html: Templite_email.email_store_order_approved.html(store_manager_name, data.order_name, data.item_title, data.order_user_id, data.requestContent, created_at, language_code)
       }
       sgMail.send(mailMSG).then((result) => {
           // console.log(result);
@@ -2045,8 +2042,8 @@ sendStoreApproveSMSOrderUser = (store_order_id) => {
   })
 }
 
-sendStoreRelayCustomerEmailOrderUser = (store_order_id) => {
-  const querySelect = mysql.format("SELECT orders_item.requestContent, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
+sendStoreRelayCustomerEmailOrderUser = (store_order_id, language_code) => {
+  const querySelect = mysql.format("SELECT store.title AS store_title, orders_item.requestContent, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
   db.SELECT(querySelect, {}, (result) => {
       const data = result[0];
 
@@ -2054,16 +2051,13 @@ sendStoreRelayCustomerEmailOrderUser = (store_order_id) => {
       
       let toEmail = data.email;
 
-      let store_manager_name = data.nick_name;
-      if(!data.nick_name || data.nick_name === ''){
-          store_manager_name = data.name;
-      }
+      let store_manager_name = data.store_title;
       
       const mailMSG = {
           to: toEmail,
-          from: '크티<contact@ctee.kr>',
-          subject: Templite_email.email_store_arrive_product.subject,
-          html: Templite_email.email_store_arrive_product.html(store_manager_name, data.order_name, data.item_title, data.requestContent, store_order_id)
+          from: Templite_email.from(language_code),
+          subject: Templite_email.email_store_arrive_product.subject(language_code),
+          html: Templite_email.email_store_arrive_product.html(store_manager_name, data.order_name, data.item_title, data.requestContent, store_order_id, language_code)
       }
       sgMail.send(mailMSG).then((result) => {
           // console.log(result);
@@ -2162,13 +2156,14 @@ sendStorePlayingCompliteSMSOrderUser = (store_order_id) => {
 
 router.post("/store/state/ok", function(req, res){
   const store_order_id = req.body.data.store_order_id;
+  const language_code = req.body.data.language_code;
 
   const apporve_at = moment_timezone().format("YYYY-MM-DD HH:mm:ss");
   db.UPDATE("UPDATE orders_items SET state=?, apporve_at=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_READY, apporve_at, store_order_id], 
   (result) => {
 
     if(process.env.APP_TYPE !== 'local'){
-      this.sendStoreApproveEmail(store_order_id);
+      this.sendStoreApproveEmail(store_order_id, language_code);
       this.sendStoreApproveSMSOrderUser(store_order_id);
     }
 
@@ -2214,6 +2209,7 @@ router.post("/store/state/relay/ct", function(req, res){
 
 router.post("/store/state/relay/customer", function(req, res){
   const store_order_id = req.body.data.store_order_id;
+  const language_code = req.body.data.language_code;
 
   let product_answer = req.body.data.product_answer;
   if(product_answer === undefined){
@@ -2225,7 +2221,7 @@ router.post("/store/state/relay/customer", function(req, res){
   (result) => {
 
     if(process.env.APP_TYPE !== 'local'){
-      this.sendStoreRelayCustomerEmailOrderUser(store_order_id);
+      this.sendStoreRelayCustomerEmailOrderUser(store_order_id, language_code);
       this.sendStoreRelayCustomerSMSOrderUser(store_order_id);
     }
 
@@ -2282,7 +2278,11 @@ router.post("/store/state/complite/customer", function(req, res){
 
 sendSMSStoreConfirmStoreManager = (store_order_id) => {
 
-  const querySelect = mysql.format("SELECT item.product_state, orders_item.confirm_at, refund_reason, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, store.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
+  if(process.env.APP_TYPE === 'local'){
+    return;
+  }
+
+  const querySelect = mysql.format("SELECT orders_item.total_price_USD, orders_item.total_price, orders_item.currency_code, store.email AS store_email, item.product_state, orders_item.confirm_at, refund_reason, orders_item.created_at AS requested_at, item.price AS item_price, orders_item.user_id AS user_id, store.id AS store_id, store.alias, item.title AS item_title, store.contact, orders_item.name AS customer_name, store.title AS creator_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.id=?", store_order_id);
   
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
@@ -2325,6 +2325,28 @@ sendSMSStoreConfirmStoreManager = (store_order_id) => {
         item_title: data.item_title,
         select_time: moment_timezone(data.confirm_at).format('YYYY-MM-DD HH:mm')
       })
+
+      const language_code = types.language.kr;
+      let total_price = '';
+      if(data.currency_code === types.currency_code.Won){
+        total_price = Util.getStr('es20', language_code, [data.total_price]);
+      }else{
+        total_price = Util.getStr('es21', language_code, [data.total_price_USD]);
+      }
+
+      const confirm_at = moment_timezone(data.confirm_at).format('YYYY-MM-DD HH:mm');
+
+      const mailMSG = {
+        to: data.store_email,
+        from: Templite_email.from(language_code),
+        subject: Templite_email.email_confirm_ok.subject(language_code),
+        html: Templite_email.email_confirm_ok.html(data.creator_name, data.customer_name, data.item_title, total_price, confirm_at, language_code)
+      }
+      sgMail.send(mailMSG).then((result) => {
+          // console.log(result);
+      }).catch((error) => {
+          // console.log(error);
+      })
     }
   })
 }
@@ -2337,10 +2359,8 @@ router.post("/store/state/confirm/ok", function(req, res){
   db.UPDATE("UPDATE orders_items SET state=?, updated_at=?, confirm_at=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, nowDate, nowDate, store_order_id], 
   (result) => {
 
-    if(process.env.APP_TYPE !== 'local'){
-      sendSMSStoreConfirmStoreManager(store_order_id);
-    }
-
+    sendSMSStoreConfirmStoreManager(store_order_id);
+    
     return res.json({
       result: {
         state: res_state.success,
@@ -2366,10 +2386,8 @@ router.post("/store/state/confirm/ok/v1", function(req, res){
   db.UPDATE("UPDATE orders_items SET state=?, updated_at=?, confirm_at=? WHERE id=?", [types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, nowDate, nowDate, store_order_id], 
   (result) => {
 
-    if(process.env.APP_TYPE !== 'local'){
-      sendSMSStoreConfirmStoreManager(store_order_id);
-    }
-
+    sendSMSStoreConfirmStoreManager(store_order_id);
+    
     let donationData = {
       state: types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION,
       confirm_at: nowDate,
