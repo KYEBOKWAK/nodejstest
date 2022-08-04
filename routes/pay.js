@@ -1099,7 +1099,7 @@ sendStoreMasterSMSOrder = (store_id, item_title, total_price, name) => {
     })
 }
 
-sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, created_at, requestContent, language_code, currency_code) => {
+sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, created_at, requestContent, language_code, currency_code, total_price_usd) => {
 
   //크리에이터는 무조건 한글임.
   const _language_code = types.language.kr;
@@ -1441,7 +1441,7 @@ function senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, s
 
       let language_code = req.body.data.language_code;
 
-      this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent, language_code, currency_code);
+      this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent, language_code, currency_code, total_price_usd);
 
       this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
 
@@ -2088,7 +2088,7 @@ router.post('/store/send/message', function(req, res){
         const currency_code = data.currency_code;
         const total_price_USD = data.total_price_USD;
 
-        this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent, language_code, currency_code);
+        this.sendStoreMasterEmailOrder(store_id, item_title, total_price, name, date, requestContent, language_code, currency_code, total_price_USD);
 
         this.sendStoreMasterSMSOrder(store_id, item_title, total_price, name);
 
