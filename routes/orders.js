@@ -1867,7 +1867,7 @@ router.post("/store/cancel", function(req, res){
 })
 
 sendStoreRefundEmail = (store_order_id, refund_reason, language_code) => {
-  const querySelect = mysql.format("SELECT store.title AS store_title, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
+  const querySelect = mysql.format("SELECT orders_item.currency_code, store.title AS store_title, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
   db.SELECT(querySelect, {}, (result) => {
       const data = result[0];
 
@@ -1879,12 +1879,19 @@ sendStoreRefundEmail = (store_order_id, refund_reason, language_code) => {
       // }
 
       let store_manager_name = data.store_title;
+
+      let _language_code = '';
+      if(data.currency_code === types.currency_code.Won){
+        _language_code = types.language.kr;
+      }else{
+        _language_code = types.language.en;
+      }
       
       const mailMSG = {
           to: toEmail,
-          from: Templite_email.from(language_code),
-          subject: Templite_email.email_store_order_rejected.subject(language_code),
-          html: Templite_email.email_store_order_rejected.html(store_manager_name, data.order_name, data.item_title, refund_reason, language_code)
+          from: Templite_email.from(_language_code),
+          subject: Templite_email.email_store_order_rejected.subject(_language_code),
+          html: Templite_email.email_store_order_rejected.html(store_manager_name, data.order_name, data.item_title, refund_reason, _language_code)
       }
       sgMail.send(mailMSG).then((result) => {
           // console.log(result);
@@ -1964,7 +1971,7 @@ router.post("/store/state/refund", function(req, res){
 });
 
 sendStoreApproveEmail = (store_order_id, language_code) => {
-  const querySelect = mysql.format("SELECT store.title AS store_title, orders_item.created_at, orders_item.requestContent, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
+  const querySelect = mysql.format("SELECT orders_item.currency_code, store.title AS store_title, orders_item.created_at, orders_item.requestContent, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
   db.SELECT(querySelect, {}, (result) => {
       const data = result[0];
 
@@ -1978,12 +1985,19 @@ sendStoreApproveEmail = (store_order_id, language_code) => {
       let store_manager_name = data.store_title;
       
       let created_at = moment_timezone(data.created_at).format('YYYY-MM-DD HH:mm');
+
+      let _language_code = '';
+      if(data.currency_code === types.currency_code.Won){
+        _language_code = types.language.kr;
+      }else{
+        _language_code = types.language.en;
+      }
       
       const mailMSG = {
           to: toEmail,
-          from: Templite_email.from(language_code),
-          subject: Templite_email.email_store_order_approved.subject(language_code),
-          html: Templite_email.email_store_order_approved.html(store_manager_name, data.order_name, data.item_title, data.order_user_id, data.requestContent, created_at, language_code)
+          from: Templite_email.from(_language_code),
+          subject: Templite_email.email_store_order_approved.subject(_language_code),
+          html: Templite_email.email_store_order_approved.html(store_manager_name, data.order_name, data.item_title, data.order_user_id, data.requestContent, created_at, _language_code)
       }
       sgMail.send(mailMSG).then((result) => {
           // console.log(result);
@@ -2043,7 +2057,7 @@ sendStoreApproveSMSOrderUser = (store_order_id) => {
 }
 
 sendStoreRelayCustomerEmailOrderUser = (store_order_id, language_code) => {
-  const querySelect = mysql.format("SELECT store.title AS store_title, orders_item.requestContent, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
+  const querySelect = mysql.format("SELECT orders_item.currency_code, store.title AS store_title, orders_item.requestContent, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
   db.SELECT(querySelect, {}, (result) => {
       const data = result[0];
 
@@ -2052,12 +2066,19 @@ sendStoreRelayCustomerEmailOrderUser = (store_order_id, language_code) => {
       let toEmail = data.email;
 
       let store_manager_name = data.store_title;
+
+      let _language_code = '';
+      if(data.currency_code === types.currency_code.Won){
+        _language_code = types.language.kr;
+      }else{
+        _language_code = types.language.en;
+      }
       
       const mailMSG = {
           to: toEmail,
-          from: Templite_email.from(language_code),
-          subject: Templite_email.email_store_arrive_product.subject(language_code),
-          html: Templite_email.email_store_arrive_product.html(store_manager_name, data.order_name, data.item_title, data.requestContent, store_order_id, language_code)
+          from: Templite_email.from(_language_code),
+          subject: Templite_email.email_store_arrive_product.subject(_language_code),
+          html: Templite_email.email_store_arrive_product.html(store_manager_name, data.order_name, data.item_title, data.requestContent, store_order_id, _language_code)
       }
       sgMail.send(mailMSG).then((result) => {
           // console.log(result);

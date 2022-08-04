@@ -1101,42 +1101,45 @@ sendStoreMasterSMSOrder = (store_id, item_title, total_price, name) => {
 
 sendStoreMasterEmailOrder = (store_id, item_title, item_price, order_name, created_at, requestContent, language_code, currency_code) => {
 
-    const querySelect = mysql.format("SELECT store.title AS store_title, user.nick_name, user.name, user.email AS user_email, store.email AS store_user_email FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=?", store_id);
-    db.SELECT(querySelect, {}, (result) => {
-        const data = result[0];
+  //크리에이터는 무조건 한글임.
+  const _language_code = types.language.kr;
 
-        let toEmail = data.store_user_email
-        if(!data.store_user_email || data.store_user_email === ''){
-            toEmail = data.user_email;
-        }
+  const querySelect = mysql.format("SELECT store.title AS store_title, user.nick_name, user.name, user.email AS user_email, store.email AS store_user_email FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=?", store_id);
+  db.SELECT(querySelect, {}, (result) => {
+      const data = result[0];
 
-        let store_manager_name = data.store_title;
+      let toEmail = data.store_user_email
+      if(!data.store_user_email || data.store_user_email === ''){
+          toEmail = data.user_email;
+      }
 
-        let _item_price = '';
-        if(currency_code === types.currency_code.Won){
-          _item_price = Util.getStr('es20', language_code, [item_price]);
-        }else{
-          _item_price = Util.getStr('es21', language_code, [total_price_usd]);
-        }
+      let store_manager_name = data.store_title;
 
-        // //test
-        // toEmail = 'bogame@naver.com';
-        // //////
-        let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
-        
-        const mailMSG = {
-            to: toEmail,
-            from: Templite_email.from(language_code),
-            subject: Templite_email.email_store_creator_order.subject(language_code),
-            //html로 넘기는 파라미터 확인 해야함.
-            html: Templite_email.email_store_creator_order.html(store_manager_name, order_name, item_title, _item_price, created_at, _requestContents, language_code)
-        }
-        sgMail.send(mailMSG).then((result) => {
-            // console.log(result);
-        }).catch((error) => {
-            // console.log(error);
-        })
-    })
+      let _item_price = '';
+      if(currency_code === types.currency_code.Won){
+        _item_price = Util.getStr('es20', _language_code, [item_price]);
+      }else{
+        _item_price = Util.getStr('es21', _language_code, [total_price_usd]);
+      }
+
+      // //test
+      // toEmail = 'bogame@naver.com';
+      // //////
+      let _requestContents = Util.getReplaceBRTagToEnter(requestContent);
+      
+      const mailMSG = {
+          to: toEmail,
+          from: Templite_email.from(_language_code),
+          subject: Templite_email.email_store_creator_order.subject(_language_code),
+          //html로 넘기는 파라미터 확인 해야함.
+          html: Templite_email.email_store_creator_order.html(store_manager_name, order_name, item_title, _item_price, created_at, _requestContents, _language_code)
+      }
+      sgMail.send(mailMSG).then((result) => {
+          // console.log(result);
+      }).catch((error) => {
+          // console.log(error);
+      })
+  })
 }
 
 sendStoreOrderCompliteEmail = (user_id, to_email, item_title, item_price, order_name, created_at, requestContent, currency_code, total_price_usd, language_code) => {
