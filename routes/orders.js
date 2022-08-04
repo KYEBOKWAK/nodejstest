@@ -1867,7 +1867,7 @@ router.post("/store/cancel", function(req, res){
 })
 
 sendStoreRefundEmail = (store_order_id, refund_reason, language_code) => {
-  const querySelect = mysql.format("SELECT orders_item.currency_code, store.title AS store_title, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
+  const querySelect = mysql.format("SELECT store.alias, orders_item.currency_code, store.title AS store_title, orders_item.user_id AS order_user_id, item.title AS item_title, orders_item.email, orders_item.name AS order_name, master_user.name, master_user.nick_name FROM orders_items AS orders_item LEFT JOIN stores AS store ON orders_item.store_id=store.id LEFT JOIN users AS master_user ON store.user_id=master_user.id LEFT JOIN items AS item ON item.id=orders_item.item_id WHERE orders_item.id=?", store_order_id);
   db.SELECT(querySelect, {}, (result) => {
       const data = result[0];
 
@@ -1891,7 +1891,7 @@ sendStoreRefundEmail = (store_order_id, refund_reason, language_code) => {
           to: toEmail,
           from: Templite_email.from(_language_code),
           subject: Templite_email.email_store_order_rejected.subject(_language_code),
-          html: Templite_email.email_store_order_rejected.html(store_manager_name, data.order_name, data.item_title, refund_reason, _language_code)
+          html: Templite_email.email_store_order_rejected.html(store_manager_name, data.order_name, data.item_title, refund_reason, _language_code, data.alias)
       }
       sgMail.send(mailMSG).then((result) => {
           // console.log(result);
