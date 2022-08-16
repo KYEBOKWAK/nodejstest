@@ -24,14 +24,7 @@ const Templite_email = use('lib/templite_email');
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-//slack
-var Slack = require('slack-node');
- 
-webhookUri = process.env.CROWDTICKET_SLACK_WEBHOOK_URI;
- 
-slack = new Slack();
-slack.setWebhook(webhookUri);
-////////////
+const slack = use('lib/slack');
 
 /*
 var aws = require('aws-sdk');

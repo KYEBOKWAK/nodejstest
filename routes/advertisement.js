@@ -12,12 +12,7 @@ moment_timezone.tz.setDefault("Asia/Seoul");
 var mysql = require('mysql');
 
 //slack
-var Slack = require('slack-node');
- 
-webhookUri = process.env.CROWDTICKET_SLACK_WEBHOOK_URI;
- 
-slack = new Slack();
-slack.setWebhook(webhookUri);
+const slack = use('lib/slack');
 ////////////
 
 router.post('/get', function(req, res){

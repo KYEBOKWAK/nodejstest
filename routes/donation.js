@@ -21,12 +21,7 @@ var iamport = new Iamport({
 });
 
 //slack
-var Slack = require('slack-node');
- 
-webhookUri = process.env.CROWDTICKET_SLACK_WEBHOOK_URI;
- 
-let slack = new Slack();
-slack.setWebhook(webhookUri);
+const slack = use('lib/slack');
 ////////////
 
 const DEFAULT_DONATION_PRICE = 3000;

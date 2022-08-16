@@ -16,12 +16,7 @@ const Util = use('lib/util.js');
 const global = use('lib/global_const.js');
 
 //slack
-var Slack = require('slack-node');
- 
-webhookUri = process.env.CROWDTICKET_SLACK_WEBHOOK_URI;
- 
-slack = new Slack();
-slack.setWebhook(webhookUri);
+const slack = use('lib/slack');
 ////////////
 
 
