@@ -85,6 +85,8 @@ const res_state = use('lib/res_state.js');
 const Global_Func = use("lib/global_func.js");
 // var types = use('lib/types.js');
 
+const slack = use("lib/slack.js");
+
 var Iamport = require('iamport');
 var iamport = new Iamport({
   impKey: process.env.IAMPORT_API_KEY,
@@ -1605,6 +1607,15 @@ app.post('/filedownload/token/make', function(req, res){
 
 app.listen(3000, '0.0.0.0', function () {
   console.log('Example app listening on port 3000!');
+
+  if(process.env.APP_TYPE !== 'local'){
+    slack.webhook({
+      channel: "#bot-서버오류",
+      username: "bot",
+      text: `[CT_SERVER]\n서버 부팅됨(or 재부팅)`
+    }, function(err, response) {
+    });
+  }
 });
 
 // app.listen(3000, "0.0.0.0", function () {

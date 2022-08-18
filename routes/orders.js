@@ -2132,6 +2132,20 @@ router.post("/store/state/confirm/ok/v1", function(req, res){
   });
 })
 
+function isAdmin(user_id, callBack) {
+  if(!user_id){
+    return callBack(false);
+  }
+  const querySelect = mysql.format("SELECT id FROM admins WHERE user_id=?", [user_id]);
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return callBack(false);
+    }
+
+    return callBack(true);
+  })
+}
+
 router.post("/store/owner/check", function(req, res){
   const store_order_id = req.body.data.store_order_id;
   const user_id = req.body.data.user_id;
@@ -2153,19 +2167,32 @@ router.post("/store/owner/check", function(req, res){
           state: res_state.success
         }
       })
-    }else if(user_id === 2){
-      return res.json({
-        result: {
-          state: res_state.success
+    }else{
+
+      isAdmin(user_id, (isAdmin) => {
+        if(isAdmin){
+          return res.json({
+            result: {
+              state: res_state.success
+            }
+          })
+        }else{
+          return res.json({
+            state: res_state.error,
+            message: '접근 불가능합니다.',
+            result: {}
+          })
         }
       })
+      
+      // return res.json({
+      //   result: {
+      //     state: res_state.success
+      //   }
+      // })
     }
 
-    return res.json({
-      state: res_state.error,
-      message: '접근 불가능합니다.',
-      result: {}
-    })
+    
   })
 })
 
