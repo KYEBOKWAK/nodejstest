@@ -3313,7 +3313,7 @@ router.post("/any/view/count", function(req, res){
       }
 
       const data = result[0];
-      let view_count = storeData.store_view_count + data.view_count;
+      let view_count = storeData.store_view_count + Number(data.view_count);
       return res.json({
         result:{
           state: res_state.success,
