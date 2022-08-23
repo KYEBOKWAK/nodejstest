@@ -239,15 +239,13 @@ router.post('/any/search/stores', function(req, res){
     })
   }
 
-  // let querySelect = mysql.format("SELECT store.id AS store_id FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.state=? AND store.title LIKE ?", [Types.project.STATE_APPROVED, "%"+search_text+"%"]);
-
   let queryTail = '';
   for(let i = 0 ; i < search_text.length ; i++){
     const data = search_text[i];
     if(i === 0){
-      queryTail = `store.title LIKE '%${data}%'`;
+      queryTail = `store.title LIKE "%${data}%"`;
     }else{
-      queryTail += ` OR store.title LIKE '%${data}%'`;
+      queryTail += ` OR store.title LIKE "%${data}%"`;
     }
   }
 
@@ -283,9 +281,9 @@ router.post('/any/search/items', function(req, res){
   for(let i = 0 ; i < search_text.length ; i++){
     const data = search_text[i];
     if(i === 0){
-      queryTail = `item.title LIKE '%${data}%' OR store.title LIKE '%${data}%'`;
+      queryTail = `item.title LIKE "%${data}%" OR store.title LIKE "%${data}%"`;
     }else{
-      queryTail += ` OR item.title LIKE '%${data}%' OR store.title LIKE '%${data}%'`;
+      queryTail += ` OR item.title LIKE "%${data}%" OR store.title LIKE "%${data}%"`;
     }
   }
 
@@ -321,9 +319,9 @@ router.post('/any/search/items/count', function(req, res){
   for(let i = 0 ; i < search_text.length ; i++){
     const data = search_text[i];
     if(i === 0){
-      queryTail = `item.title LIKE '%${data}%' OR store.title LIKE '%${data}%'`;
+      queryTail = `item.title LIKE "%${data}%" OR store.title LIKE "%${data}%"`;
     }else{
-      queryTail += ` OR item.title LIKE '%${data}%' OR store.title LIKE '%${data}%'`;
+      queryTail += ` OR item.title LIKE "%${data}%" OR store.title LIKE "%${data}%"`;
     }
   }
 
@@ -361,11 +359,11 @@ router.post('/any/search/projects', function(req, res){
   for(let i = 0 ; i < search_text.length ; i++){
     const data = search_text[i];
     if(i === 0){
-      // queryTail = `item.title LIKE '%${data}%' OR store.title LIKE '%${data}%'`;
-      queryTail = `project.title LIKE '%${data}%' OR categorie.title LIKE '%${data}%' OR citie.name LIKE '%${data}%'`
+      // queryTail = `item.title LIKE "%${data}%" OR store.title LIKE "%${data}%"`;
+      queryTail = `project.title LIKE "%${data}%" OR categorie.title LIKE "%${data}%" OR citie.name LIKE "%${data}%"`
     }else{
-      // queryTail += ` OR item.title LIKE '%${data}%' OR store.title LIKE '%${data}%'`;
-      queryTail += `OR project.title LIKE '%${data}%' OR categorie.title LIKE '%${data}%' OR citie.name LIKE '%${data}%'`
+      // queryTail += ` OR item.title LIKE "%${data}%" OR store.title LIKE "%${data}%"`;
+      queryTail += `OR project.title LIKE "%${data}%" OR categorie.title LIKE "%${data}%" OR citie.name LIKE "%${data}%"`
     }
   }
 
@@ -399,17 +397,28 @@ router.post('/any/search/projects/count', function(req, res){
   for(let i = 0 ; i < search_text.length ; i++){
     const data = search_text[i];
     if(i === 0){
-      // queryTail = `item.title LIKE '%${data}%' OR store.title LIKE '%${data}%'`;
-      queryTail = `project.title LIKE '%${data}%' OR categorie.title LIKE '%${data}%' OR citie.name LIKE '%${data}%'`
+      // queryTail = `item.title LIKE "%${data}%" OR store.title LIKE "%${data}%"`;
+      queryTail = `project.title LIKE "%${data}%" OR categorie.title LIKE "%${data}%" OR citie.name LIKE "%${data}%"`
     }else{
-      // queryTail += ` OR item.title LIKE '%${data}%' OR store.title LIKE '%${data}%'`;
-      queryTail += `OR project.title LIKE '%${data}%' OR categorie.title LIKE '%${data}%' OR citie.name LIKE '%${data}%'`
+      // queryTail += ` OR item.title LIKE "%${data}%" OR store.title LIKE "%${data}%"`;
+      queryTail += `OR project.title LIKE "%${data}%" OR categorie.title LIKE "%${data}%" OR citie.name LIKE "%${data}%"`
     }
   }
 
   const querySelect = mysql.format(`SELECT COUNT(project.id) AS project_count FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.state=? AND (${queryTail})`, [Types.project.STATE_APPROVED]);
 
   db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: {
+            count: 0
+          }
+        }
+      })
+    }
+
     return res.json({
       result: {
         state: res_state.success,
@@ -419,25 +428,6 @@ router.post('/any/search/projects/count', function(req, res){
       }
     })
   })
-
-  /*
-  const search_text = req.body.data.search_text;
-
-  const queyrFind = "%"+search_text+"%";
-
-  const querySelect = mysql.format("SELECT COUNT(project.id) AS project_count FROM projects AS project LEFT JOIN categories AS categorie ON categorie.id=project.category_id LEFT JOIN cities AS citie ON citie.id=project.city_id WHERE project.state=? AND (project.title LIKE ? OR categorie.title LIKE ? OR citie.name LIKE ?) ", [Types.project.STATE_APPROVED, queyrFind, queyrFind, queyrFind]);
-
-  db.SELECT(querySelect, {}, (result) => {
-    return res.json({
-      result: {
-        state: res_state.success,
-        data: {
-          count: result[0].project_count
-        }
-      }
-    })
-  })
-  */
 });
 
 router.post('/any/search/no/recommend', function(req, res){
