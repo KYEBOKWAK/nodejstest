@@ -310,7 +310,10 @@ router.post("/remove/v1", function(req, res){
     }else if(data.commentable_type === 'App\\Models\\Comment'){
       //대댓글에 걸려있는 댓글
       querySelectStore = mysql.format('SELECT store.user_id AS store_user_id FROM comments AS comment LEFT JOIN comments AS comment_store ON comment.commentable_id=comment_store.id LEFT JOIN stores AS store ON comment_store.commentable_id=store.id WHERE comment.id=?', comment_id);
-    }else{
+    }else if(data.commentable_type === 'App\\Models\\Post'){
+      querySelectStore = mysql.format('SELECT user_id AS store_user_id FROM posts WHERE id=?', data.commentable_id);
+    }
+    else{
     }
 
     db.SELECT(querySelectStore, {}, (result_comment_select_store) => {
