@@ -99,8 +99,15 @@ router.post('/any/thumbnails/popular/list', function(req, res){
 
 router.post('/any/thumbnails/list', function(req, res){
   const thumbnails_type = req.body.data.thumbnails_type;
+  
+  let tailQuery = '';
+  if(thumbnails_type === Types.thumbnails.landing_magazine){
+    tailQuery = ' ORDER BY order_number'
+  }else{
+    tailQuery = ' ORDER BY RAND()'
+  }
 
-  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url, first_text, second_text, first_text_eng, second_text_eng FROM main_thumbnails WHERE type=?", [thumbnails_type]);
+  const querySelect = mysql.format("SELECT target_id, type, thumb_img_url, first_text, second_text, first_text_eng, second_text_eng FROM main_thumbnails WHERE type=?" + tailQuery, [thumbnails_type]);
 
   db.SELECT(querySelect, {}, (result) => {
     return res.json({
@@ -472,6 +479,21 @@ router.post('/any/stores/count', function(req, res){
   })
 })
 
+router.post('/any/users/count', function(req, res){
+  const querySelect = mysql.format("SELECT COUNT(id) AS user_count FROM users", []);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          user_count: result[0].user_count
+        }
+      }
+    })
+  })
+})
+
 router.post('/any/items/count', function(req, res){
   // const querySelect = mysql.format("SELECT COUNT(id) AS item_count FROM items WHERE state=?", [Types.item_state.SALE]);
   const querySelect = mysql.format("SELECT COUNT(id) AS item_count FROM items", []);
@@ -538,6 +560,43 @@ router.post('/any/event/list', function(req, res){
           color_text: data.color_text
         }
       })
+    })
+  })
+})
+
+router.post('/any/notice/info', function(req, res){
+  const type = req.body.data.type;
+  db.SELECT("SELECT contents, contents_eng, link FROM notice_stores WHERE type=?", [type], 
+  (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+})
+
+router.post("/any/rolling/creator/list", function(req, res){
+  db.SELECT("SELECT store.alias, store.title, user.profile_photo_url AS img_url FROM main_thumbnails AS main_thumbnail LEFT JOIN stores AS store ON main_thumbnail.target_id=store.id LEFT JOIN users AS user ON store.user_id=user.id WHERE main_thumbnail.type=? ORDER BY RAND()", [Types.thumbnails.landing_rolling_creator], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
     })
   })
 })

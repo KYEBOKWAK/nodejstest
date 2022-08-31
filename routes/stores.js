@@ -2674,9 +2674,23 @@ router.post("/file/set/downloadfiles/itemid", function(req, res){
 });
 
 router.post("/notice/list", function(req, res){
-  const selectQuery = mysql.format("SELECT contents, contents_img_url, link FROM notice_stores")
+  let type = req.body.data.type;
+  if(!type){
+    //기존에는 manager의 home에서만 쓰고 있었음
+    type = Types.notice_stores.manager
+  }
+  const selectQuery = mysql.format("SELECT contents, contents_img_url, link FROM notice_stores WHERE type=?", type)
 
   db.SELECT(selectQuery, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          list: []
+        }
+      })
+    }
+
     return res.json({
       result: {
         state: res_state.success,

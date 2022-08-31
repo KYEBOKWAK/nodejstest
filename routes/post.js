@@ -532,7 +532,8 @@ router.post("/any/detail", function(req, res){
 router.post("/any/detail/id", function(req, res){
   const post_id = req.body.data.post_id;
 
-  const querySelect = mysql.format("SELECT page_id, title FROM posts WHERE id=?", [post_id]);
+  const querySelect = mysql.format("SELECT post.user_id, post.page_id, post.title, post.story, post.store_id, store.title AS store_title, store.alias AS store_alias FROM posts AS post LEFT JOIN stores AS store ON post.store_id=store.id WHERE post.id=?", [post_id]);
+
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
       return res.json({
