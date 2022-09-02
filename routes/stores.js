@@ -348,6 +348,34 @@ router.post('/info/userid', function(req, res){
   })
 })
 
+router.post('/any/info/userid', function(req, res){
+  // const user_id = req.body.data.user_id;
+  const store_user_id = req.body.data.store_user_id;
+  const querySelect = mysql.format("SELECT store.business_number, store.is_business, store.thumb_img_url, store.download_file_max, store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name, user.profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", store_user_id);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result:{
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+
+    const data = result[0];
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+})
+
 router.post('/orders/ask/list', function(req, res){
   const store_id = req.body.data.store_id;
 
