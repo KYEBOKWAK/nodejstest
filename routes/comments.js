@@ -3,7 +3,7 @@ var router = express.Router();
 const use = require('abrequire');
 var db = use('lib/db_sql.js');
 
-var types = use('lib/types.js');
+var Types = use('lib/types.js');
 const res_state = use('lib/res_state.js');
 const moment_timezone = require('moment-timezone');
 moment_timezone.tz.setDefault("Asia/Seoul");
@@ -16,12 +16,12 @@ const Util = use('lib/util.js');
 const global = use('lib/global_const.js');
 
 getCommentableType = (commentType) => {
-  let commentData = types.comment.commentable_type.find((value) => {return value.key === commentType});
+  let commentData = Types.comment.commentable_type.find((value) => {return value.key === commentType});
   return commentData.value;
 }
 
 getCommentableSecondTargetType = (commentSecondTargetType) => {
-  let commentData = types.comment.second_target_type.find((value) => {return value.key === commentSecondTargetType});
+  let commentData = Types.comment.second_target_type.find((value) => {return value.key === commentSecondTargetType});
   return commentData.value;
 }
 
@@ -152,7 +152,7 @@ router.post("/add", function(req, res){
   const user_id = req.body.data.user_id;
   const commentValue = req.body.data.comment_value;
 
-  // let commentData = types.comment.commentable_type.find((value) => {return value.key === commentable_type});
+  // let commentData = Types.comment.commentable_type.find((value) => {return value.key === commentable_type});
 
   var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
@@ -190,7 +190,7 @@ router.post("/second/add", function(req, res){
   const second_target_id = req.body.data.second_target_id;
   const second_target_type = this.getCommentableSecondTargetType(req.body.data.second_target_type);
 
-  // let commentData = types.comment.commentable_type.find((value) => {return value.key === commentable_type});
+  // let commentData = Types.comment.commentable_type.find((value) => {return value.key === commentable_type});
 
   var date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
@@ -422,7 +422,7 @@ router.post("/remove/v2", function(req, res){
       querySelectStore = mysql.format('SELECT user_id AS store_user_id FROM stores WHERE id=?', data.commentable_id);
     }else if(data.commentable_type === 'App\\Models\\Comment'){
       //대댓글에 걸려있는 댓글 //현재 스토어에 붙은 댓글만 삭제 가능
-      if(componentType === types.comment.componentType.post) {
+      if(componentType === Types.comment.componentType.post) {
         querySelectStore = mysql.format('SELECT post.user_id AS store_user_id FROM comments AS comment LEFT JOIN comments AS comment_post ON comment.commentable_id=comment_post.id LEFT JOIN posts AS post ON comment_post.commentable_id=post.id WHERE comment.id=?', comment_id);
       }else {
         querySelectStore = mysql.format('SELECT store.user_id AS store_user_id FROM comments AS comment LEFT JOIN comments AS comment_store ON comment.commentable_id=comment_store.id LEFT JOIN stores AS store ON comment_store.commentable_id=store.id WHERE comment.id=?', comment_id);
@@ -645,7 +645,7 @@ router.post("/order/item/check", function(req, res){
   const user_id = req.body.data.user_id;
   const item_id = req.body.data.item_id;
 
-  const querySelect = mysql.format("SELECT orders_item.created_at, orders_item.id, item.id AS item_id, item.img_url, item.title AS item_title, orders_item.total_price AS total_price, orders_item.total_price_USD AS total_price_USD, orders_item.currency_code FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.user_id=? AND orders_item.item_id=? AND orders_item.state>=? AND orders_item.state<? AND orders_item.state<>?", [user_id, item_id, types.order.ORDER_STATE_APP_PAY_COMPLITE, types.order.ORDER_STATE_PAY_END, types.order.ORDER_STATE_APP_STORE_STANBY]);
+  const querySelect = mysql.format("SELECT orders_item.created_at, orders_item.id, item.id AS item_id, item.img_url, item.title AS item_title, orders_item.total_price AS total_price, orders_item.total_price_USD AS total_price_USD, orders_item.currency_code FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.user_id=? AND orders_item.item_id=? AND orders_item.state>=? AND orders_item.state<? AND orders_item.state<>?", [user_id, item_id, Types.order.ORDER_STATE_APP_PAY_COMPLITE, Types.order.ORDER_STATE_PAY_END, Types.order.ORDER_STATE_APP_STORE_STANBY]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
@@ -860,6 +860,76 @@ router.post('/any/post/list', function(req, res){
     })
   })
 })
+
+router.post('/any/page/list', function(req, res){
+  const commentType = req.body.data.commentType;
+  const target_id = req.body.data.target_id;
+
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip
+
+  let commentable_type = this.getCommentableType(commentType);
+
+  let querySelect = '';
+  if(commentType === Types.comment.commentType.store){
+    const item_id = req.body.data.item_id;
+    querySelect = mysql.format("SELECT comment.id, comment.is_heart, comment.user_id, comment.created_at, comment.id AS comment_id, user.nick_name, user.name, user.profile_photo_url, comment.contents, comment.second_target_id FROM comments AS comment LEFT JOIN orders_items AS orders_item ON orders_item.id=comment.second_target_id LEFT JOIN users AS user ON comment.user_id=user.id WHERE orders_item.item_id=? AND comment.commentable_id=? AND comment.commentable_type=? AND comment.second_target_id IS NOT NULL GROUP BY comment.id ORDER BY comment.id DESC LIMIT ? OFFSET ?", [item_id, target_id, commentable_type, limit, skip]);
+  }else{
+    querySelect = mysql.format("SELECT id, user_id, contents, created_at FROM comments WHERE commentable_id=? AND commentable_type=? ORDER BY id DESC LIMIT ? OFFSET ?", [target_id, commentable_type, limit, skip]);
+  }
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          list: []
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
+
+router.post('/any/page/count/all', function(req, res){
+  const commentType = req.body.data.commentType;
+  const target_id = req.body.data.target_id;
+
+  let commentable_type = this.getCommentableType(commentType);
+
+  let querySelect = '';
+  if(commentType === Types.comment.commentType.store){
+    const item_id = req.body.data.item_id;
+    querySelect = mysql.format("SELECT COUNT(comment.id) AS comment_count FROM comments AS comment LEFT JOIN orders_items AS orders_item ON orders_item.id=comment.second_target_id LEFT JOIN users AS user ON comment.user_id=user.id WHERE orders_item.item_id=? AND comment.commentable_id=? AND comment.commentable_type=? AND comment.second_target_id IS NOT NULL", [item_id, target_id, commentable_type]);
+  }else{
+
+  }
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          comment_count: 0
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        comment_count: data.comment_count
+      }
+    })
+  })
+});
 
 //commentable_id 기준으로 count만 가져온다.
 router.post('/any/count/all', function(req, res){
