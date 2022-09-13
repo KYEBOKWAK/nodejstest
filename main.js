@@ -1621,13 +1621,15 @@ app.listen(3000, '0.0.0.0', function () {
 });
 
 app.use(function(err, req, res, next) {
-  console.error(`[CT_SERVER_ERROR]\nURL: ${req.url}\nMes: ${err.message} || \n${err.stack}`);
+  const data = JSON.stringify(req.body.data);
+
+  console.error(`[CT_SERVER_ERROR]\nURL: ${req.url}\nData: ${data}\nMes: ${err.message} || \n${err.stack}`);
 
   if(process.env.APP_TYPE !== 'local'){
     slack.webhook({
       channel: "#bot-서버오류",
       username: "bot",
-      text: `[CT_SERVER_ERROR]\nURL: ${req.url}\nMes: ${err.message}`
+      text: `[CT_SERVER_ERROR]\nURL: ${req.url}\nData: ${data}\nMes: ${err.message}`
     }, function(err, response) {
     });
   }
