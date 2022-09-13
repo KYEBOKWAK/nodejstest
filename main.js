@@ -37,6 +37,8 @@ var app = express();
 
 const use = require('abrequire');
 
+var bodyParser = require('body-parser');
+
 var path = require('path');
 let favicon = require('serve-favicon');
 app.use(favicon(path.join(__dirname, 'public/img', 'favicon.ico')))
@@ -98,7 +100,7 @@ process.setMaxListeners(15);
 
 app.use(express.json({ limit : "50mb" }));
 
-// app.use(bodyParser.json());
+app.use(bodyParser.json());
 app.use(cors());
 
 // app.use(express.json({ limit : "50mb" }));
@@ -1616,6 +1618,26 @@ app.listen(3000, '0.0.0.0', function () {
     }, function(err, response) {
     });
   }
+});
+
+app.use(function(err, req, res, next) {
+  console.error(`[CT_SERVER_ERROR]\nURL: ${req.url}\nMes: ${err.message} || \n${err.stack}`);
+
+  if(process.env.APP_TYPE !== 'local'){
+    slack.webhook({
+      channel: "#bot-서버오류",
+      username: "bot",
+      text: `[CT_SERVER_ERROR]\nURL: ${req.url}\nMes: ${err.message}`
+    }, function(err, response) {
+    });
+  }
+
+  return res.json({
+    state: res_state.error,
+    message: err.message,
+    result: {}
+  })
+  
 });
 
 // app.listen(3000, "0.0.0.0", function () {
