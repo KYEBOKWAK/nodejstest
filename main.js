@@ -1625,6 +1625,14 @@ app.use(function(err, req, res, next) {
 
   console.error(`[CT_SERVER_ERROR]\nURL: ${req.url}\nData: ${data}\nMes: ${err.message} || \n${err.stack}`);
 
+  if(err.message === 'request aborted'){
+    return res.json({
+      state: res_state.error,
+      message: err.message,
+      result: {}
+    })
+  }
+
   if(process.env.APP_TYPE !== 'local'){
     slack.webhook({
       channel: "#bot-서버오류",

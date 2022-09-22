@@ -453,6 +453,23 @@ router.post("/file/download/delete", function(req, res){
   })
 });
 
+router.post("/file/delete", function(req, res){
+  const files_id = req.body.data.files_id;
+  db.DELETE("DELETE FROM files WHERE id=?", files_id, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '이미지 DB 삭제 실패',
+      result:{}
+    })
+  })
+});
+
 router.post("/file/business/get", function(req, res){
   const target_id = req.body.data.target_id;
 
@@ -743,6 +760,334 @@ router.post("/manager/order/list", function(req, res){
   })
 })
 
+function sendKakaoAddAsk(user_id, item_id, ask_title, ask_date) {
+  if(process.env.APP_TYPE === 'local'){
+    return;
+  }
+
+  db.SELECT("SELECT name, nick_name FROM users WHERE id=?", [user_id], (result_user) => {
+    if(!result_user || result_user.length === 0){
+      return;
+    }
+
+    const user_data = result_user[0];
+    let ask_name = user_data.nick_name;
+    if(!ask_name || ask_name === ''){
+      ask_name = user_data.name;
+    }
+    
+
+    db.SELECT("SELECT item.title AS item_name, store.contact, store.title AS store_title FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.id=?", [item_id], (result) => {
+      if(!result || result.length === 0){
+        return;
+      }
+
+      const data = result[0];
+      Global_Func.sendKakaoAlimTalk({
+        templateCode: 'Kalarm17v1',
+        to: data.contact,
+        creator_name: data.store_title,
+        item_name: data.item_name,
+        ask_title: ask_title,
+        ask_name: ask_name,
+        ask_date: ask_date,
+        link_url: 'ctee.kr/manager/place/?top=TAB_CONTENTS_STORE&sub=TAB_CONTENTS_STORE_SUB_CONTACT_LIST'
+      })      
+    })
+  })
+}
+
+router.post("/ask/add", function(req, res){
+  const user_id = req.body.data.user_id;
+  const item_id = req.body.data.item_id;
+  const store_id = req.body.data.store_id;
+  const title = req.body.data.title;
+  const contents = req.body.data.contents;
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  let language_code = req.body.data.language_code;
+  if(!language_code) {
+    language_code = Types.language.kr
+  }
+
+  let askData = {
+    user_id: user_id,
+    item_id: item_id,
+    store_id: store_id,
+    title: title,
+    contents: contents,
+    created_at: date,
+    language_code: language_code
+  }
+
+  db.INSERT("INSERT INTO asks SET ?", [askData], (result) => {
+
+    sendKakaoAddAsk(user_id, item_id, title, date);
+    return res.json({
+      result: {
+        state: res_state.success,
+        ask_id: result.insertId
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '문의하기 insert 실패',
+      result: {}
+    })
+  })
+})
+
+router.post('/ask/get/my', function(req, res){
+  let user_id = req.body.data.user_id;
+  const _user_id = req.body.data._user_id;
+  if(_user_id){
+    user_id = _user_id;
+  }
+
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip;
+  
+  const querySelect = mysql.format("SELECT id AS ask_id FROM asks WHERE user_id=? ORDER BY id DESC LIMIT ? OFFSET ?", [user_id, limit, skip]);
+  
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result:{
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post('/ask/info', function(req, res){
+  const ask_id = req.body.data.ask_id;
+
+  db.SELECT("SELECT item_id, store_id, title, contents, created_at FROM asks WHERE id=?", [ask_id], (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '문의하기 정보 조회 에러',
+        result: {}
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result:{
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+});
+
+router.post('/ask/files/list', function(req, res){
+  const ask_id = req.body.data.ask_id;
+  db.SELECT("SELECT id, url, originalname FROM files WHERE target_id=? AND target_type=?", [ask_id, Types.file_upload_target_type.ask_file], (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          list: []
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post('/ask/list', function(req, res){
+  const store_id = req.body.data.store_id;
+  const item_id = req.body.data.item_id;
+  const filter_ask_answer = req.body.data.filter_ask_answer;
+
+  let limit = req.body.data.limit;
+  let skip = req.body.data.skip
+
+  let filter_ask_answer_query = '';
+  if(filter_ask_answer === Types.filter_ask_answer.all){
+    filter_ask_answer_query = '';
+  }else if(filter_ask_answer === Types.filter_ask_answer.wait){
+    filter_ask_answer_query = 'AND ask_answer.id IS NULL';
+  }else if(filter_ask_answer === Types.filter_ask_answer.answer_complite){
+    filter_ask_answer_query = 'AND ask_answer.id IS NOT NULL';
+  }
+
+  let querySelect = '';
+  if(item_id === null){
+    querySelect = mysql.format(`SELECT ask.language_code, ask.id, ask.item_id, ask.store_id, ask.user_id, ask.title, ask.contents, ask.created_at FROM asks AS ask LEFT JOIN ask_answers AS ask_answer ON ask.id=ask_answer.ask_id WHERE ask.store_id=? ${filter_ask_answer_query} ORDER BY ask.id DESC LIMIT ? OFFSET ?`, [store_id, limit, skip]);
+  }else{
+    querySelect = mysql.format(`SELECT ask.language_code, ask.id, ask.item_id, ask.store_id, ask.user_id, ask.title, ask.contents, ask.created_at FROM asks AS ask LEFT JOIN ask_answers AS ask_answer ON ask.id=ask_answer.ask_id WHERE ask.store_id=? AND ask.item_id=? ${filter_ask_answer_query} ORDER BY ask.id DESC LIMIT ? OFFSET ?`, [store_id, item_id, limit, skip]);
+  }
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+})
+
+router.post('/ask/answer/get', function(req, res){
+  const ask_id = req.body.data.ask_id;
+
+  db.SELECT("SELECT id, store_id, user_id, contents, created_at FROM ask_answers WHERE ask_id=?", [ask_id], (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+});
+
+router.post("/ask/answer/update", function(req, res){
+  const answer_id = req.body.data.answer_id;
+  const contents = req.body.data.contents;
+
+  const data = {
+    contents: contents
+  }
+
+  db.UPDATE("UPDATE ask_answers SET ? WHERE id=?", [data, answer_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '문의 답변 업데이트 실패',
+      result: {}
+    })
+  })
+});
+
+router.post("/ask/answer/delete", function(req, res){
+  const answer_id = req.body.data.answer_id;
+
+  db.DELETE("DELETE FROM ask_answers WHERE id=?", answer_id, 
+  (result) => {
+    return res.json({
+      result:{
+        state: res_state.success
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '문의하기 답변 삭제 실패',
+      result:{}
+    })
+  })
+})
+
+function sendAlarmAddAnswer(user_id, store_title, item_title, ask_title, ask_date, ask_contents, answer_contents, ask_language_code) {
+  if(process.env.APP_TYPE === 'local'){
+    return;
+  }
+
+  db.SELECT("SELECT name, nick_name, contact, email FROM users WHERE id=?", [user_id], (result_user) => {
+    if(!result_user || result_user.length === 0){
+      return;
+    }
+
+    const user_data = result_user[0];
+    let ask_name = user_data.nick_name;
+    if(!ask_name || ask_name === ''){
+      ask_name = user_data.name;
+    }
+
+    Global_Func.sendKakaoAlimTalk({
+      templateCode: 'Kalarm18v1',
+      to: user_data.contact,
+      ask_name: ask_name,
+      place_name: store_title,
+      item_name: item_title,
+      ask_title: ask_title,
+      ask_date: ask_date,
+      link_url: `ctee.kr/users/store/${user_id}/orders?menu=MENU_ORDER_LIST`
+    })
+
+    const mailMSG = {
+      to: user_data.email,
+      from: Templite_email.from(ask_language_code),
+      subject: Templite_email.email_add_answer_requested.subject(ask_language_code),
+      html: Templite_email.email_add_answer_requested.html(user_id, ask_name, item_title, store_title, ask_title, ask_date, ask_contents, answer_contents, ask_language_code)
+    }
+    sgMail.send(mailMSG).then((result) => {
+        // console.log(result);
+    }).catch((error) => {
+        // console.log(error);
+    })
+  })
+}
+
+router.post("/ask/answer/add", function(req, res){
+  const store_user_id = req.body.data.store_user_id;
+  const ask_id = req.body.data.ask_id;
+  const store_id = req.body.data.store_id;
+  const contents = req.body.data.contents;
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+  
+  const ask_user_id = req.body.data.ask_user_id;
+  const item_title = req.body.data.item_title;
+  const store_title = req.body.data.store_title;
+  const ask_title = req.body.data.ask_title;
+  const ask_date = req.body.data.ask_created_at;
+  const ask_contents = req.body.data.ask_contents;
+  const ask_language_code = req.body.data.ask_language_code;
+
+  let askData = {
+    ask_id: ask_id,
+    store_id: store_id,
+    user_id: store_user_id,
+    contents: contents,
+    created_at: date
+  }
+
+  db.INSERT("INSERT INTO ask_answers SET ?", [askData], (result) => {
+    sendAlarmAddAnswer(ask_user_id, store_title, item_title, ask_title, ask_date, ask_contents, contents, ask_language_code);
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        answer_id: result.insertId
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '문의하기 insert 실패',
+      result: {}
+    })
+  })
+})
 /*
 router.post('/file/size/s3', function(req, res){
 

@@ -1383,14 +1383,6 @@ router.post('/store/item/list/get', function(req, res){
   const querySelect = mysql.format("SELECT id AS store_order_id FROM orders_items WHERE user_id=? AND state<? ORDER BY id DESC LIMIT ? OFFSET ?", [user_id, types.order.ORDER_STATE_ERROR_START, limit, skip]);
   
   db.SELECT(querySelect, {}, (result) => {
-    // if(result.length === 0){
-    //   return res.json({
-    //     state: res_state.error,
-    //     message: '주문 정보 조회 오류',
-    //     result:{}
-    //   })
-    // }
-
     return res.json({
       result:{
         state: res_state.success,

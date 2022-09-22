@@ -2701,6 +2701,49 @@ router.post("/file/set/downloadfiles/itemid", function(req, res){
   })
 });
 
+router.post("/file/set/files/targetid", function(req, res){
+  const target_id = req.body.data.target_id;
+  const filesInsertID = req.body.data.filesInsertID;
+
+  let _orders_itemsUpdateQueryArray = [];
+  let _orders_itemsUpdateOptionArray = [];
+
+  for(let i = 0 ; i < filesInsertID.length ; i++){
+    const data = filesInsertID[i];
+    let object = [{
+      target_id: target_id,
+    }, 
+    data.file_id];
+
+    let queryObject = {
+      key: i,
+      value: "UPDATE files SET ? WHERE id=?;"
+    }
+
+    let updateOrdersItemsObject = {
+      key: i,
+      value: object
+    }
+
+    _orders_itemsUpdateQueryArray.push(queryObject);
+    _orders_itemsUpdateOptionArray.push(updateOrdersItemsObject);
+  }
+
+  db.UPDATE_MULITPLEX(_orders_itemsUpdateQueryArray, _orders_itemsUpdateOptionArray, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '업데이트 실패',
+      result:{}
+    })
+  })
+});
+
 router.post("/notice/list", function(req, res){
   let type = req.body.data.type;
   if(!type){
