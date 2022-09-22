@@ -760,7 +760,7 @@ router.post("/manager/order/list", function(req, res){
   })
 })
 
-function sendKakaoAddAsk(user_id, item_id, ask_title, ask_date) {
+function sendKakaoAddAsk(user_id, item_id, ask_title, ask_date, contents, store_id) {
   if(process.env.APP_TYPE === 'local'){
     return;
   }
@@ -792,7 +792,15 @@ function sendKakaoAddAsk(user_id, item_id, ask_title, ask_date) {
         ask_name: ask_name,
         ask_date: ask_date,
         link_url: 'ctee.kr/manager/place/?top=TAB_CONTENTS_STORE&sub=TAB_CONTENTS_STORE_SUB_CONTACT_LIST'
-      })      
+      })
+
+      slack.webhook({
+        channel: "#bot-문의하기",
+        username: "bot",
+        text: `[문의하기]\n플레이스명: ${data.store_title}\n상품명: ${data.item_name}\n문의자: ${ask_name}\n제목: ${ask_title}\n내용: ${contents}\n관리페이지: https://ctee.kr/admin/manager/place/${store_id}`
+      }, function(err, response) {
+        console.log(err);
+      });
     })
   })
 }
@@ -822,7 +830,8 @@ router.post("/ask/add", function(req, res){
 
   db.INSERT("INSERT INTO asks SET ?", [askData], (result) => {
 
-    sendKakaoAddAsk(user_id, item_id, title, date);
+    sendKakaoAddAsk(user_id, item_id, title, date, contents, store_id);
+
     return res.json({
       result: {
         state: res_state.success,
@@ -1007,7 +1016,7 @@ router.post("/ask/answer/delete", function(req, res){
   })
 })
 
-function sendAlarmAddAnswer(user_id, store_title, item_title, ask_title, ask_date, ask_contents, answer_contents, ask_language_code) {
+function sendAlarmAddAnswer(user_id, store_title, item_title, ask_title, ask_date, ask_contents, answer_contents, ask_language_code, store_id) {
   if(process.env.APP_TYPE === 'local'){
     return;
   }
@@ -1033,6 +1042,14 @@ function sendAlarmAddAnswer(user_id, store_title, item_title, ask_title, ask_dat
       ask_date: ask_date,
       link_url: `ctee.kr/users/store/${user_id}/orders?menu=MENU_ASK_LIST`
     })
+
+    slack.webhook({
+      channel: "#bot-문의하기",
+      username: "bot",
+      text: `[답변]\n플레이스명: ${store_title}\n상품명: ${item_title}\n문의자: ${ask_name}\n제목: ${ask_title}\n내용: ${ask_contents}\n답변: ${answer_contents}\n관리페이지: https://ctee.kr/admin/manager/place/${store_id}`
+    }, function(err, response) {
+      console.log(err);
+    });
 
     const mailMSG = {
       to: user_data.email,
@@ -1072,7 +1089,7 @@ router.post("/ask/answer/add", function(req, res){
   }
 
   db.INSERT("INSERT INTO ask_answers SET ?", [askData], (result) => {
-    sendAlarmAddAnswer(ask_user_id, store_title, item_title, ask_title, ask_date, ask_contents, contents, ask_language_code);
+    sendAlarmAddAnswer(ask_user_id, store_title, item_title, ask_title, ask_date, ask_contents, contents, ask_language_code, store_id);
 
     return res.json({
       result: {
