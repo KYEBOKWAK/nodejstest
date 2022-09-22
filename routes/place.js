@@ -1031,7 +1031,7 @@ function sendAlarmAddAnswer(user_id, store_title, item_title, ask_title, ask_dat
       item_name: item_title,
       ask_title: ask_title,
       ask_date: ask_date,
-      link_url: `ctee.kr/users/store/${user_id}/orders?menu=MENU_ORDER_LIST`
+      link_url: `ctee.kr/users/store/${user_id}/orders?menu=MENU_ASK_LIST`
     })
 
     const mailMSG = {
