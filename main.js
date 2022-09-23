@@ -133,6 +133,11 @@ app.use(function (req, res, next) {
           message: '정상 접근이 아닙니다. access is abnormal'
         });      
       }
+  }else{
+    return res.json({
+      state: 'error',
+      message: '정상 접근이 아닙니다. access is abnormal'
+    });      
   }
   
   let url = req.url;

@@ -784,7 +784,7 @@ function sendKakaoAddAsk(user_id, item_id, ask_title, ask_date, contents, store_
 
       const data = result[0];
       Global_Func.sendKakaoAlimTalk({
-        templateCode: 'Kalarm17v1',
+        templateCode: 'Kalarm17v2',
         to: data.contact,
         creator_name: data.store_title,
         item_name: data.item_name,
