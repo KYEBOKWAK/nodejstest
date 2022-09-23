@@ -111,6 +111,11 @@ app.use(cors());
 
 //여기서부터 새로운 코드 간다!! START
 
+function getUserIP(req) {
+  const addr = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  return addr;
+}
+
 app.use(function (req, res, next) {
   // console.log(req.headers.origin);
   // console.log(process.env.CROWDTICKET_WEB_REFERER);
@@ -134,10 +139,39 @@ app.use(function (req, res, next) {
         });      
       }
   }else{
-    return res.json({
-      state: 'error',
-      message: '정상 접근이 아닙니다. access is abnormal'
-    });      
+    let yourIP = getUserIP(req);
+    let webHookIPList = [];
+    if(process.env.APP_TYPE === 'local'){
+        // webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_TEST);
+    }
+    else if(process.env.APP_TYPE === 'qa'){
+      yourIP = process.env.IAMPORT_WEB_HOOK_IP_1;  
+    }
+    else{
+        // webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_1);
+        // webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_2);
+    }
+
+    webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_1);
+    webHookIPList.push(process.env.IAMPORT_WEB_HOOK_IP_2);
+
+    let isWebHookPass = false;
+    for(let i = 0 ; i < webHookIPList.length ; i++){
+        const webHookIP = webHookIPList[i];
+        if(webHookIP === yourIP){
+            isWebHookPass = true;
+        }
+    }
+
+    if(!isWebHookPass){
+      return res.json({
+        state: 'error',
+        message: '정상 접근이 아닙니다. access is abnormal'
+      });     
+    }
+    else{
+      return next();
+    }
   }
   
   let url = req.url;
