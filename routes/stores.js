@@ -122,7 +122,7 @@ router.post('/any/detail/info', function(req, res){
   const store_id = req.body.data.store_id;
   const store_alias = req.body.data.store_alias;
 
-  const querySelect = mysql.format("SELECT store.representative_post_id, store.representative_type, store.contact, store.representative_item_id, store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
+  const querySelect = mysql.format("SELECT store.state, store.representative_post_id, store.representative_type, store.contact, store.representative_item_id, store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
