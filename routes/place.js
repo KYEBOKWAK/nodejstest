@@ -760,7 +760,7 @@ router.post("/manager/order/list", function(req, res){
   })
 })
 
-function sendKakaoAddAsk(user_id, item_id, ask_title, ask_date, contents, store_id) {
+function sendKakaoAddAsk(user_id, item_id, ask_title, ask_date, contents, store_id, type) {
   if(process.env.APP_TYPE === 'local'){
     return;
   }
@@ -776,30 +776,40 @@ function sendKakaoAddAsk(user_id, item_id, ask_title, ask_date, contents, store_
       ask_name = user_data.name;
     }
     
-
     db.SELECT("SELECT item.title AS item_name, store.contact, store.title AS store_title FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.id=?", [item_id], (result) => {
       if(!result || result.length === 0){
         return;
       }
 
       const data = result[0];
-      Global_Func.sendKakaoAlimTalk({
-        templateCode: 'Kalarm17v2',
-        to: data.contact,
-        creator_name: data.store_title,
-        item_name: data.item_name,
-        ask_title: ask_title,
-        ask_name: ask_name,
-        ask_date: ask_date,
-        link_url: 'ctee.kr/manager/place/?top=TAB_CONTENTS_STORE&sub=TAB_CONTENTS_STORE_SUB_CONTACT_LIST'
-      })
 
+      let linkUrl = '';
+      let title = '';
+      if(type === Types.ask.creator){
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'Kalarm17v2',
+          to: data.contact,
+          creator_name: data.store_title,
+          item_name: data.item_name,
+          ask_title: ask_title,
+          ask_name: ask_name,
+          ask_date: ask_date,
+          link_url: 'ctee.kr/manager/place/?top=TAB_CONTENTS_STORE&sub=TAB_CONTENTS_STORE_SUB_CONTACT_LIST'
+        });
+
+        title = '문의하기_creator';
+        linkUrl = `https://ctee.kr/admin/manager/place/${store_id}`;
+      }else{
+        linkUrl = `http://admin.crowdticket.kr`;
+        title = '문의하기_admin';
+      }
+      
       slack.webhook({
         channel: "#bot-문의하기",
         username: "bot",
-        text: `[문의하기]\n플레이스명: ${data.store_title}\n상품명: ${data.item_name}\n문의자: ${ask_name}\n제목: ${ask_title}\n내용: ${contents}\n관리페이지: https://ctee.kr/admin/manager/place/${store_id}`
+        text: `[${title}]\n플레이스명: ${data.store_title}\n상품명: ${data.item_name}\n문의자: ${ask_name}\n제목: ${ask_title}\n내용: ${contents}\n관리페이지: ${linkUrl}`
       }, function(err, response) {
-        console.log(err);
+        // console.log(err);
       });
     })
   })
@@ -811,6 +821,7 @@ router.post("/ask/add", function(req, res){
   const store_id = req.body.data.store_id;
   const title = req.body.data.title;
   const contents = req.body.data.contents;
+  const type = req.body.data.type;
   const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
   let language_code = req.body.data.language_code;
@@ -825,12 +836,13 @@ router.post("/ask/add", function(req, res){
     title: title,
     contents: contents,
     created_at: date,
+    type: type,
     language_code: language_code
   }
 
   db.INSERT("INSERT INTO asks SET ?", [askData], (result) => {
 
-    sendKakaoAddAsk(user_id, item_id, title, date, contents, store_id);
+    sendKakaoAddAsk(user_id, item_id, title, date, contents, store_id, type);
 
     return res.json({
       result: {
@@ -933,9 +945,9 @@ router.post('/ask/list', function(req, res){
 
   let querySelect = '';
   if(item_id === null){
-    querySelect = mysql.format(`SELECT ask.language_code, ask.id, ask.item_id, ask.store_id, ask.user_id, ask.title, ask.contents, ask.created_at FROM asks AS ask LEFT JOIN ask_answers AS ask_answer ON ask.id=ask_answer.ask_id WHERE ask.store_id=? ${filter_ask_answer_query} ORDER BY ask.id DESC LIMIT ? OFFSET ?`, [store_id, limit, skip]);
+    querySelect = mysql.format(`SELECT ask.language_code, ask.id, ask.item_id, ask.store_id, ask.user_id, ask.title, ask.contents, ask.created_at FROM asks AS ask LEFT JOIN ask_answers AS ask_answer ON ask.id=ask_answer.ask_id WHERE ask.store_id=? AND ask.type=? ${filter_ask_answer_query} ORDER BY ask.id DESC LIMIT ? OFFSET ?`, [store_id, Types.ask.creator, limit, skip]);
   }else{
-    querySelect = mysql.format(`SELECT ask.language_code, ask.id, ask.item_id, ask.store_id, ask.user_id, ask.title, ask.contents, ask.created_at FROM asks AS ask LEFT JOIN ask_answers AS ask_answer ON ask.id=ask_answer.ask_id WHERE ask.store_id=? AND ask.item_id=? ${filter_ask_answer_query} ORDER BY ask.id DESC LIMIT ? OFFSET ?`, [store_id, item_id, limit, skip]);
+    querySelect = mysql.format(`SELECT ask.language_code, ask.id, ask.item_id, ask.store_id, ask.user_id, ask.title, ask.contents, ask.created_at FROM asks AS ask LEFT JOIN ask_answers AS ask_answer ON ask.id=ask_answer.ask_id WHERE ask.store_id=? AND ask.type=? AND ask.item_id=? ${filter_ask_answer_query} ORDER BY ask.id DESC LIMIT ? OFFSET ?`, [store_id, Types.ask.creator, item_id, limit, skip]);
   }
 
   db.SELECT(querySelect, {}, (result) => {
@@ -1016,7 +1028,7 @@ router.post("/ask/answer/delete", function(req, res){
   })
 })
 
-function sendAlarmAddAnswer(user_id, store_title, item_title, ask_title, ask_date, ask_contents, answer_contents, ask_language_code, store_id) {
+function sendAlarmAddAnswer(user_id, store_title, item_title, ask_title, ask_date, ask_contents, answer_contents, ask_language_code, store_id, type) {
   if(process.env.APP_TYPE === 'local'){
     return;
   }
@@ -1043,10 +1055,20 @@ function sendAlarmAddAnswer(user_id, store_title, item_title, ask_title, ask_dat
       link_url: `ctee.kr/users/store/${user_id}/orders?menu=MENU_ASK_LIST`
     })
 
+    let slack_title = '';
+    let slack_link_url = '';
+    if(type === Types.ask.creator) {
+      slack_title = '답변_creator';
+      slack_link_url = `https://ctee.kr/admin/manager/place/${store_id}`;
+    }else{
+      slack_title = '답변_admin';
+      slack_link_url = `http://admin.crowdticket.kr`;
+    }
+
     slack.webhook({
       channel: "#bot-문의하기",
       username: "bot",
-      text: `[답변]\n플레이스명: ${store_title}\n상품명: ${item_title}\n문의자: ${ask_name}\n제목: ${ask_title}\n내용: ${ask_contents}\n답변: ${answer_contents}\n관리페이지: https://ctee.kr/admin/manager/place/${store_id}`
+      text: `[${slack_title}]\n플레이스명: ${store_title}\n상품명: ${item_title}\n문의자: ${ask_name}\n제목: ${ask_title}\n내용: ${ask_contents}\n답변: ${answer_contents}\n관리페이지: ${slack_link_url}`
     }, function(err, response) {
       console.log(err);
     });
@@ -1089,7 +1111,7 @@ router.post("/ask/answer/add", function(req, res){
   }
 
   db.INSERT("INSERT INTO ask_answers SET ?", [askData], (result) => {
-    sendAlarmAddAnswer(ask_user_id, store_title, item_title, ask_title, ask_date, ask_contents, contents, ask_language_code, store_id);
+    sendAlarmAddAnswer(ask_user_id, store_title, item_title, ask_title, ask_date, ask_contents, contents, ask_language_code, store_id, Types.ask.creator);
 
     return res.json({
       result: {
@@ -1104,7 +1126,25 @@ router.post("/ask/answer/add", function(req, res){
       result: {}
     })
   })
-})
+});
+
+router.post("/any/ask/answer/add/alarm", function(req, res){
+  const ask_user_id = req.body.data.ask_user_id;
+  const store_title = req.body.data.store_title;
+  const item_title = req.body.data.item_title;
+  const ask_title = req.body.data.ask_title;
+  const ask_date = moment_timezone(req.body.data.ask_date).format('YYYY-MM-DD HH:mm:ss');
+  const ask_contents = req.body.data.ask_contents;
+  const contents = req.body.data.contents;
+  const ask_language_code = req.body.data.ask_language_code;
+  const store_id = req.body.data.store_id;
+
+  sendAlarmAddAnswer(ask_user_id, store_title, item_title, ask_title, ask_date, ask_contents, contents, ask_language_code, store_id, Types.ask.admin);
+
+  return res.json({
+    state: res_state.success
+  })
+});
 /*
 router.post('/file/size/s3', function(req, res){
 
