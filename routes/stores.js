@@ -224,6 +224,18 @@ router.post('/any/item/info', function(req, res){
     if(data.img_url === null || data.img_url === ''){
       data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/real/items/img-thumb-default.png';
     }
+
+    if(data.discount_ended_at){
+      //discount end 값이 있으면 기간이 지났는지 체크 한다.
+      const nowDate = moment_timezone();
+      const discount_ended_at_moment = moment_timezone(data.discount_ended_at);
+      if(discount_ended_at_moment.diff(nowDate) < 0){
+        //할인 기간이 지나면 모든값을 Null로 셋팅한다.
+        data.discount_price = null;
+        data.discount_started_at = null;
+        data.discount_ended_at = null;
+      }
+    }
     
     if(currency_code === Types.currency_code.US_Dollar){
       const item_price = data.price;
@@ -2315,9 +2327,9 @@ router.post("/manager/payment/info/v1", function(req, res){
   const store_id = req.body.data.store_id;
   const sort_state = req.body.data.sort_state;
 
-  // const nowDate = moment_timezone();
+  const nowDate = moment_timezone();
   //test//
-  const nowDate = moment_timezone('2022-10-20 00:00:00');
+  // const nowDate = moment_timezone('2022-10-20 00:00:00');
   //////
   //범위 구하기
   let startDate = '';
