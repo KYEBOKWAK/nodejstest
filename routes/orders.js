@@ -2332,5 +2332,30 @@ router.post("/donation/complite/check", function(req, res){
   });
 })
 
+router.post("/info", function(req, res){
+  const order_id = req.body.data.order_id;
+
+  db.SELECT("SELECT orders_item.price, orders_item.price_USD, orders_item.total_price, orders_item.total_price_USD, orders_item.discount_price, orders_item.currency_code FROM orders_items AS orders_item WHERE orders_item.id=?", order_id, (result) => {
+
+    if(!result || result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '주문 정보 조회 오류',
+        result: {}
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+})
+
 
 module.exports = router;

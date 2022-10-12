@@ -189,6 +189,7 @@ router.post('/any/info/alias', function(req, res){
 })
 
 router.post('/any/item/info', function(req, res){
+  //상품 가격은 별도 api로 셋팅 한다.
   const store_item_id = req.body.data.store_item_id;
 
   let currency_code = req.body.data.currency_code;
@@ -203,7 +204,7 @@ router.post('/any/item/info', function(req, res){
 
   // const querySelect = mysql.format("SELECT item.is_adult, store.contact AS store_contact, item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
 
-  const querySelect = mysql.format("SELECT store.alias, exchange_rate.price AS exchange_price, item.is_adult, store.contact AS store_contact, item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id LEFT JOIN exchange_rates AS exchange_rate ON exchange_rate.currency_code=? WHERE item.id=?", [Types.currency_code.Won, store_item_id]);
+  const querySelect = mysql.format("SELECT item.discount_price, item.discount_started_at, item.discount_ended_at, store.alias, exchange_rate.price AS exchange_price, item.is_adult, store.contact AS store_contact, item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id LEFT JOIN exchange_rates AS exchange_rate ON exchange_rate.currency_code=? WHERE item.id=?", [Types.currency_code.Won, store_item_id]);
 
   db.SELECT(querySelect, {}, (result) => {
 
@@ -219,6 +220,7 @@ router.post('/any/item/info', function(req, res){
     }
 
     let data = result[0];
+
     if(data.img_url === null || data.img_url === ''){
       data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/real/items/img-thumb-default.png';
     }
@@ -235,8 +237,6 @@ router.post('/any/item/info', function(req, res){
       }
     }
     // console.log(data.exchange_price);
-
-    
 
     if(data.is_adult){
       //원래 /any에는 user_id가 없었음.
@@ -689,6 +689,16 @@ router.post("/item/add", function(req, res){
 
   const ask_play_time = req.body.data.ask_play_time;
 
+  let discount_price = req.body.data.discount_price;
+  let discount_started_at = req.body.data.discount_started_at;
+  let discount_ended_at = req.body.data.discount_ended_at;
+
+  if(discount_price === undefined || discount_price === null){
+    discount_price = null;
+    discount_started_at = null;
+    discount_ended_at = null;
+  }
+
   let completed_type_product_answer = req.body.data.completed_type_product_answer;
   if(completed_type_product_answer === undefined){
     completed_type_product_answer = '';
@@ -822,7 +832,11 @@ router.post("/item/add", function(req, res){
 
       notice_user: notice_user,
 
-      is_adult: is_adult
+      is_adult: is_adult,
+
+      discount_price: discount_price,
+      discount_started_at: discount_started_at,
+      discount_ended_at: discount_ended_at
     }
 
     db.INSERT("INSERT INTO items SET ?", itemData, 
@@ -880,6 +894,22 @@ router.post("/item/update", function(req, res){
   const order_limit_count = req.body.data.order_limit_count;
 
   const isChangeLimitCount = req.body.data.isChangeLimitCount;
+
+  let discount_price = req.body.data.discount_price;
+  let discount_started_at = req.body.data.discount_started_at;
+  let discount_ended_at = req.body.data.discount_ended_at;
+
+  if(discount_price === undefined || discount_price === null){
+    discount_price = null;
+    discount_started_at = null;
+    discount_ended_at = null;
+  }
+
+  if(discount_started_at === undefined || discount_started_at === null || 
+    discount_ended_at === undefined || discount_ended_at === null){
+    discount_started_at = null;
+    discount_ended_at = null;
+  }
 
   let product_category_type = req.body.data.product_category_type;
   if(product_category_type === undefined){
@@ -981,7 +1011,10 @@ router.post("/item/update", function(req, res){
     price: price, 
     content: content, 
     ask: ask, 
-    order_limit_count: order_limit_count
+    order_limit_count: order_limit_count,
+    discount_price: discount_price,
+    discount_started_at: discount_started_at,
+    discount_ended_at: discount_ended_at
   }
 
   if(isChangeLimitCount){
@@ -2283,7 +2316,7 @@ router.post("/manager/payment/info/v1", function(req, res){
   const sort_state = req.body.data.sort_state;
 
   const nowDate = moment_timezone();
-  // const nowDate = moment_timezone('2022-06-20 00:00:00');
+  // const nowDate = moment_timezone('2022-10-20 00:00:00');
   //범위 구하기
   let startDate = '';
   let endDate = '';
@@ -2321,7 +2354,7 @@ router.post("/manager/payment/info/v1", function(req, res){
 
     // selectQuery = mysql.format("SELECT orders_item.commision, orders_item.price_USD, orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
 
-    selectQuery = mysql.format("SELECT orders_item.type_commision, orders_item.commision, orders_item.price_USD, orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND (orders_item.total_price <> 0 OR orders_item.total_price_USD <> 0) ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
+    selectQuery = mysql.format("SELECT orders_item.discount_price, orders_item.type_commision, orders_item.commision, orders_item.price_USD, orders_item.orders_donation_id, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.total_price, orders_item.id, orders_item.confirm_at, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state=? AND orders_item.confirm_at IS NOT NULL AND orders_item.confirm_at>=? AND orders_item.confirm_at<=? AND (orders_item.total_price <> 0 OR orders_item.total_price_USD <> 0) ORDER BY id DESC", [store_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE, startDate, endDate]);
   }
 
   db.SELECT(selectQuery, {}, (result) => {
@@ -2354,8 +2387,13 @@ router.post("/manager/payment/info/v1", function(req, res){
           commition_percentage = default_commision;
         }
 
-        result[i].total_price = result[i].price;  //정산시에는 실 상품 구매 가격이 나와야함. 도네이션 작업 했으므로 total_price를 쓸 수 없음. 프론트에서 total_price를 쓰고 있어서 값 교체
-        result[i].total_price_USD = result[i].price_USD;
+        let discount_price = data.discount_price;
+        if(discount_price === undefined || discount_price === null){
+          discount_price = 0;
+        }
+
+        result[i].total_price = result[i].price - discount_price;  //정산시에는 실 상품 구매 가격이 나와야함. 도네이션 작업 했으므로 total_price를 쓸 수 없음. 프론트에서 total_price를 쓰고 있어서 값 교체
+        result[i].total_price_USD = result[i].price_USD - discount_price;
 
         result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");
         result[i].commission = Math.floor(result[i].total_price * (commition_percentage/100));
@@ -2381,8 +2419,13 @@ router.post("/manager/payment/info/v1", function(req, res){
           commition_percentage = default_commision;
         }
 
-        result[i].total_price = result[i].price;  //정산시에는 실 상품 구매 가격이 나와야함. 도네이션 작업 했으므로 total_price를 쓸 수 없음. 프론트에서 total_price를 쓰고 있어서 값 교체
-        result[i].total_price_USD = result[i].price_USD;
+        let discount_price = data.discount_price;
+        if(discount_price === undefined || discount_price === null){
+          discount_price = 0;
+        }
+
+        result[i].total_price = result[i].price - discount_price;  //정산시에는 실 상품 구매 가격이 나와야함. 도네이션 작업 했으므로 total_price를 쓸 수 없음. 프론트에서 total_price를 쓰고 있어서 값 교체
+        result[i].total_price_USD = result[i].price_USD - discount_price;
 
         result[i].ori_confirm_at = result[i].confirm_at;
         result[i].confirm_at = moment_timezone(result[i].confirm_at).format("YYYY-MM-DD");

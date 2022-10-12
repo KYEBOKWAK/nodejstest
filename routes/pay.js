@@ -1055,6 +1055,88 @@ function getCommisionInfo(store_id, callback){
   })
 }
 
+function getPayTotalPrice(item_id, donation_total_price, donation_total_price_usd, currency_code, callBack = (state, pay_total_price, pay_total_price_usd, pay_discount_price) => {}) {
+  //isp 결제 넣어야함.
+  //exchange_rate의 currency_code에 대한 정보는 1달러당 한화에 대한 정보이여서 KRW로 셋팅 했는데, 추후 환율에 대한 데이터가 많아지면 나의 currency로 정보를 바로 가져올 수 있어야 한다.
+  const querySelect = mysql.format("SELECT item.discount_price, item.discount_started_at, item.discount_ended_at, exchange_rate.price AS exchange_price, item.price_USD, item.currency_code, item.id AS item_id, item.price FROM items AS item LEFT JOIN exchange_rates AS exchange_rate ON exchange_rate.currency_code=? WHERE item.id=?", [types.currency_code.Won, item_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+
+    if(result.length === 0){
+      return callBack(res_state.error, 0);
+    }
+
+    let data = result[0];
+
+    let is_discount = false;
+    let pay_total_price = data.price;
+    let pay_total_price_usd = data.price_USD;
+    let discount_price = data.discount_price;
+    if(discount_price > 0){
+      //할인이 있으면 할인 조건이 맞는지 확인한다.
+      if(data.discount_started_at && data.discount_ended_at){
+        //시작값이 있으면 할인 기간인지 확인한다.
+        let nowTime = moment_timezone().format('x');
+        let startTime = moment_timezone(data.discount_started_at).format('x');
+        let endTime = moment_timezone(data.discount_ended_at).format('x');
+
+        if(nowTime >= startTime &&
+          nowTime <= endTime){
+            is_discount = true;
+          }
+      }else{
+        is_discount = true;
+      }
+    }else{
+      discount_price = 0;
+    }
+
+    data.is_discount = is_discount;
+
+    if(!is_discount) {
+      discount_price = 0;
+    }
+
+    if(pay_total_price < 0 || pay_total_price === null || pay_total_price === undefined){
+      pay_total_price = 0;
+    }
+
+    if(pay_total_price_usd < 0 || pay_total_price_usd === null || pay_total_price_usd === undefined){
+      pay_total_price_usd = 0;
+    }
+
+    let pay_discount_price = discount_price;
+    if(currency_code === types.currency_code.US_Dollar){
+      const item_price = data.price;
+      if(item_price === 0){
+        data.price_USD = Number(item_price);
+        data.currency_code = currency_code;
+        data.discount_price_USD = 0;
+      }else {
+        const exchange_price = (item_price / data.exchange_price).toFixed(2);
+        const exchange_discount_price = (discount_price / data.exchange_price).toFixed(2);
+        data.price_USD = Number(exchange_price);
+        data.currency_code = currency_code;
+        data.discount_price_USD = Number(exchange_discount_price);
+      }
+
+      pay_total_price = 0;
+      pay_total_price_usd = (data.price_USD - data.discount_price_USD) + donation_total_price_usd;
+
+      pay_discount_price = data.discount_price_USD;
+    }else{
+      pay_total_price = (data.price - discount_price) + donation_total_price;
+      pay_total_price_usd = 0;
+
+      pay_discount_price = discount_price;
+    }
+
+
+
+    return callBack(res_state.success, pay_total_price, pay_total_price_usd, pay_discount_price);
+  })
+}
+
 sendStoreMasterSMSOrder = (store_id, item_title, total_price, name) => {
 
     const querySelect = mysql.format("SELECT contact, store.title AS creator_name FROM stores AS store WHERE store.id=?", store_id);
@@ -1203,217 +1285,219 @@ sendStoreOrderCompliteKakaoAlim = (store_order_id) => {
 }
 
 router.post('/store/onetime', function(req, res){
-    const _data = req.body.data;
-    const user_id = req.body.data.user_id;
-    const customer_uid = Util.getPayNewCustom_uid(user_id);
-    // const order_id = _data.order_id;
-    // console.log(_data);
-    const store_id = _data.store_id;
-    const item_id = _data.item_id;
+  const _data = req.body.data;
+  const user_id = req.body.data.user_id;
+  const customer_uid = Util.getPayNewCustom_uid(user_id);
+  // const order_id = _data.order_id;
+  // console.log(_data);
+  const store_id = _data.store_id;
+  const item_id = _data.item_id;
 
-    const name = _data.name;
-    const contact = _data.contact;
-    const email = _data.email;
+  const name = _data.name;
+  const contact = _data.contact;
+  const email = _data.email;
 
-    const pay_method = _data.pay_method;
+  const pay_method = _data.pay_method;
 
-    const requestContent = _data.requestContent;
+  const requestContent = _data.requestContent;
 
-    const total_price = _data.total_price;
+  const total_price = _data.total_price;
 
-    const item_title = _data.title;
-    const item_price = _data.item_price;
+  const item_title = _data.title;
+  const item_price = _data.item_price;
 
-    const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-    const merchant_uid = Util.getPayStoreNewMerchant_uid(store_id, user_id);
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+  const merchant_uid = Util.getPayStoreNewMerchant_uid(store_id, user_id);
 
-    let pg = _data.pg;
+  let pg = _data.pg;
 
-    let total_price_usd = _data.total_price_usd;
-    if(total_price_usd === undefined || total_price_usd === null){
-      total_price_usd = 0;
-    }
+  let total_price_usd = _data.total_price_usd;
+  if(total_price_usd === undefined || total_price_usd === null){
+    total_price_usd = 0;
+  }
 
-    let price_usd = _data.price_usd;
-    if(price_usd === undefined || price_usd === null){
-      price_usd = 0;
-    }
+  let price_usd = _data.price_usd;
+  if(price_usd === undefined || price_usd === null){
+    price_usd = 0;
+  }
 
-    let currency_code = _data.currency_code;
-    if(currency_code === undefined){
-      currency_code = types.currency_code.Won;
-    }
+  let currency_code = _data.currency_code;
+  if(currency_code === undefined){
+    currency_code = types.currency_code.Won;
+  }
 
-    if(pg === undefined){
-      pg = null;
-    }
+  if(pg === undefined){
+    pg = null;
+  }
 
-    getCommisionInfo(store_id, (place_commision_value, place_commision_type) => {
-      //플레이스별 커미션을 조회 후 상품별 커미션이 있으면 무조건 상품을 따라간다
-      getItemCommisionInfo(store_id, item_id, place_commision_value, place_commision_type, (commision_value, commision_type) => {
+  getCommisionInfo(store_id, (place_commision_value, place_commision_type) => {
+    //플레이스별 커미션을 조회 후 상품별 커미션이 있으면 무조건 상품을 따라간다
+    getItemCommisionInfo(store_id, item_id, place_commision_value, place_commision_type, (commision_value, commision_type) => {
 
-        const insertOrderItemData = {
-          store_id: store_id,
-          item_id: item_id,
-          user_id: user_id,
-          state: types.order.ORDER_STATE_STAY,
-          count: 1,
-          price: item_price,
-          price_USD: price_usd,
-          total_price: total_price,
-          total_price_USD: total_price_usd,
-          currency_code: currency_code,
-          name: name,
-          contact: contact,
-          email: email,
-          requestContent: requestContent,
-          merchant_uid: merchant_uid,
-          pay_method: pay_method,
-          created_at: date,
-          updated_at: date,
-          commision: commision_value,
-          type_commision: commision_type,
-          pg: pg
-        }
-      
-        db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
-          const item_order_id = result_insert_orders_items.insertId;
-          req.body.data.order_id = item_order_id;
-          // let payingDate = moment_timezone(date).add(7, 'days');
-          // payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
-          // payingDate = moment_timezone(payingDate).format("X");
-  
-          ///////////품절 됐는지 확인한다.//////////
-  
-          isSoldOutCheck(item_id, item_order_id, (isSoldOut) => {
-              if(isSoldOut){
-                  let _updateQueryArray = [];
-                  let _updateOptionArray = [];
-  
-                  _updateQueryArray.push({
-                      key: 0,
-                      value: "UPDATE orders_items SET ? WHERE id=?;"
-                  })
-  
-                  _updateOptionArray.push({
-                      key: 0,
-                      value: [
-                          {state: types.order.ORDER_STATE_ERROR_TICKET_OVER_COUNT},
-                          item_order_id
-                      ]
-                  })
-  
-                  _updateQueryArray.push({
-                      key: 1,
-                      value: "UPDATE items SET ? WHERE id=?;"
-                  })
-  
-                  _updateOptionArray.push({
-                      key: 1,
-                      value: [
-                          {state: types.item_state.SALE_LIMIT},
-                          item_id
-                      ]
-                  })
-  
-                  db.UPDATE_MULITPLEX(_updateQueryArray, _updateOptionArray, 
-                  (result_update) => {
-                      return res.json({
-                          state: res_state.error,
-                          message: '해당 상품은 품절되었습니다.',
-                      })
-                  }, (error_update) => {
-                      return res.json({
-                          state: res_state.error,
-                          message: '해당 상품은 품절되었습니다.(상태 업데이트 에러)',
-                      })
-                  })
-  
-                  return;
-              }
-  
-              const paymentData = {
-                  store_id: store_id,
-                  card_number: _data.card_number,
-                  expiry: Util.getCardExpire(_data.card_yy, _data.card_mm),
-                  amount: _data.total_price, //onetime total_price는 order_id의 db 조회해서 total_price와 비교한다.
-                  merchant_uid: merchant_uid,
-                  birth: _data.card_birth,
-                  customer_uid: customer_uid,
-                  pwd_2digit: _data.card_pw_2digit,
-                  name: _data.title,
-                  buyer_name: _data.name,
-                  buyer_email: _data.email,
-                  buyer_tel: _data.contact
-              }; 
-      
-              if(_data.total_price === 0){
-                  //0원이면 iamport 안함.
-                  senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent, currency_code, total_price_usd);
-      
-                  req.body.data.merchant_uid = merchant_uid;
-                  req.body.data.imp_uid = 0;
-                  payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
-      
-              }else{
-                iamport.subscribe.onetime({
-                    ...paymentData
-                }).then((result) => {
-                    // To do
-                    // console.log(result);
-                    //status: 'paid',
-                    if(result.status === 'paid'){
-                        //결제 성공  
-                        req.body.data.merchant_uid = result.merchant_uid;
-                        req.body.data.imp_uid = result.imp_uid;
-  
-                        req.body.data.pay_isp_type = types.pay_isp_type.onetime_donation;
-                        req.body.data.created_at = date;
-                        // req.body.data.pay_method = result.pay_method;
-  
-                        setDonation(req, res, (donation_order_id) => {
-                          
-                          senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent, currency_code, total_price_usd);
-  
-                          payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
-                        }, (error) => {
-  
-                        })
-                        
-                    }else{
-                        // console.log("success");
-                        return res.json({
-                            state: res_state.error,
-                            message: result.fail_reason,
-                        });
-                    }
-                    // console.log(result);
-                }).catch((error) => {
-                    // handle error
-                    // console.log(error);
-                    //ORDER_STATE_ERROR_PAY
-                    
-                    db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_ERROR_PAY, req.body.data.order_id], (result) => {
-                      return res.json({
-                          state: res_state.error,
-                          message: error.message,
-                      })
-                    }, (error) => {
-                      return res.json({
-                          state: res_state.error,
-                          message: error.message,
-                      })
+      const insertOrderItemData = {
+        store_id: store_id,
+        item_id: item_id,
+        user_id: user_id,
+        state: types.order.ORDER_STATE_STAY,
+        count: 1,
+        price: item_price,
+        price_USD: price_usd,
+        total_price: total_price,
+        total_price_USD: total_price_usd,
+        currency_code: currency_code,
+        name: name,
+        contact: contact,
+        email: email,
+        requestContent: requestContent,
+        merchant_uid: merchant_uid,
+        pay_method: pay_method,
+        created_at: date,
+        updated_at: date,
+        commision: commision_value,
+        type_commision: commision_type,
+        pg: pg
+      }
+    
+      db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
+        const item_order_id = result_insert_orders_items.insertId;
+        req.body.data.order_id = item_order_id;
+        // let payingDate = moment_timezone(date).add(7, 'days');
+        // payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
+        // payingDate = moment_timezone(payingDate).format("X");
+
+        ///////////품절 됐는지 확인한다.//////////
+
+        isSoldOutCheck(item_id, item_order_id, (isSoldOut) => {
+            if(isSoldOut){
+                let _updateQueryArray = [];
+                let _updateOptionArray = [];
+
+                _updateQueryArray.push({
+                    key: 0,
+                    value: "UPDATE orders_items SET ? WHERE id=?;"
+                })
+
+                _updateOptionArray.push({
+                    key: 0,
+                    value: [
+                        {state: types.order.ORDER_STATE_ERROR_TICKET_OVER_COUNT},
+                        item_order_id
+                    ]
+                })
+
+                _updateQueryArray.push({
+                    key: 1,
+                    value: "UPDATE items SET ? WHERE id=?;"
+                })
+
+                _updateOptionArray.push({
+                    key: 1,
+                    value: [
+                        {state: types.item_state.SALE_LIMIT},
+                        item_id
+                    ]
+                })
+
+                db.UPDATE_MULITPLEX(_updateQueryArray, _updateOptionArray, 
+                (result_update) => {
+                    return res.json({
+                        state: res_state.error,
+                        message: '해당 상품은 품절되었습니다.',
                     })
-                    
-                    // console.log(error);
-                });
-              }
-          });
-          /////////////////////////////////////
-        })
+                }, (error_update) => {
+                    return res.json({
+                        state: res_state.error,
+                        message: '해당 상품은 품절되었습니다.(상태 업데이트 에러)',
+                    })
+                })
+
+                return;
+            }
+
+            const paymentData = {
+                store_id: store_id,
+                card_number: _data.card_number,
+                expiry: Util.getCardExpire(_data.card_yy, _data.card_mm),
+                amount: _data.total_price, //onetime total_price는 order_id의 db 조회해서 total_price와 비교한다.
+                merchant_uid: merchant_uid,
+                birth: _data.card_birth,
+                customer_uid: customer_uid,
+                pwd_2digit: _data.card_pw_2digit,
+                name: _data.title,
+                buyer_name: _data.name,
+                buyer_email: _data.email,
+                buyer_tel: _data.contact
+            }; 
+    
+            if(_data.total_price === 0){
+                //0원이면 iamport 안함.
+                senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent, currency_code, total_price_usd);
+    
+                req.body.data.merchant_uid = merchant_uid;
+                req.body.data.imp_uid = 0;
+                payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+    
+            }else{
+              iamport.subscribe.onetime({
+                  ...paymentData
+              }).then((result) => {
+                  // To do
+                  // console.log(result);
+                  //status: 'paid',
+                  if(result.status === 'paid'){
+                      //결제 성공  
+                      req.body.data.merchant_uid = result.merchant_uid;
+                      req.body.data.imp_uid = result.imp_uid;
+
+                      req.body.data.pay_isp_type = types.pay_isp_type.onetime_donation;
+                      req.body.data.created_at = date;
+                      // req.body.data.pay_method = result.pay_method;
+
+                      setDonation(req, res, (donation_order_id) => {
+                        
+                        senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent, currency_code, total_price_usd);
+
+                        payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+                      }, (error) => {
+
+                      })
+                      
+                  }else{
+                      // console.log("success");
+                      return res.json({
+                          state: res_state.error,
+                          message: result.fail_reason,
+                      });
+                  }
+                  // console.log(result);
+              }).catch((error) => {
+                  // handle error
+                  // console.log(error);
+                  //ORDER_STATE_ERROR_PAY
+                  
+                  db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_ERROR_PAY, req.body.data.order_id], (result) => {
+                    return res.json({
+                        state: res_state.error,
+                        message: error.message,
+                    })
+                  }, (error) => {
+                    return res.json({
+                        state: res_state.error,
+                        message: error.message,
+                    })
+                  })
+                  
+                  // console.log(error);
+              });
+            }
+        });
+        /////////////////////////////////////
       })
     })
+  })
 });
+
+
 
 function senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent, currency_code, total_price_usd){
 
@@ -1645,189 +1729,189 @@ function setDonation(req, res, successCallBack, errorCallBack){
 }
 
 router.post("/store/isp/iamport", function(req, res){
-    const _data = req.body.data;
-    const user_id = req.body.data.user_id;
-    const customer_uid = Util.getPayNewCustom_uid(user_id);
-    // const order_id = _data.order_id;
-    // console.log(_data);
-    const store_id = _data.store_id;
-    const item_id = _data.item_id;
+  const _data = req.body.data;
+  const user_id = req.body.data.user_id;
+  const customer_uid = Util.getPayNewCustom_uid(user_id);
+  // const order_id = _data.order_id;
+  // console.log(_data);
+  const store_id = _data.store_id;
+  const item_id = _data.item_id;
 
-    const name = _data.name;
-    const contact = _data.contact;
-    const email = _data.email;
+  const name = _data.name;
+  const contact = _data.contact;
+  const email = _data.email;
 
-    const pay_method = _data.pay_method;
+  const pay_method = _data.pay_method;
 
-    const requestContent = _data.requestContent;
+  const requestContent = _data.requestContent;
 
-    let total_price = _data.total_price;
+  let total_price = _data.total_price;
 
-    const item_title = _data.title;
-    let item_price = _data.item_price;
+  const item_title = _data.title;
+  let item_price = _data.item_price;
 
-    const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-    req.body.data.created_at = date;
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+  req.body.data.created_at = date;
 
-    const merchant_uid = _data.merchant_uid;
+  const merchant_uid = _data.merchant_uid;
 
-    let currency_code = _data.currency_code;
-    if(currency_code === undefined){
-        currency_code = types.currency_code.Won;
-    }
+  let currency_code = _data.currency_code;
+  if(currency_code === undefined){
+      currency_code = types.currency_code.Won;
+  }
 
-    let total_price_usd = _data.total_price_usd;
-    if(total_price_usd === undefined || total_price_usd === null){
-        total_price_usd = 0;
-    }
+  let total_price_usd = _data.total_price_usd;
+  if(total_price_usd === undefined || total_price_usd === null){
+      total_price_usd = 0;
+  }
 
-    let price_usd = _data.price_usd;
-    if(price_usd === undefined || price_usd === null){
-        price_usd = 0;
-    }
+  let price_usd = _data.price_usd;
+  if(price_usd === undefined || price_usd === null){
+      price_usd = 0;
+  }
 
-    if(currency_code === types.currency_code.US_Dollar){
-      //달러일 경우 total_price 와 item_price를 0으로 만들어준다.
-      total_price = 0;
-      item_price = 0;
-    }
+  if(currency_code === types.currency_code.US_Dollar){
+    //달러일 경우 total_price 와 item_price를 0으로 만들어준다.
+    total_price = 0;
+    item_price = 0;
+  }
 
-    let pg = _data.pg;
-    if(pg === undefined){
-      pg = null;
-    }
+  let pg = _data.pg;
+  if(pg === undefined){
+    pg = null;
+  }
 
-    getCommisionInfo(store_id, (place_commision_value, place_commision_type) => {
-      
-      getItemCommisionInfo(store_id, item_id, place_commision_value, place_commision_type, (commision_value, commision_type) => {
-        const insertOrderItemData = {
-          store_id: store_id,
-          item_id: item_id,
-          user_id: user_id,
-          state: types.order.ORDER_STATE_APP_STORE_STANBY,
-          count: 1,
-          price: item_price,
-          price_USD: price_usd,
-          total_price: total_price,
-          total_price_USD: total_price_usd,
-          name: name,
-          contact: contact,
-          email: email,
-          requestContent: requestContent,
-          merchant_uid: merchant_uid,
-          pay_method: pay_method,
-          // imp_uid: imp_uid,
-          currency_code: currency_code,
-          commision: commision_value,
-          type_commision: commision_type,
-          created_at: date,
-          updated_at: date,
-          pg: pg
-        }
-  
-        db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
-          const item_order_id = result_insert_orders_items.insertId;
-          req.body.data.order_id = item_order_id;
-          // let payingDate = moment_timezone(date).add(7, 'days');
-          // payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
-          // payingDate = moment_timezone(payingDate).format("X");
-  
-          ///////////품절 됐는지 확인한다.//////////
-  
-          isSoldOutCheck(item_id, item_order_id, (isSoldOut) => {
-              if(isSoldOut){
-                  let _updateQueryArray = [];
-                  let _updateOptionArray = [];
-  
-                  _updateQueryArray.push({
-                      key: 0,
-                      value: "UPDATE orders_items SET ? WHERE id=?;"
+  getCommisionInfo(store_id, (place_commision_value, place_commision_type) => {
+    
+    getItemCommisionInfo(store_id, item_id, place_commision_value, place_commision_type, (commision_value, commision_type) => {
+      const insertOrderItemData = {
+        store_id: store_id,
+        item_id: item_id,
+        user_id: user_id,
+        state: types.order.ORDER_STATE_APP_STORE_STANBY,
+        count: 1,
+        price: item_price,
+        price_USD: price_usd,
+        total_price: total_price,
+        total_price_USD: total_price_usd,
+        name: name,
+        contact: contact,
+        email: email,
+        requestContent: requestContent,
+        merchant_uid: merchant_uid,
+        pay_method: pay_method,
+        // imp_uid: imp_uid,
+        currency_code: currency_code,
+        commision: commision_value,
+        type_commision: commision_type,
+        created_at: date,
+        updated_at: date,
+        pg: pg
+      }
+
+      db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
+        const item_order_id = result_insert_orders_items.insertId;
+        req.body.data.order_id = item_order_id;
+        // let payingDate = moment_timezone(date).add(7, 'days');
+        // payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
+        // payingDate = moment_timezone(payingDate).format("X");
+
+        ///////////품절 됐는지 확인한다.//////////
+
+        isSoldOutCheck(item_id, item_order_id, (isSoldOut) => {
+            if(isSoldOut){
+                let _updateQueryArray = [];
+                let _updateOptionArray = [];
+
+                _updateQueryArray.push({
+                    key: 0,
+                    value: "UPDATE orders_items SET ? WHERE id=?;"
+                })
+
+                _updateOptionArray.push({
+                    key: 0,
+                    value: [
+                        {state: types.order.ORDER_STATE_ERROR_TICKET_OVER_COUNT},
+                        item_order_id
+                    ]
+                })
+
+                _updateQueryArray.push({
+                    key: 1,
+                    value: "UPDATE items SET ? WHERE id=?;"
+                })
+
+                _updateOptionArray.push({
+                    key: 1,
+                    value: [
+                        {state: types.item_state.SALE_LIMIT},
+                        item_id
+                    ]
+                })
+
+                db.UPDATE_MULITPLEX(_updateQueryArray, _updateOptionArray, 
+                (result_update) => {
+
+                  return res.json({
+                    state: res_state.error,
+                    message: '해당 상품은 품절되었습니다.',
                   })
-  
-                  _updateOptionArray.push({
-                      key: 0,
-                      value: [
-                          {state: types.order.ORDER_STATE_ERROR_TICKET_OVER_COUNT},
-                          item_order_id
-                      ]
+
+                    // if(total_price === 0){
+                    //     return res.json({
+                    //         state: res_state.error,
+                    //         message: '해당 상품은 품절되었습니다.',
+                    //     })
+                    // }
+
+                    // iamport.payment.cancel({
+                    //     merchant_uid: merchant_uid,
+                    //     amount: total_price
+                    // }).then(function(result_iamport){
+                    //     return res.json({
+                    //         state: res_state.error,
+                    //         message: '해당 상품은 품절되었습니다.',
+                    //     })
+                    // }).catch(function(error){
+                    //     return res.json({
+                    //         state: res_state.error,
+                    //         message: '해당 상품은 품절되었습니다.' + error.message,
+                    //     })
+                    // })
+
+                    
+                }, (error_update) => {
+                    if(total_price === 0){
+                        return res.json({
+                            state: res_state.error,
+                            message: '해당 상품은 품절되었습니다.(상태 업데이트 에러)',
+                        })
+                    }
+                    
+                })
+                return;
+            }else{
+                setDonation(req, res, (donation_order_id) => {
+                  // console.log(donation_order_id);
+                  return res.json({
+                    result:{
+                        state: res_state.success,
+                        order_id: item_order_id,
+                        donation_order_id: donation_order_id
+                    }
                   })
-  
-                  _updateQueryArray.push({
-                      key: 1,
-                      value: "UPDATE items SET ? WHERE id=?;"
-                  })
-  
-                  _updateOptionArray.push({
-                      key: 1,
-                      value: [
-                          {state: types.item_state.SALE_LIMIT},
-                          item_id
-                      ]
-                  })
-  
-                  db.UPDATE_MULITPLEX(_updateQueryArray, _updateOptionArray, 
-                  (result_update) => {
-  
+                }, (error) => {
                     return res.json({
-                      state: res_state.error,
-                      message: '해당 상품은 품절되었습니다.',
+                        state: res_state.error,
+                        message: '후원 셋팅 에러 (isp pay donation)',
                     })
-  
-                      // if(total_price === 0){
-                      //     return res.json({
-                      //         state: res_state.error,
-                      //         message: '해당 상품은 품절되었습니다.',
-                      //     })
-                      // }
-  
-                      // iamport.payment.cancel({
-                      //     merchant_uid: merchant_uid,
-                      //     amount: total_price
-                      // }).then(function(result_iamport){
-                      //     return res.json({
-                      //         state: res_state.error,
-                      //         message: '해당 상품은 품절되었습니다.',
-                      //     })
-                      // }).catch(function(error){
-                      //     return res.json({
-                      //         state: res_state.error,
-                      //         message: '해당 상품은 품절되었습니다.' + error.message,
-                      //     })
-                      // })
-  
-                      
-                  }, (error_update) => {
-                      if(total_price === 0){
-                          return res.json({
-                              state: res_state.error,
-                              message: '해당 상품은 품절되었습니다.(상태 업데이트 에러)',
-                          })
-                      }
-                      
-                  })
-                  return;
-              }else{
-                  setDonation(req, res, (donation_order_id) => {
-                    // console.log(donation_order_id);
-                    return res.json({
-                      result:{
-                          state: res_state.success,
-                          order_id: item_order_id,
-                          donation_order_id: donation_order_id
-                      }
-                    })
-                  }, (error) => {
-                      return res.json({
-                          state: res_state.error,
-                          message: '후원 셋팅 에러 (isp pay donation)',
-                      })
-                  })
-                  
-              }            
-          });
-        })
-      });
-    })
+                })
+                
+            }            
+        });
+      })
+    });
+  })
 });
 
 router.post('/store/isp/success', function(req, res){
@@ -2278,6 +2362,441 @@ router.post("/get/vbank/info", function(req, res){
         });
       });
 })
+
+router.post('/store/onetime/v1', function(req, res){
+  const _data = req.body.data;
+  const user_id = req.body.data.user_id;
+  const customer_uid = Util.getPayNewCustom_uid(user_id);
+  // const order_id = _data.order_id;
+  // console.log(_data);
+  const store_id = _data.store_id;
+  const item_id = _data.item_id;
+
+  const name = _data.name;
+  const contact = _data.contact;
+  const email = _data.email;
+
+  const pay_method = _data.pay_method;
+
+  const requestContent = _data.requestContent;
+
+  const total_price = _data.total_price;
+
+  const item_title = _data.title;
+  const item_price = _data.item_price;
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+  const merchant_uid = Util.getPayStoreNewMerchant_uid(store_id, user_id);
+
+  let pg = _data.pg;
+
+  let total_price_usd = _data.total_price_usd;
+  if(total_price_usd === undefined || total_price_usd === null){
+    total_price_usd = 0;
+  }
+
+  let price_usd = _data.price_usd;
+  if(price_usd === undefined || price_usd === null){
+    price_usd = 0;
+  }
+
+  let currency_code = _data.currency_code;
+  if(currency_code === undefined){
+    currency_code = types.currency_code.Won;
+  }
+
+  if(pg === undefined){
+    pg = null;
+  }
+
+  getPayTotalPrice(item_id, _data.donation_total_price, _data.donation_total_price_usd, currency_code, (state_pay_total_price, pay_total_price, pay_total_price_usd, pay_discount_price) => {
+    if(state_pay_total_price === res_state.error){
+      return res.json({
+        state: res_state.error,
+        message: '상품 정보 조회 에러(2)',
+        result: {}
+      })
+    }
+
+    req.body.data.pay_total_price = pay_total_price;
+    req.body.data.pay_total_price_usd = pay_total_price_usd;
+
+    getCommisionInfo(store_id, (place_commision_value, place_commision_type) => {
+      //플레이스별 커미션을 조회 후 상품별 커미션이 있으면 무조건 상품을 따라간다
+      getItemCommisionInfo(store_id, item_id, place_commision_value, place_commision_type, (commision_value, commision_type) => {
+
+        const insertOrderItemData = {
+          store_id: store_id,
+          item_id: item_id,
+          user_id: user_id,
+          state: types.order.ORDER_STATE_STAY,
+          count: 1,
+          price: item_price,
+          price_USD: price_usd,
+          // total_price: total_price,
+          // total_price_USD: total_price_usd,
+          total_price: pay_total_price,
+          total_price_USD: pay_total_price_usd,
+          currency_code: currency_code,
+          name: name,
+          contact: contact,
+          email: email,
+          requestContent: requestContent,
+          merchant_uid: merchant_uid,
+          pay_method: pay_method,
+          created_at: date,
+          updated_at: date,
+          commision: commision_value,
+          type_commision: commision_type,
+          pg: pg,
+          discount_price: pay_discount_price
+        }
+      
+        db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
+          const item_order_id = result_insert_orders_items.insertId;
+          req.body.data.order_id = item_order_id;
+          // let payingDate = moment_timezone(date).add(7, 'days');
+          // payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
+          // payingDate = moment_timezone(payingDate).format("X");
+  
+          ///////////품절 됐는지 확인한다.//////////
+  
+          isSoldOutCheck(item_id, item_order_id, (isSoldOut) => {
+              if(isSoldOut){
+                  let _updateQueryArray = [];
+                  let _updateOptionArray = [];
+  
+                  _updateQueryArray.push({
+                      key: 0,
+                      value: "UPDATE orders_items SET ? WHERE id=?;"
+                  })
+  
+                  _updateOptionArray.push({
+                      key: 0,
+                      value: [
+                          {state: types.order.ORDER_STATE_ERROR_TICKET_OVER_COUNT},
+                          item_order_id
+                      ]
+                  })
+  
+                  _updateQueryArray.push({
+                      key: 1,
+                      value: "UPDATE items SET ? WHERE id=?;"
+                  })
+  
+                  _updateOptionArray.push({
+                      key: 1,
+                      value: [
+                          {state: types.item_state.SALE_LIMIT},
+                          item_id
+                      ]
+                  })
+  
+                  db.UPDATE_MULITPLEX(_updateQueryArray, _updateOptionArray, 
+                  (result_update) => {
+                      return res.json({
+                          state: res_state.error,
+                          message: '해당 상품은 품절되었습니다.',
+                      })
+                  }, (error_update) => {
+                      return res.json({
+                          state: res_state.error,
+                          message: '해당 상품은 품절되었습니다.(상태 업데이트 에러)',
+                      })
+                  })
+  
+                  return;
+              }
+  
+              const paymentData = {
+                  store_id: store_id,
+                  card_number: _data.card_number,
+                  expiry: Util.getCardExpire(_data.card_yy, _data.card_mm),
+                  // amount: _data.total_price, //onetime total_price는 order_id의 db 조회해서 total_price와 비교한다.
+                  amount: pay_total_price,  //usd가 없는 이유는 직접 결제는 한화만 가능하다.
+                  merchant_uid: merchant_uid,
+                  birth: _data.card_birth,
+                  customer_uid: customer_uid,
+                  pwd_2digit: _data.card_pw_2digit,
+                  name: _data.title,
+                  buyer_name: _data.name,
+                  buyer_email: _data.email,
+                  buyer_tel: _data.contact
+              }; 
+      
+              if(pay_total_price === 0){
+                  //0원이면 iamport 안함.
+                  senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, total_price, name, date, requestContent, currency_code, total_price_usd);
+      
+                  req.body.data.merchant_uid = merchant_uid;
+                  req.body.data.imp_uid = 0;
+                  payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+      
+              }else{
+                iamport.subscribe.onetime({
+                    ...paymentData
+                }).then((result) => {
+                    // To do
+                    // console.log(result);
+                    //status: 'paid',
+                    if(result.status === 'paid'){
+                        //결제 성공  
+                        req.body.data.merchant_uid = result.merchant_uid;
+                        req.body.data.imp_uid = result.imp_uid;
+  
+                        req.body.data.pay_isp_type = types.pay_isp_type.onetime_donation;
+                        req.body.data.created_at = date;
+                        // req.body.data.pay_method = result.pay_method;
+  
+                        setDonation(req, res, (donation_order_id) => {
+                          
+                          senderOrderCompleteAlarm(req, item_id, user_id, email, item_order_id, store_id, item_title, pay_total_price, name, date, requestContent, currency_code, total_price_usd);
+  
+                          payStoreComplite(req, res, PAY_SERIALIZER_ONETIME);
+                        }, (error) => {
+  
+                        })
+                        
+                    }else{
+                        // console.log("success");
+                        return res.json({
+                            state: res_state.error,
+                            message: result.fail_reason,
+                        });
+                    }
+                    // console.log(result);
+                }).catch((error) => {
+                    // handle error
+                    // console.log(error);
+                    //ORDER_STATE_ERROR_PAY
+                    
+                    db.UPDATE("UPDATE orders_items SET state=? WHERE id=?", [types.order.ORDER_STATE_ERROR_PAY, req.body.data.order_id], (result) => {
+                      return res.json({
+                          state: res_state.error,
+                          message: error.message,
+                      })
+                    }, (error) => {
+                      return res.json({
+                          state: res_state.error,
+                          message: error.message,
+                      })
+                    })
+                    
+                    // console.log(error);
+                });
+              }
+          });
+          /////////////////////////////////////
+        })
+      })
+    })
+  })
+});
+
+router.post("/store/isp/iamport/v1", function(req, res){
+  const _data = req.body.data;
+  const user_id = req.body.data.user_id;
+  const customer_uid = Util.getPayNewCustom_uid(user_id);
+  // const order_id = _data.order_id;
+  // console.log(_data);
+  const store_id = _data.store_id;
+  const item_id = _data.item_id;
+
+  const name = _data.name;
+  const contact = _data.contact;
+  const email = _data.email;
+
+  const pay_method = _data.pay_method;
+
+  const requestContent = _data.requestContent;
+
+  let total_price = _data.total_price;
+
+  const item_title = _data.title;
+  let item_price = _data.item_price;
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+  req.body.data.created_at = date;
+
+  const merchant_uid = _data.merchant_uid;
+
+  let currency_code = _data.currency_code;
+  if(currency_code === undefined){
+    currency_code = types.currency_code.Won;
+  }
+
+  let total_price_usd = _data.total_price_usd;
+  if(total_price_usd === undefined || total_price_usd === null){
+      total_price_usd = 0;
+  }
+
+  let price_usd = _data.price_usd;
+  if(price_usd === undefined || price_usd === null){
+      price_usd = 0;
+  }
+
+  if(currency_code === types.currency_code.US_Dollar){
+    //달러일 경우 total_price 와 item_price를 0으로 만들어준다.
+    total_price = 0;
+    item_price = 0;
+  }
+
+  let pg = _data.pg;
+  if(pg === undefined){
+    pg = null;
+  }
+
+  getPayTotalPrice(item_id, _data.donation_total_price, _data.donation_total_price_usd, currency_code, (state_pay_total_price, pay_total_price, pay_total_price_usd, pay_discount_price) => {
+    if(state_pay_total_price === res_state.error){
+      return res.json({
+        state: res_state.error,
+        message: '상품 정보 조회 에러(2)',
+        result: {}
+      })
+    }
+
+    req.body.data.pay_total_price = pay_total_price;
+    req.body.data.pay_total_price_usd = pay_total_price_usd;
+
+    getCommisionInfo(store_id, (place_commision_value, place_commision_type) => {
+    
+      getItemCommisionInfo(store_id, item_id, place_commision_value, place_commision_type, (commision_value, commision_type) => {
+        const insertOrderItemData = {
+          store_id: store_id,
+          item_id: item_id,
+          user_id: user_id,
+          state: types.order.ORDER_STATE_APP_STORE_STANBY,
+          count: 1,
+          price: item_price,
+          price_USD: price_usd,
+          // total_price: total_price,
+          // total_price_USD: total_price_usd,
+          total_price: pay_total_price,
+          total_price_USD: pay_total_price_usd,
+
+          name: name,
+          contact: contact,
+          email: email,
+          requestContent: requestContent,
+          merchant_uid: merchant_uid,
+          pay_method: pay_method,
+          // imp_uid: imp_uid,
+          currency_code: currency_code,
+          commision: commision_value,
+          type_commision: commision_type,
+          created_at: date,
+          updated_at: date,
+          pg: pg,
+          discount_price: pay_discount_price
+        }
+  
+        db.INSERT("INSERT INTO orders_items SET ?", insertOrderItemData, (result_insert_orders_items) => {
+          const item_order_id = result_insert_orders_items.insertId;
+          req.body.data.order_id = item_order_id;
+          // let payingDate = moment_timezone(date).add(7, 'days');
+          // payingDate = moment_timezone(payingDate).format("YYYY-MM-DD 13:00:00");
+          // payingDate = moment_timezone(payingDate).format("X");
+  
+          ///////////품절 됐는지 확인한다.//////////
+  
+          isSoldOutCheck(item_id, item_order_id, (isSoldOut) => {
+              if(isSoldOut){
+                  let _updateQueryArray = [];
+                  let _updateOptionArray = [];
+  
+                  _updateQueryArray.push({
+                      key: 0,
+                      value: "UPDATE orders_items SET ? WHERE id=?;"
+                  })
+  
+                  _updateOptionArray.push({
+                      key: 0,
+                      value: [
+                          {state: types.order.ORDER_STATE_ERROR_TICKET_OVER_COUNT},
+                          item_order_id
+                      ]
+                  })
+  
+                  _updateQueryArray.push({
+                      key: 1,
+                      value: "UPDATE items SET ? WHERE id=?;"
+                  })
+  
+                  _updateOptionArray.push({
+                      key: 1,
+                      value: [
+                          {state: types.item_state.SALE_LIMIT},
+                          item_id
+                      ]
+                  })
+  
+                  db.UPDATE_MULITPLEX(_updateQueryArray, _updateOptionArray, 
+                  (result_update) => {
+  
+                    return res.json({
+                      state: res_state.error,
+                      message: '해당 상품은 품절되었습니다.',
+                    })
+  
+                      // if(total_price === 0){
+                      //     return res.json({
+                      //         state: res_state.error,
+                      //         message: '해당 상품은 품절되었습니다.',
+                      //     })
+                      // }
+  
+                      // iamport.payment.cancel({
+                      //     merchant_uid: merchant_uid,
+                      //     amount: total_price
+                      // }).then(function(result_iamport){
+                      //     return res.json({
+                      //         state: res_state.error,
+                      //         message: '해당 상품은 품절되었습니다.',
+                      //     })
+                      // }).catch(function(error){
+                      //     return res.json({
+                      //         state: res_state.error,
+                      //         message: '해당 상품은 품절되었습니다.' + error.message,
+                      //     })
+                      // })
+  
+                      
+                  }, (error_update) => {
+                      if(total_price === 0){
+                          return res.json({
+                              state: res_state.error,
+                              message: '해당 상품은 품절되었습니다.(상태 업데이트 에러)',
+                          })
+                      }
+                      
+                  })
+                  return;
+              }else{
+                  setDonation(req, res, (donation_order_id) => {
+                    // console.log(donation_order_id);
+                    return res.json({
+                      result:{
+                          state: res_state.success,
+                          order_id: item_order_id,
+                          donation_order_id: donation_order_id,
+                          pay_total_price: pay_total_price,
+                          pay_total_price_usd: pay_total_price_usd
+                      }
+                    })
+                  }, (error) => {
+                      return res.json({
+                          state: res_state.error,
+                          message: '후원 셋팅 에러 (isp pay donation)',
+                      })
+                  })
+                  
+              }            
+          });
+        })
+      });
+    })
+  })
+});
 
 /*
 //ios 전용?? 어케할까

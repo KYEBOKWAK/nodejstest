@@ -744,9 +744,9 @@ router.post("/manager/order/list", function(req, res){
   let querySelect = '';
 
   if(state_currency_code === null){
-    querySelect = mysql.format("SELECT orders_item.type_commision, orders_item.price_USD, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+    querySelect = mysql.format("SELECT orders_item.discount_price, orders_item.type_commision, orders_item.price_USD, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
   }else{
-    querySelect = mysql.format("SELECT orders_item.type_commision, orders_item.price_USD, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.currency_code=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, state_currency_code, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
+    querySelect = mysql.format("SELECT orders_item.discount_price, orders_item.type_commision, orders_item.price_USD, orders_item.price, orders_item.total_price_USD, orders_item.currency_code, orders_item.updated_at, orders_item.confirm_at, orders_item.name, orders_item.state, orders_item.count, orders_item.created_at, orders_item.id, orders_item.store_id, orders_item.total_price, item.title FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.store_id=? AND orders_item.currency_code=? AND orders_item.state < ? ORDER BY orders_item.id DESC LIMIT ? OFFSET ?", [store_id, state_currency_code, Types.order.ORDER_STATE_ERROR_START, limit, skip]);
   }
   
 
@@ -1143,6 +1143,171 @@ router.post("/any/ask/answer/add/alarm", function(req, res){
 
   return res.json({
     state: res_state.success
+  })
+});
+
+router.post("/any/item/price/info", function(req, res){
+
+  const item_id = req.body.data.item_id;
+
+  let currency_code = req.body.data.currency_code;
+  if(currency_code === undefined || currency_code === null){
+    currency_code = Types.currency_code.Won;
+  }
+
+  let language_code = req.body.data.language_code;
+  if(language_code === undefined || language_code === null){
+    language_code = Types.language.kr;
+  }
+
+  // const querySelect = mysql.format("SELECT item.is_adult, store.contact AS store_contact, item.editor_type, item.notice_user, item.simple_contents, item.story, item.price_USD, item.currency_code, item.category_top_item_id, item.category_sub_item_id, item.completed_type_product_answer, item.type_contents, item.id AS item_id, user.name AS user_name, user.id AS store_user_id, item.youtube_url, item.notice AS item_notice, item.product_category_type, item.ask_play_time, user.profile_photo_url, item.product_state, item.file_upload_state, store.title AS store_title, item.re_set_at, item.order_limit_count, item.state, item.ask, item.store_id, item.price, item.title, item.img_url, item.content, user.nick_name FROM items AS item LEFT JOIN stores AS store ON store.id=item.store_id LEFT JOIN users AS user ON store.user_id=user.id WHERE item.id=?", store_item_id);
+
+  //exchange_rate의 currency_code에 대한 정보는 1달러당 한화에 대한 정보이여서 KRW로 셋팅 했는데, 추후 환율에 대한 데이터가 많아지면 나의 currency로 정보를 바로 가져올 수 있어야 한다.
+  const querySelect = mysql.format("SELECT item.discount_price, item.discount_started_at, item.discount_ended_at, exchange_rate.price AS exchange_price, item.price_USD, item.currency_code, item.id AS item_id, item.price FROM items AS item LEFT JOIN exchange_rates AS exchange_rate ON exchange_rate.currency_code=? WHERE item.id=?", [Types.currency_code.Won, item_id]);
+
+  db.SELECT(querySelect, {}, (result) => {
+
+    if(result.length === 0){
+      return res.json({
+        // state: res_state.error,
+        // message: 'item 정보 없음 id : ' + store_item_id,
+        result: {
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+
+    let data = result[0];
+
+    let is_discount = false;
+    let final_item_price = data.price;
+    let discount_price = data.discount_price;
+    if(discount_price > 0){
+      //할인이 있으면 할인 조건이 맞는지 확인한다.
+      if(data.discount_started_at && data.discount_ended_at){
+        //시작값이 있으면 할인 기간인지 확인한다.
+        let nowTime = moment_timezone().format('x');
+        let startTime = moment_timezone(data.discount_started_at).format('x');
+        let endTime = moment_timezone(data.discount_ended_at).format('x');
+
+        if(nowTime >= startTime &&
+          nowTime <= endTime){
+            is_discount = true;
+          }
+      }else{
+        is_discount = true;
+      }
+    }else{
+      discount_price = 0;
+    }
+
+    data.is_discount = is_discount;
+
+    if(!is_discount) {
+      discount_price = 0;
+    }
+
+    if(final_item_price < 0 || final_item_price === null || final_item_price === undefined){
+      final_item_price = 0;
+    }
+
+    if(currency_code === Types.currency_code.US_Dollar){
+      const item_price = data.price;
+      if(item_price === 0){
+        data.price_USD = Number(item_price);
+        data.currency_code = currency_code;
+        data.discount_price_USD = 0;
+      }else {
+        const exchange_price = (item_price / data.exchange_price).toFixed(2);
+        const exchange_discount_price = (discount_price / data.exchange_price).toFixed(2);
+        data.price_USD = Number(exchange_price);
+        data.currency_code = currency_code;
+        data.discount_price_USD = Number(exchange_discount_price);
+      }
+
+      final_item_price = data.price_USD - data.discount_price_USD;
+    }else{
+      final_item_price = data.price - discount_price;
+    }
+
+    data.language_code = language_code;
+    data.final_item_price = final_item_price;
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+
+  /*
+  const item_id = req.body.data.item_id;
+  const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  db.SELECT("SELECT price, price_USD, currency_code, discount_price, discount_started_at, discount_ended_at FROM items WHERE id=? AND ((discount_price IS NOT NULL AND discount_started_at IS NULL AND discount_ended_at IS NULL) OR (discount_price IS NOT NULL AND discount_started_at <= ? AND discount_ended_at >= ?))", [item_id, nowDate, nowDate], (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+    console.log(result);
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+  */
+})
+
+router.post('/any/item/discount/time/duration', function(req, res){
+  const item_id = req.body.data.item_id;
+  
+  let nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  db.SELECT("SELECT discount_price, discount_started_at, discount_ended_at FROM items WHERE id=? AND discount_price IS NOT NULL AND discount_started_at <= ? AND discount_ended_at >= ? AND discount_started_at IS NOT NULL AND discount_ended_at IS NOT NULL", [item_id, nowDate, nowDate], (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+    
+    const data = result[0];
+
+    nowDate = moment_timezone();
+    const moment_ended_at = moment_timezone(data.discount_ended_at);
+
+    // const duration_moment = moment_timezone.duration(nowDate.diff(moment_ended_at));
+    const duration_moment = moment_timezone.duration(moment_ended_at.diff(nowDate));
+    const duration_days = Math.floor(duration_moment.asDays());
+    const duration_hours = Math.floor(duration_moment.asHours());
+    const duration_min = Math.floor(duration_moment.asMinutes());
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          duration_days: duration_days,
+          duration_hours: duration_hours,
+          duration_min: duration_min
+        }
+      }
+    })
   })
 });
 /*

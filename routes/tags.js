@@ -62,4 +62,32 @@ router.post('/any/event', function(req, res){
   })
 });
 
+router.post('/any/discount', function(req, res){
+  const item_id = req.body.data.item_id;
+  
+  const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  db.SELECT("SELECT discount_price, discount_started_at, discount_ended_at FROM items WHERE id=? AND ((discount_price IS NOT NULL AND discount_started_at IS NULL AND discount_ended_at IS NULL) OR (discount_price IS NOT NULL AND discount_started_at <= ? AND discount_ended_at >= ?))", [item_id, nowDate, nowDate], (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+    
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+
+})
+
 module.exports = router;
