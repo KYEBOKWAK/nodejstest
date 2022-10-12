@@ -1227,6 +1227,7 @@ router.post("/any/item/price/info", function(req, res){
       }
 
       final_item_price = (data.price_USD - data.discount_price_USD).toFixed(2);
+      final_item_price = Number(final_item_price);
     }else{
       final_item_price = data.price - discount_price;
     }
