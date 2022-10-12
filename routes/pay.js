@@ -1121,7 +1121,7 @@ function getPayTotalPrice(item_id, donation_total_price, donation_total_price_us
       }
 
       pay_total_price = 0;
-      pay_total_price_usd = (data.price_USD - data.discount_price_USD) + donation_total_price_usd;
+      pay_total_price_usd = ((data.price_USD - data.discount_price_USD) + donation_total_price_usd).toFixed(2);
 
       pay_discount_price = data.discount_price_USD;
     }else{
