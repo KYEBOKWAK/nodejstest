@@ -645,7 +645,9 @@ router.post("/order/item/check", function(req, res){
   const user_id = req.body.data.user_id;
   const item_id = req.body.data.item_id;
 
-  const querySelect = mysql.format("SELECT orders_item.created_at, orders_item.id, item.id AS item_id, item.img_url, item.title AS item_title, orders_item.total_price AS total_price, orders_item.total_price_USD AS total_price_USD, orders_item.currency_code FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.user_id=? AND orders_item.item_id=? AND orders_item.state>=? AND orders_item.state<? AND orders_item.state<>?", [user_id, item_id, Types.order.ORDER_STATE_APP_PAY_COMPLITE, Types.order.ORDER_STATE_PAY_END, Types.order.ORDER_STATE_APP_STORE_STANBY]);
+  // const querySelect = mysql.format("SELECT orders_item.created_at, orders_item.id, item.id AS item_id, item.img_url, item.title AS item_title, orders_item.total_price AS total_price, orders_item.total_price_USD AS total_price_USD, orders_item.currency_code FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.user_id=? AND orders_item.item_id=? AND orders_item.state>=? AND orders_item.state<? AND orders_item.state<>?", [user_id, item_id, Types.order.ORDER_STATE_APP_PAY_COMPLITE, Types.order.ORDER_STATE_PAY_END, Types.order.ORDER_STATE_APP_STORE_STANBY]);
+
+  const querySelect = mysql.format("SELECT orders_item.created_at, orders_item.id, item.id AS item_id, item.img_url, item.title AS item_title, orders_item.total_price AS total_price, orders_item.total_price_USD AS total_price_USD, orders_item.currency_code FROM orders_items AS orders_item LEFT JOIN items AS item ON orders_item.item_id=item.id WHERE orders_item.user_id=? AND orders_item.item_id=? AND orders_item.state=?", [user_id, item_id, Types.order.ORDER_STATE_APP_STORE_CUSTOMER_COMPLITE]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
