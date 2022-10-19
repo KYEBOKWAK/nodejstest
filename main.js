@@ -7,7 +7,8 @@ const phoneRandNumExpire = 180;
 const EXPIRE_REFRESH_TOKEN = '365d';
 const EXPIRE_ACCESS_TOKEN = '10m'; //php에서 발급하는 accesstoken과 동일한 시간으로 해야함. TOKEN_EXPIRED_PLUS_TIME_SECOND
 
-const EXPIRE_DOWNLOAD_FILE_TOKEN = '2h';
+// const EXPIRE_DOWNLOAD_FILE_TOKEN = '2h';
+const EXPIRE_DOWNLOAD_FILE_TOKEN = '5h';
 // const EXPIRE_REFRESH_TOKEN = '5m';
 // const EXPIRE_ACCESS_TOKEN = 10;
 // const REFRESH_TOKEN_RENEW_LAST_DAT_MIL_SEC = 180000; //밀리초 단위 refresh 재갱신 기준값.

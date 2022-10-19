@@ -1311,6 +1311,56 @@ router.post('/any/item/discount/time/duration', function(req, res){
     })
   })
 });
+
+router.post("/file/customized/info", function(req, res){
+  const file_id = req.body.data.file_id;
+
+  db.SELECT("SELECT mimetype, is_delete, expired_at, originalname, file_s3_key, url FROM files WHERE id=?", [file_id], (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+})
+
+router.post("/file/completed/info", function(req, res){
+  const file_download_id = req.body.data.file_download_id;
+
+  db.SELECT("SELECT size, originalname, file_s3_key, url FROM files_downloads WHERE id=?", [file_download_id], (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          data: null
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+})
 /*
 router.post('/file/size/s3', function(req, res){
 
