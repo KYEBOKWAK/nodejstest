@@ -132,7 +132,9 @@ app.use(function (req, res, next) {
         process.env.CTEE_WEB_REFERER_WEB_QA_R === req.headers.origin ||
         process.env.CTEE_WEB_REFERER_WEB_QA === req.headers.origin ||
         process.env.CTEE_ADMIN_WEB_REFERER === req.headers.origin ||
-        process.env.CTEE_ADMIN_WEB_REFERER_QA === req.headers.origin
+        process.env.CTEE_ADMIN_WEB_REFERER_QA === req.headers.origin ||
+        process.env.CTEE_ADMIN_WEB_REFERER_CTEE === req.headers.origin ||
+        process.env.CTEE_ADMIN_WEB_REFERER_CTEE_QA === req.headers.origin
       ){
         //통과
       }else{

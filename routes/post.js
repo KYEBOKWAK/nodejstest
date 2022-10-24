@@ -189,6 +189,15 @@ function setNullDonationPostID(post_id, callBack = (isSuccess, fail_message = ''
   })
 }
 
+function deletePostAddItems(post_id, callBack = (isSuccess, fail_message = '') => {}) {
+  db.DELETE("DELETE FROM posts_items WHERE post_id=?", [post_id], 
+  (result) => {
+    return callBack(true, '');
+  }, (error) => {
+    return callBack(false, 'post item 삭제 실패');
+  })
+}
+
 function deleteLikes(post_id, callBack = (isSuccess, fail_message = '') => {}){
   db.DELETE("DELETE FROM likes WHERE target_id=? AND like_type=?", [post_id, Types.like.LIKE_POST], 
   (result) => {
@@ -202,34 +211,37 @@ function deletePost(post_id, callBack = (isSuccess, fail_message = '') => {}){
   //코멘트를 검색해서 삭제 해준다.
 
   //좋아요 검색해서 삭제 해준다.
-  deleteLikes(post_id, (isSuccess, fail_message) => {
+  deletePostAddItems(post_id, (isSuccess, fail_message) => {
     if(!isSuccess){
       return callBack(isSuccess, fail_message);
     }
 
-    deletePostComment(post_id, (isSuccess, fail_message) => {
+    deleteLikes(post_id, (isSuccess, fail_message) => {
       if(!isSuccess){
         return callBack(isSuccess, fail_message);
       }
   
-      setNullDonationPostID(post_id, (isSuccess, fail_message) => {
+      deletePostComment(post_id, (isSuccess, fail_message) => {
         if(!isSuccess){
           return callBack(isSuccess, fail_message);
         }
-        
-        // return callBack(true, '');
-        
-        db.DELETE("DELETE FROM posts WHERE id=?", post_id, 
-        (result) => {
-          return callBack(true, '');
-        }, (error) => {
-          return callBack(false, '포스트 삭제 실패');
+    
+        setNullDonationPostID(post_id, (isSuccess, fail_message) => {
+          if(!isSuccess){
+            return callBack(isSuccess, fail_message);
+          }
+          
+          db.DELETE("DELETE FROM posts WHERE id=?", post_id, 
+          (result) => {
+            return callBack(true, '');
+          }, (error) => {
+            return callBack(false, '포스트 삭제 실패');
+          })
+          
         })
-        
       })
     })
-  })
-  
+  })  
 }
 
 function deletePostComment(post_id, callBack = (isSuccess, fail_message = '') => {}){
