@@ -765,7 +765,7 @@ function sendKakaoAddAsk(user_id, item_id, ask_title, ask_date, contents, store_
     return;
   }
 
-  db.SELECT("SELECT name, nick_name FROM users WHERE id=?", [user_id], (result_user) => {
+  db.SELECT("SELECT name, nick_name, email, contact FROM users WHERE id=?", [user_id], (result_user) => {
     if(!result_user || result_user.length === 0){
       return;
     }
@@ -807,7 +807,7 @@ function sendKakaoAddAsk(user_id, item_id, ask_title, ask_date, contents, store_
       slack.webhook({
         channel: "#bot-문의하기",
         username: "bot",
-        text: `[${title}]\n플레이스명: ${data.store_title}\n상품명: ${data.item_name}\n문의자: ${ask_name}\n제목: ${ask_title}\n내용: ${contents}\n관리페이지: ${linkUrl}`
+        text: `[${title}]\n플레이스명: ${data.store_title}\n상품명: ${data.item_name}\n문의자: ${ask_name}\n이메일: ${user_data.email}\n연락처: ${user_data.contact}\n제목: ${ask_title}\n내용: ${contents}\n관리페이지: ${linkUrl}`
       }, function(err, response) {
         // console.log(err);
       });
@@ -1361,6 +1361,21 @@ router.post("/file/completed/info", function(req, res){
     })
   })
 })
+
+router.get("/any/item/list/all", function(req, res){
+  
+  const store_id = Number(req.query.store_id);
+  let querySelect = mysql.format("SELECT store.title AS store_title, item.id, item.title, item.img_url FROM items AS item LEFT JOIN stores AS store ON item.store_id=store.id WHERE item.store_id=? AND item.state<>? ORDER BY item.order_number ASC, item.id DESC", [store_id, Types.item_state.SALE_STOP]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+});
 /*
 router.post('/file/size/s3', function(req, res){
 
