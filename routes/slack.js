@@ -27,11 +27,12 @@ router.post('/ask/filedownload', function(req, res){
   const order_id = req.body.data.order_id;
   const email = req.body.data.email;
   const go_url = req.body.data.go_url;
+  const userAgent = req.body.data.userAgent;
 
   slack.webhook({
     channel: "#bot-파일전송요청",
     username: "알림bot",
-    text: ` 유저ID: ${user_id}\n email: ${email}\n 주문ID: ${order_id}\n 주문서 바로가기: ${go_url}`
+    text: ` 유저ID: ${user_id}\n email: ${email}\n 주문ID: ${order_id}\n 주문서 바로가기: ${go_url}\n 디바이스정보:${userAgent}`
   }, function(err, response) {
     // console.log(err);
     return res.json({

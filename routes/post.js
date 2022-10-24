@@ -56,7 +56,6 @@ function getNextPostPageID(store_id, callBack){
   const selectQuery = mysql.format("SELECT id, page_id FROM posts WHERE store_id=? ORDER BY page_id DESC LIMIT 1", [store_id]);
 
   db.SELECT(selectQuery, {}, (result) => {
-    // console.log(result);
     let next_page_id = 0;
     if(!result || result.length === 0){
       next_page_id = 1;
@@ -69,7 +68,45 @@ function getNextPostPageID(store_id, callBack){
   })
 }
 
-function insertPost(user_id, store_id, title, story, state, callBack = (isSuccess, page_id, fail_message = '') => {}){
+function insertPostAddItem(post_id, select_item_id_list, callBack=()=>{}){
+
+  if(select_item_id_list.length === 0){
+    return callBack();
+  }
+
+  const nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  let _insertQueryArray = [];
+  let _insertOptionArray = [];
+
+  for(let i = 0 ; i < select_item_id_list.length ; i++){
+    const data = select_item_id_list[i];
+    let queryObject = {
+      key: i,
+      value: "INSERT INTO posts_items SET ?;"
+    }
+
+    let insertObject = {
+      key: i,
+      value: {
+        post_id: post_id,
+        item_id: data.id,
+        created_at: nowDate
+      }
+    }
+
+    _insertQueryArray.push(queryObject);
+    _insertOptionArray.push(insertObject);
+  }
+
+  db.INSERT_MULITPLEX(_insertQueryArray, _insertOptionArray, (result) => {
+    return callBack();
+  }, (error) => {
+    return callBack();
+  })
+}
+
+function insertPost(user_id, store_id, title, story, state, select_item_id_list, callBack = (isSuccess, page_id, fail_message = '') => {}){
 
   getNextPostPageID(store_id, (next_page_id) => {
     // let state = Types.post.none;
@@ -93,29 +130,53 @@ function insertPost(user_id, store_id, title, story, state, callBack = (isSucces
 
     db.INSERT("INSERT INTO posts SET ?", postData, 
     (result) => {
-      return callBack(true, next_page_id, '');
+      insertPostAddItem(result.insertId, select_item_id_list, () => {
+        return callBack(true, next_page_id, '');
+      })
     }, (error) => {
       return callBack(false, 0,'포스트 추가 실패(1)');
     })
   });
 }
 
-function updatePost(post_id, title, story, state, callBack = (isSuccess, fail_message = '') => {}){
-
-  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
-
-  const postData = {
-    state: state,
-    title: title,
-    story: story,
-    updated_at: date
+function updatePostAddItem(post_id, update_delete_place_item_info_list, update_add_place_item_info_list, callBackSuccess=()=>{}, callBackError=()=>{}){
+  if(update_delete_place_item_info_list.length === 0){
+    insertPostAddItem(post_id, update_add_place_item_info_list, () => {
+      return callBackSuccess();
+    })
+  }else{
+    db.DELETE("DELETE FROM posts_items WHERE post_id=? AND item_id IN (?)", [post_id, update_delete_place_item_info_list], (result_delete) => {
+  
+      insertPostAddItem(post_id, update_add_place_item_info_list, () => {
+        return callBackSuccess();
+      })
+    }, (error_result_delete) => {
+      return callBackError('상품 삭제 에러');
+    });
   }
+}
 
-  db.UPDATE("UPDATE posts SET ? WHERE id=?", [postData, post_id], 
-  (result) => {
-    return callBack(true, '');
-  }, (error) => {
-    return callBack(false, '포스트 업데이트 실패(2)');
+function updatePost(post_id, title, story, state, update_delete_place_item_info_list, update_add_place_item_info_list, callBack = (isSuccess, fail_message = '') => {}){
+
+  updatePostAddItem(post_id, update_delete_place_item_info_list, update_add_place_item_info_list, () => {
+    const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+    const postData = {
+      state: state,
+      title: title,
+      story: story,
+      updated_at: date
+    }
+
+    db.UPDATE("UPDATE posts SET ? WHERE id=?", [postData, post_id], 
+    (result) => {
+      return callBack(true, '');
+    }, (error) => {
+      return callBack(false, '포스트 업데이트 실패(2)');
+    })
+    
+  }, (error_message) => {
+    return callBack(false, error_message);
   })
 }
 
@@ -250,10 +311,12 @@ router.post("/write", function(req, res){
 
   const state = req.body.data.state;
 
+  const select_item_id_list = req.body.data.select_item_id_list;
+
   isPlaceMaster(user_id, store_id, (isPlaceMaster) => {
     if(isPlaceMaster){
       //플레이스 주인이다.
-      insertPost(user_id, store_id, title, story, state, (isSuccess, page_id, fail_message) => {
+      insertPost(user_id, store_id, title, story, state, select_item_id_list, (isSuccess, page_id, fail_message) => {
         if(isSuccess){
           return res.json({
             result: {
@@ -274,7 +337,7 @@ router.post("/write", function(req, res){
       isAdmin(user_id, (isAdmin) => {
         if(isAdmin){
           //주인은 아닌데 admin이면 고고
-          insertPost(store_user_id, store_id, title, story, state, (isSuccess, page_id, fail_message) => {
+          insertPost(store_user_id, store_id, title, story, state, select_item_id_list, (isSuccess, page_id, fail_message) => {
             if(isSuccess){
               return res.json({
                 result: {
@@ -311,11 +374,15 @@ router.post("/edit", function(req, res){
   const post_id = req.body.data.post_id;
 
   const state = req.body.data.state;
+  const select_place_item_info_list = req.body.data.select_place_item_info_list;
+
+  const update_add_place_item_info_list = req.body.data.update_add_place_item_info_list;
+  const update_delete_place_item_info_list = req.body.data.update_delete_place_item_info_list;
 
   isPlaceMaster(user_id, store_id, (isPlaceMaster) => {
     if(isPlaceMaster){
       //플레이스 주인이다.
-      updatePost(post_id, title, story, state, (isSuccess, fail_message) => {
+      updatePost(post_id, title, story, state, update_delete_place_item_info_list, update_add_place_item_info_list, (isSuccess, fail_message) => {
         if(isSuccess){
           return res.json({
             result: {
@@ -335,7 +402,7 @@ router.post("/edit", function(req, res){
       isAdmin(user_id, (isAdmin) => {
         if(isAdmin){
           //주인은 아닌데 admin이면 고고
-          updatePost(post_id, title, story, state, (isSuccess, fail_message) => {
+          updatePost(post_id, title, story, state, update_delete_place_item_info_list, update_add_place_item_info_list, (isSuccess, fail_message) => {
             if(isSuccess){
               return res.json({
                 result: {
@@ -777,6 +844,28 @@ router.post('/any/secret', function(req, res){
         }
       })
     }
+  })
+})
+
+router.get('/any/items', function(req, res){
+  const post_id = Number(req.query.post_id);
+
+  db.SELECT("SELECT store.title AS store_title, posts_item.item_id, item.title AS item_title, item.img_url FROM posts_items AS posts_item LEFT JOIN items AS item ON posts_item.item_id=item.id LEFT JOIN stores AS store ON item.store_id=store.id WHERE post_id=?", post_id, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          list: []
+        }
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
   })
 })
 
