@@ -17,7 +17,8 @@ const aws_sqs = use('lib/aws_sqs.js');
 
 const slack = use("lib/slack.js");
 
-const SEND_MAIL_MAX_COUNT_A_MONTH = 3;
+// const SEND_MAIL_MAX_COUNT_A_MONTH = 3;
+const SEND_MAIL_MAX_COUNT_A_MONTH = 100;  //test용
 
 function isAdmin(user_id, callBack) {
   if(!user_id){

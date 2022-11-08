@@ -1468,6 +1468,29 @@ router.post("/any/email/post/token/verify", function(req, res){
    })
 })
 
+router.get("/any/subscribe/place/count", function(req, res){
+  const store_id = Number(req.query.store_id);
+
+  db.SELECT("SELECT COUNT(id) AS subscribe_total_count FROM user_subscribes WHERE store_id=? AND is_subscribe=?", [store_id, true], (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        result: {
+          state: res_state.success,
+          subscribe_total_count: 0
+        }
+      })
+    }
+
+    const data = result[0];
+    return res.json({
+      result: {
+        state: res_state.success,
+        subscribe_total_count: data.subscribe_total_count
+      }
+    })
+  })
+})
+
 router.get("/any/subscribe/user/list", function(req, res){
   const user_id = Number(req.query.user_id);
 
