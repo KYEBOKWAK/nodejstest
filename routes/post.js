@@ -13,6 +13,12 @@ const global = use('lib/global_const.js');
 
 var mysql = require('mysql');
 
+const aws_sqs = use('lib/aws_sqs.js');
+
+const slack = use("lib/slack.js");
+
+const SEND_MAIL_MAX_COUNT_A_MONTH = 3;
+
 function isAdmin(user_id, callBack) {
   if(!user_id){
     return callBack(false);
@@ -68,6 +74,75 @@ function getNextPostPageID(store_id, callBack){
   })
 }
 
+function sendEmailAlarm(post_id, is_send_email, store_id, callBack=()=>{}){
+  if(!is_send_email){
+    return callBack();
+  }
+
+  if(!post_id || !store_id) {
+    return callBack();
+  }
+
+  db.SELECT("SELECT send_email_count FROM stores WHERE id=?", store_id, (result_select) => {
+    if(!result_select){
+      return callBack();
+    }
+
+    const store_data = result_select[0];
+    let send_email_count = Number(store_data.send_email_count);
+    if(send_email_count >= SEND_MAIL_MAX_COUNT_A_MONTH){
+      //한달 이용 가능한 횟수 초과
+      return callBack();
+    }else{
+      let sqs_url = process.env.AWS_SQS_PLACE_EMAIL_URL;
+      if(process.env.APP_TYPE === 'qa'){
+        sqs_url = process.env.AWS_SQS_PLACE_EMAIL_URL_QA;
+      }else if(process.env.APP_TYPE === 'local'){
+        sqs_url = process.env.AWS_SQS_PLACE_EMAIL_URL_Local;
+      }
+
+      aws_sqs.sendMessage({
+        //QueueUrl 에는 우리가 만든 SQS 대기열의 상세 페이지에 있는 url
+        QueueUrl: sqs_url,
+        MessageBody: JSON.stringify({post_id: post_id}),
+      }, (err, data) => {
+        if(err){
+          console.error(err);
+          slack.webhook({
+            channel: "#bot-서버오류",
+            username: "bot",
+            text: `[CT_SERVER_ERROR]\nSQS 메일 SendMessage 에러\n${err}`
+          }, function(err, response) {
+          });
+
+          return callBack();
+        }else{
+
+          const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+          const storeData = {
+            send_email_count: send_email_count + 1,
+            updated_at: date
+          }
+
+          db.UPDATE("UPDATE stores SET ? WHERE id=?", [storeData, store_id], 
+          (result_update) => {
+            slack.webhook({
+              channel: "#bot-대량메일전송확인",
+              username: "bot",
+              text: `메일 전송 요청\n포스트ID: ${post_id}`
+            }, function(err, response) {
+            });
+
+            return callBack();
+          }, (error) => {
+            return callBack();
+          })
+        }
+      })
+    }
+  })
+}
+
 function insertPostAddItem(post_id, select_item_id_list, callBack=()=>{}){
 
   if(select_item_id_list.length === 0){
@@ -106,7 +181,7 @@ function insertPostAddItem(post_id, select_item_id_list, callBack=()=>{}){
   })
 }
 
-function insertPost(user_id, store_id, title, story, state, select_item_id_list, callBack = (isSuccess, page_id, fail_message = '') => {}){
+function insertPost(user_id, store_id, title, story, state, select_item_id_list, is_send_email, callBack = (isSuccess, page_id, fail_message = '') => {}){
 
   getNextPostPageID(store_id, (next_page_id) => {
     // let state = Types.post.none;
@@ -131,7 +206,9 @@ function insertPost(user_id, store_id, title, story, state, select_item_id_list,
     db.INSERT("INSERT INTO posts SET ?", postData, 
     (result) => {
       insertPostAddItem(result.insertId, select_item_id_list, () => {
-        return callBack(true, next_page_id, '');
+        sendEmailAlarm(result.insertId, is_send_email, store_id, () => {
+          return callBack(true, next_page_id, '');
+        })
       })
     }, (error) => {
       return callBack(false, 0,'포스트 추가 실패(1)');
@@ -156,7 +233,7 @@ function updatePostAddItem(post_id, update_delete_place_item_info_list, update_a
   }
 }
 
-function updatePost(post_id, title, story, state, update_delete_place_item_info_list, update_add_place_item_info_list, callBack = (isSuccess, fail_message = '') => {}){
+function updatePost(post_id, title, story, state, update_delete_place_item_info_list, update_add_place_item_info_list, is_send_email, store_id, callBack = (isSuccess, fail_message = '') => {}){
 
   updatePostAddItem(post_id, update_delete_place_item_info_list, update_add_place_item_info_list, () => {
     const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
@@ -170,7 +247,9 @@ function updatePost(post_id, title, story, state, update_delete_place_item_info_
 
     db.UPDATE("UPDATE posts SET ? WHERE id=?", [postData, post_id], 
     (result) => {
-      return callBack(true, '');
+      sendEmailAlarm(post_id, is_send_email, store_id, () => {
+        return callBack(true, '');
+      })
     }, (error) => {
       return callBack(false, '포스트 업데이트 실패(2)');
     })
@@ -325,10 +404,12 @@ router.post("/write", function(req, res){
 
   const select_item_id_list = req.body.data.select_item_id_list;
 
+  const is_send_email = req.body.data.is_send_email;
+
   isPlaceMaster(user_id, store_id, (isPlaceMaster) => {
     if(isPlaceMaster){
       //플레이스 주인이다.
-      insertPost(user_id, store_id, title, story, state, select_item_id_list, (isSuccess, page_id, fail_message) => {
+      insertPost(user_id, store_id, title, story, state, select_item_id_list, is_send_email, (isSuccess, page_id, fail_message) => {
         if(isSuccess){
           return res.json({
             result: {
@@ -349,7 +430,7 @@ router.post("/write", function(req, res){
       isAdmin(user_id, (isAdmin) => {
         if(isAdmin){
           //주인은 아닌데 admin이면 고고
-          insertPost(store_user_id, store_id, title, story, state, select_item_id_list, (isSuccess, page_id, fail_message) => {
+          insertPost(store_user_id, store_id, title, story, state, select_item_id_list, is_send_email, (isSuccess, page_id, fail_message) => {
             if(isSuccess){
               return res.json({
                 result: {
@@ -391,10 +472,12 @@ router.post("/edit", function(req, res){
   const update_add_place_item_info_list = req.body.data.update_add_place_item_info_list;
   const update_delete_place_item_info_list = req.body.data.update_delete_place_item_info_list;
 
+  const is_send_email = req.body.data.is_send_email;
+
   isPlaceMaster(user_id, store_id, (isPlaceMaster) => {
     if(isPlaceMaster){
       //플레이스 주인이다.
-      updatePost(post_id, title, story, state, update_delete_place_item_info_list, update_add_place_item_info_list, (isSuccess, fail_message) => {
+      updatePost(post_id, title, story, state, update_delete_place_item_info_list, update_add_place_item_info_list, is_send_email, store_id, (isSuccess, fail_message) => {
         if(isSuccess){
           return res.json({
             result: {
@@ -414,7 +497,7 @@ router.post("/edit", function(req, res){
       isAdmin(user_id, (isAdmin) => {
         if(isAdmin){
           //주인은 아닌데 admin이면 고고
-          updatePost(post_id, title, story, state, update_delete_place_item_info_list, update_add_place_item_info_list, (isSuccess, fail_message) => {
+          updatePost(post_id, title, story, state, update_delete_place_item_info_list, update_add_place_item_info_list, is_send_email, store_id, (isSuccess, fail_message) => {
             if(isSuccess){
               return res.json({
                 result: {
@@ -888,6 +971,15 @@ router.post('/any/test', function(req, res){
       test: next_page_id
     })
   });
+})
+
+router.get("/any/send/email/max", function(req, res){
+  return res.json({
+    result: {
+      state: res_state.success,
+      send_email_count_max: SEND_MAIL_MAX_COUNT_A_MONTH
+    }
+  })
 })
 
 module.exports = router;

@@ -26,6 +26,10 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const slack = use('lib/slack');
 
+const aws_sqs = use('lib/aws_sqs.js');
+
+const crypto = require('crypto');
+
 /*
 var aws = require('aws-sdk');
 var s3 = new aws.S3({ 
@@ -360,6 +364,39 @@ router.post('/manager/commision/info', function(req, res){
     })
   })
 })
+
+
+router.get('/any/detail/info', function(req, res){
+  const store_id = Number(req.query.store_id);
+  const store_alias = req.query.store_alias;
+
+  const querySelect = mysql.format("SELECT store.state, store.representative_post_id, store.representative_type, store.contact, store.representative_item_id, store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
+
+  db.SELECT(querySelect, {}, (result) => {
+    if(!result || result.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '플레이스 정보 조회 불가.'
+      })
+    }
+
+    let data = result[0];
+    if(data.representative_type === null){
+      //null인 경우는 이전 데이터 이므로 item을 강제 셋팅 한다.
+      data.representative_type = Types.representative.item
+    }
+
+
+    return res.json({
+      result:{
+        state: res_state.success,
+        data: {
+          ...data
+        }
+      }
+    })
+  })
+});
 
 router.get('/any/fanevent/list', function(req, res){
   const store_user_id = Number(req.query.store_user_id);
@@ -1376,34 +1413,361 @@ router.get("/any/item/list/all", function(req, res){
     })
   })
 });
-/*
-router.post('/file/size/s3', function(req, res){
 
-  s3.headObject({Key: 'banner/img-innerpiece-tarot@2x.png',
-  Bucket: process.env.AWS_S3_BUCKET}, (err, metadata) => {
-    // console.log('check' + files_downloads_id + '/' + file_s3_key);
-    if (err && err.code === 'NotFound') {  
-      // Handle no object on cloud here
-      // console.log(err);
-      
+function decrypt(text) {
+  try {
+    const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+    let textParts = text.split(':');
+    let iv = Buffer.from(textParts.shift(), 'hex');
+    let encryptedText = Buffer.from(textParts.join(':'), 'hex');
+    let decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+    let decrypted = decipher.update(encryptedText);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  } catch(e) {
+    return null
+  }
+
+  /*
+  const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+  let textParts = text.split(':');
+  let iv = Buffer.from(textParts.shift(), 'hex');
+  let encryptedText = Buffer.from(textParts.join(':'), 'hex');
+  let decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY), iv);
+  console.log(decipher);
+  let decrypted = decipher.update(encryptedText);
+  console.log(decrypted);
+  console.log('-------');
+  const test = decipher.final();
+  console.log(test);
+  return '';
+  // decrypted = Buffer.concat([decrypted, decipher.final()]);
+ 
+  // return decrypted.toString();
+  */
+}
+
+router.post("/any/email/post/token/verify", function(req, res){
+   // Must be 256 bits (32 characters)
+   const toke = req.body.data.token;
+   
+   const decrypt_data = decrypt(toke);
+   if(!decrypt_data){
+     return res.json({
+       state: res_state.error,
+       message: '유효하지 않는 정보 입니다.(Invalid information.)'
+     })
+   }
+
+   const decrypt_data_json = JSON.parse(decrypt_data);
+   return res.json({
+     result: {
+       state: res_state.success,
+       data: decrypt_data_json
+     }
+   })
+})
+
+router.get("/any/subscribe/user/list", function(req, res){
+  const user_id = Number(req.query.user_id);
+
+  db.SELECT("SELECT id, store_id, is_subscribe FROM user_subscribes WHERE user_id=? AND is_subscribe=?", [user_id, true], (result) => {
+    if(!result){
       return res.json({
         result: {
           state: res_state.success,
-          size: 0
+          list: []
         }
-      });
-    } else {
-      // console.log(metadata.ContentLength);
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  })
+
+  
+})
+
+router.get("/any/subscribe/info", function(req, res){
+  const store_id = Number(req.query.store_id);
+  const user_id = Number(req.query._user_id);
+  if(user_id === 0){
+    return res.json({
+      state: res_state.error,
+      message: '유저 정보 에러',
+      result: {}
+    })
+  }
+
+  db.SELECT("SELECT id, is_subscribe, is_popup_order FROM user_subscribes WHERE store_id=? AND user_id=?", [store_id, user_id], (result) => {
+    if(!result){
       return res.json({
-        result: {
-          state: res_state.success,
-          size: metadata.ContentLength
+        state: res_state.error,
+        message: '구독 정보 조회 에러',
+        result: {}
+      })
+    }
+
+    return res.json({
+      result: {
+        state: res_state.success,
+        list: result
+      }
+    })
+  });
+})
+
+router.post("/subscribe/ispopup", function(req, res){
+  const store_id = req.body.data.store_id;
+  const user_id = req.body.data.user_id;
+  const is_show_popup_in_order = req.body.data.is_show_popup_in_order;
+
+  const updateData = {
+    is_popup_order: is_show_popup_in_order
+  }
+
+  //값이 있는데, is_subscribe값이 false면 true로 업데이트 해준다.
+  db.UPDATE("UPDATE user_subscribes SET ? WHERE store_id=? AND user_id=?", [updateData, store_id, user_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '구독 팝업 업데이트 실패',
+      result: {}
+    })
+  })
+});
+
+router.post("/any/subscribe/subscribe", function(req, res){
+  const store_id = req.body.data.store_id;
+  const user_id = req.body.data._user_id;
+  const is_show_popup_in_order = req.body.data.is_show_popup_in_order;
+  const is_subscribe = req.body.data.is_subscribe;
+  if(user_id === 0){
+    return res.json({
+      state: res_state.error,
+      message: '유저 정보 에러',
+      result: {}
+    })
+  }
+
+  db.SELECT("SELECT id, is_subscribe FROM user_subscribes WHERE store_id=? AND user_id=?", [store_id, user_id], (result) => {
+    if(!result){
+      return res.json({
+        state: res_state.error,
+        message: '구독 정보 조회 에러',
+        result: {}
+      })
+    }
+
+    let nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+    if(result.length > 0){
+      const data = result[0];
+      if(data.is_subscribe){
+        return res.json({
+          state: res_state.error,
+          message: '이미 구독을 했습니다.',
+          result: {}
+        })
+      }
+
+      let updateData = {
+        is_subscribe: true,
+        updated_at: nowDate
+      }
+
+      if(is_show_popup_in_order !== undefined){
+        updateData = {
+          ...updateData,
+          is_popup_order: is_show_popup_in_order
         }
-      });
+      }
+
+      if(is_subscribe !== undefined){
+        updateData = {
+          ...updateData,
+          is_subscribe: is_subscribe
+        }
+      }
+
+      //값이 있는데, is_subscribe값이 false면 true로 업데이트 해준다.
+      db.UPDATE("UPDATE user_subscribes SET ? WHERE store_id=? AND user_id=?", [updateData, store_id, user_id], 
+      (result) => {
+        return res.json({
+          result: {
+            state: res_state.success,
+          }
+        })
+      }, (error) => {
+        return res.json({
+          state: res_state.error,
+          message: '구독 업데이트 실패',
+          result: {}
+        })
+      })
+    }else{
+
+      let insertData = {
+        store_id: store_id,
+        user_id: user_id,
+        is_subscribe: true,
+        is_popup_order: false,
+        created_at: nowDate,
+        updated_at: nowDate
+      }
+
+      if(is_show_popup_in_order !== undefined){
+        insertData = {
+          ...insertData,
+          is_popup_order: is_show_popup_in_order
+        }
+      }
+
+      if(is_subscribe !== undefined){
+        insertData = {
+          ...insertData,
+          is_subscribe: is_subscribe
+        }
+      }
+
+      db.INSERT("INSERT INTO user_subscribes SET ?", insertData, (result_insert) => {
+        return res.json({
+          result: {
+            state: res_state.success,
+          }
+        })
+      }, (error_insert) => {
+        return res.json({
+          state: res_state.error,
+          message: '구독 추가 실패',
+          result: {}
+        })
+      })
     }
   });
 })
-*/
 
+router.post("/any/subscribe/unsubscribe", function(req, res){
+  const store_id = req.body.data.store_id;
+  const user_id = req.body.data._user_id;
+
+  let nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  const updateData = {
+    is_subscribe: false,
+    updated_at: nowDate
+  }
+
+  //값이 있는데, is_subscribe값이 false면 true로 업데이트 해준다.
+  db.UPDATE("UPDATE user_subscribes SET ? WHERE store_id=? AND user_id=?", [updateData, store_id, user_id], 
+  (result) => {
+    return res.json({
+      result: {
+        state: res_state.success,
+      }
+    })
+  }, (error) => {
+    return res.json({
+      state: res_state.error,
+      message: '구독 업데이트 실패',
+      result: {}
+    })
+  })
+})
+
+router.post("/any/subscribe/auto/set", function(req, res){
+  //섭스크라이브 테스트를 위한 자동 셋팅. 리얼에는 안들어감.
+  if(process.env.APP_TYPE === 'real' ||
+  process.env.APP_TYPE === 'qa'){
+    return res.json({
+      test: '리얼임.'
+    })
+  }
+  db.SELECT("SELECT id FROM stores", [], (result_stores) => {
+    let nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+    // console.log(result_stores);
+
+
+    let promise_list = [];
+    
+
+    for(let i = 0 ; i < result_stores.length ; i++){
+      const storeData = result_stores[i];
+      const store_id = storeData.id;
+
+      const promise = new Promise((resolve, reject) => {
+        db.SELECT("SELECT user_id FROM orders_items WHERE store_id=? AND state=? GROUP BY user_id", [store_id, 16], (result_orders) => {
+
+          let promise2_list = [];
+          for(let j = 0 ; j < result_orders.length ; j++){
+            const orderData = result_orders[j];
+            const user_id = orderData.user_id;
+
+            const promise2 = new Promise((resolve2, reject2) => {
+              // db.SELECT("SELECT user_id FROM user_subscribes")
+              db.SELECT("SELECT id FROM user_subscribes WHERE store_id=? AND user_id=?", [store_id, user_id], (result_select_subscribes) => {
+                if(result_select_subscribes.length === 0){
+
+                  const user_subscribes_data = {
+                    store_id: store_id,
+                    user_id: user_id,
+                    is_subscribe: true,
+                    is_popup_order: false,
+                    created_at: nowDate,
+                    updated_at: nowDate
+                  }
+
+                  db.INSERT("INSERT INTO user_subscribes SET ?", user_subscribes_data, (result_insert) => {
+                    console.log('>>>>>>>>>>>>')
+                    console.log(`store id: ${store_id} user id: ${user_id}`);
+                    // console.log(result_orders);;
+                    console.log('<<<<<<<<<<<<')
+                    resolve2();
+                  }, (error_insert) => {
+                    console.log(error_insert);
+                    reject2();
+                  })
+                }else{
+                  console.log('중복 ID: ' + user_id);
+                  resolve2();
+                }
+              })
+            });
+
+            promise2_list.push(promise2);             
+          }
+          
+          Promise.all(promise2_list).then((values) => {
+            // console.log(values);
+            resolve();
+          });
+        })
+        
+      });
+
+      promise_list.push(promise)
+    }
+    
+    Promise.all(promise_list).then((values) => {
+      // console.log(values);
+      console.log("!?!?!?");
+      return res.json({
+        test: 'aaa'
+      })
+    });
+    
+  })
+})
 
 module.exports = router;

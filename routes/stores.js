@@ -122,7 +122,7 @@ router.post('/any/detail/info', function(req, res){
   const store_id = req.body.data.store_id;
   const store_alias = req.body.data.store_alias;
 
-  const querySelect = mysql.format("SELECT store.state, store.representative_post_id, store.representative_type, store.contact, store.representative_item_id, store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
+  const querySelect = mysql.format("SELECT store.send_email_count, store.state, store.representative_post_id, store.representative_type, store.contact, store.representative_item_id, store.user_id AS store_user_id, store.content AS store_content, user.nick_name, store.id, store.title, store.alias, store.thumb_img_url, store.user_id, profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE store.id=? OR store.alias=?", [store_id, store_alias]);
 
   db.SELECT(querySelect, {}, (result) => {
     if(!result || result.length === 0){
@@ -255,9 +255,9 @@ router.post('/any/item/info', function(req, res){
       const user_id_any = req.body.data.user_id_any;
       let temp_img_url = data.img_url;
       if(language_code === Types.language.kr){
-        data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult2.png';
+        // data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult2.png';
       }else{
-        data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult_eng.png';
+        // data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult_eng.png';
       }
       // let default_adult_thumb_img_url = '';
 
@@ -3006,7 +3006,7 @@ router.post('/any/item/info/first', function(req, res){
       //원래 /any에는 user_id가 없었음.
       const user_id_any = req.body.data.user_id_any;
       let temp_img_url = data.img_url;
-      data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult2.png';
+      // data.img_url = 'https://crowdticket0.s3.ap-northeast-1.amazonaws.com/app/default/img-thumb-adult2.png';
       // let default_adult_thumb_img_url = '';
 
       //토큰이 있으면 로그인 유무 상관 없이 성인 인증으로 패쓰
