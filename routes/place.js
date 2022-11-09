@@ -1494,7 +1494,7 @@ router.get("/any/subscribe/place/count", function(req, res){
 router.get("/any/subscribe/user/list", function(req, res){
   const user_id = Number(req.query.user_id);
 
-  db.SELECT("SELECT id, store_id, is_subscribe FROM user_subscribes WHERE user_id=? AND is_subscribe=?", [user_id, true], (result) => {
+  db.SELECT("SELECT id, store_id, is_subscribe FROM user_subscribes WHERE user_id=? AND is_subscribe=? ORDER BY id DESC", [user_id, true], (result) => {
     if(!result){
       return res.json({
         result: {

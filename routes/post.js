@@ -983,4 +983,81 @@ router.get("/any/send/email/max", function(req, res){
   })
 })
 
+router.post("/emailcount/available", function(req, res){
+  const store_id = req.body.data.store_id;
+
+  db.SELECT("SELECT send_email_count FROM stores WHERE id=?", store_id, (result_select) => {
+    if(!result_select || result_select.length === 0){
+      return res.json({
+        state: res_state.error,
+        message: '플레이스 정보 조회 에러',
+        result: {}
+      })
+    }
+
+    const store_data = result_select[0];
+    let send_email_count = Number(store_data.send_email_count);
+    if(send_email_count >= SEND_MAIL_MAX_COUNT_A_MONTH){
+      //한달 이용 가능한 횟수 초과
+      return res.json({
+        result: {
+          state: res_state.success,
+          is_over: true,
+          send_email_count: send_email_count
+        }
+      })
+    }else{
+      return res.json({
+        result: {
+          state: res_state.success,
+          is_over: false,
+          send_email_count: send_email_count
+        }
+      })
+    }
+  })
+})
+
+router.post("/email/send", function(req, res){
+  const post_id = req.body.data.post_id;
+  const user_id = req.body.data.user_id;
+  const store_id = req.body.data.store_id;
+  const is_send_email = true;
+
+  isPlaceMaster(user_id, store_id, (isPlaceMaster) => {
+    if(isPlaceMaster){
+      //플레이스 주인이다.
+      sendEmailAlarm(post_id, is_send_email, store_id, () => {
+        return res.json({
+          result: {
+            state: res_state.success
+          }
+        })
+      })
+    }else {
+      //플레이스 주인이 아니다. admin인지 확인한다.
+      isAdmin(user_id, (isAdmin) => {
+        if(isAdmin){
+          //주인은 아닌데 admin이면 고고
+          sendEmailAlarm(post_id, is_send_email, store_id, () => {
+            return res.json({
+              result: {
+                state: res_state.success
+              }
+            })
+          })
+        }else{
+          return res.json({
+            state: res_state.error,
+            message: '플레이스 주인만 전송 가능합니다.',
+            result: {}
+          })
+        }
+      })
+    }
+  })
+
+  
+})
+
 module.exports = router;
