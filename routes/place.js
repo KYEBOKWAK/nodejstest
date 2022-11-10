@@ -1708,6 +1708,7 @@ router.post("/any/subscribe/unsubscribe", function(req, res){
   })
 })
 
+/*
 router.post("/any/subscribe/auto/set", function(req, res){
   //섭스크라이브 테스트를 위한 자동 셋팅. 리얼에는 안들어감.
   if(process.env.APP_TYPE === 'real' ||
@@ -1716,7 +1717,7 @@ router.post("/any/subscribe/auto/set", function(req, res){
       test: '리얼임.'
     })
   }
-  db.SELECT("SELECT id FROM stores", [], (result_stores) => {
+  db.SELECT("SELECT id FROM stores WHERE state=?", [4], (result_stores) => {
     let nowDate = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
 
     // console.log(result_stores);
@@ -1728,6 +1729,7 @@ router.post("/any/subscribe/auto/set", function(req, res){
     for(let i = 0 ; i < result_stores.length ; i++){
       const storeData = result_stores[i];
       const store_id = storeData.id;
+      console.log(store_id);
 
       const promise = new Promise((resolve, reject) => {
         db.SELECT("SELECT user_id FROM orders_items WHERE store_id=? AND state=? GROUP BY user_id", [store_id, 16], (result_orders) => {
@@ -1752,10 +1754,10 @@ router.post("/any/subscribe/auto/set", function(req, res){
                   }
 
                   db.INSERT("INSERT INTO user_subscribes SET ?", user_subscribes_data, (result_insert) => {
-                    console.log('>>>>>>>>>>>>')
-                    console.log(`store id: ${store_id} user id: ${user_id}`);
+                    // console.log('>>>>>>>>>>>>')
+                    // console.log(`store id: ${store_id} user id: ${user_id}`);
                     // console.log(result_orders);;
-                    console.log('<<<<<<<<<<<<')
+                    // console.log('<<<<<<<<<<<<')
                     resolve2();
                   }, (error_insert) => {
                     console.log(error_insert);
@@ -1784,13 +1786,13 @@ router.post("/any/subscribe/auto/set", function(req, res){
     
     Promise.all(promise_list).then((values) => {
       // console.log(values);
-      console.log("!?!?!?");
+      console.log("완료!");
       return res.json({
         test: 'aaa'
       })
     });
-    
   })
 })
+*/
 
 module.exports = router;

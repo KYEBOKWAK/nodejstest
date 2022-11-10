@@ -1574,54 +1574,86 @@ sendSlackAlim = (req, item_order_id) => {
     })
 }
 
+function setDonationMessages(req, res, callback) {
+  const isSecret = req.body.data.isSecret;
+  const comment_text = req.body.data.comment_text;
+
+  if(comment_text === undefined || comment_text === null || comment_text === ''){
+    return callback(null);
+  }
+
+  const store_id = req.body.data.store_id;
+  const user_id = req.body.data.user_id;
+
+  const date = moment_timezone().format('YYYY-MM-DD HH:mm:ss');
+
+  const insertDonationMessageData = {
+    store_id: store_id,
+    user_id: user_id,
+    answer_comment_id: null,
+    is_secret: isSecret,
+    text: comment_text,
+    created_at: date
+  }
+
+  db.INSERT("INSERT INTO donation_comments SET ?", insertDonationMessageData, (result_insert_donation_message) => {
+    const donation_message_id = result_insert_donation_message.insertId;
+    return callback(donation_message_id);
+  }, (error) => {
+    return callback(null);
+  })
+}
+
 function setDonation(req, res, successCallBack, errorCallBack){
-    const _data = req.body.data;
-    const user_id = _data.user_id;
-    const store_id = _data.store_id;
-    const item_id = _data.item_id;
+  const _data = req.body.data;
+  const user_id = _data.user_id;
+  const store_id = _data.store_id;
+  const item_id = _data.item_id;
 
-    const order_id = _data.order_id;
+  const order_id = _data.order_id;
 
-    const name = _data.name;
-    const contact = _data.contact;
-    const email = _data.email;
+  const name = _data.name;
+  const contact = _data.contact;
+  const email = _data.email;
 
-    const pay_method = _data.pay_method;
+  const pay_method = _data.pay_method;
 
-    const coffee_count = _data.coffee_count;
-    const donation_total_price = _data.donation_total_price;
-    const donation_total_price_usd = _data.donation_total_price_usd;
+  const coffee_count = _data.coffee_count;
+  const donation_total_price = _data.donation_total_price;
+  const donation_total_price_usd = _data.donation_total_price_usd;
 
-    const pay_isp_type = _data.pay_isp_type;
+  const pay_isp_type = _data.pay_isp_type;
 
-    const store_title = _data.store_title;
-    const store_contact = _data.store_contact;
+  const store_title = _data.store_title;
+  const store_contact = _data.store_contact;
 
-    let pg = _data.pg;
+  let pg = _data.pg;
 
-    if(coffee_count === 0){
-      return successCallBack(null);
-    }
+  if(coffee_count === 0){
+    return successCallBack(null);
+  }
 
-    const created_at = _data.created_at;
+  const created_at = _data.created_at;
 
-    if(order_id === undefined || order_id === null){
-        return errorCallBack();
-    }
+  if(order_id === undefined || order_id === null){
+      return errorCallBack();
+  }
 
-    let currency_code = _data.currency_code;
-    if(currency_code === undefined){
-        currency_code = types.currency_code.Won;
-    }
+  let currency_code = _data.currency_code;
+  if(currency_code === undefined){
+      currency_code = types.currency_code.Won;
+  }
 
-    if(pg === undefined){
-      pg = null;
-    }
+  if(pg === undefined){
+    pg = null;
+  }
 
-    const merchant_uid = _data.merchant_uid;
+  const merchant_uid = _data.merchant_uid;
 
-    const selectQuery = mysql.format('SELECT type_contents FROM items WHERE id=?', [item_id]);
-    db.SELECT(selectQuery, {}, (result) => {
+  const selectQuery = mysql.format('SELECT type_contents FROM items WHERE id=?', [item_id]);
+  db.SELECT(selectQuery, {}, (result) => {
+
+    setDonationMessages(req, res, (donation_comment_id) => {
       const itemData = result[0];
 
       let insertDonationData = {
@@ -1648,25 +1680,25 @@ function setDonation(req, res, successCallBack, errorCallBack){
         confirm_at: null,
 
         pg: pg,
-        donation_comment_id: null,
+        donation_comment_id: donation_comment_id,
         is_heart: false
       }
 
       let confirm_at = null;
       let state = null;
       
-  
+
       if(pay_isp_type === types.pay_isp_type.onetime_donation){
         const imp_uid = _data.imp_uid;
         const customer_uid = Util.getPayNewCustom_uid(user_id);
-  
+
         let _imp_meta = {
           serializer_uid: PAY_SERIALIZER_ONETIME,
           imp_uid: imp_uid,
           merchant_uid: merchant_uid,
           customer_uid: customer_uid
         };
-  
+
         _imp_meta = JSON.stringify(_imp_meta);
 
         if(itemData.type_contents === types.contents.completed){
@@ -1676,7 +1708,7 @@ function setDonation(req, res, successCallBack, errorCallBack){
           confirm_at = null;
           state = types.order.ORDER_STATE_APP_STORE_PAYMENT;
         }
-  
+
         insertDonationData = {
           ...insertDonationData,
           state: state,
@@ -1711,7 +1743,7 @@ function setDonation(req, res, successCallBack, errorCallBack){
           confirm_at: confirm_at
         }
       }
-  
+
       db.INSERT("INSERT INTO orders_donations SET ?", insertDonationData, (result_insert_orders_donations) => {
         const donation_order_id = result_insert_orders_donations.insertId;
 
@@ -1726,8 +1758,167 @@ function setDonation(req, res, successCallBack, errorCallBack){
       }, (error) => {
           return errorCallBack();
       })
-    })    
+    })
+  })
 }
+
+/*
+function setDonation(req, res, successCallBack, errorCallBack){
+  const _data = req.body.data;
+  const user_id = _data.user_id;
+  const store_id = _data.store_id;
+  const item_id = _data.item_id;
+
+  const order_id = _data.order_id;
+
+  const name = _data.name;
+  const contact = _data.contact;
+  const email = _data.email;
+
+  const pay_method = _data.pay_method;
+
+  const coffee_count = _data.coffee_count;
+  const donation_total_price = _data.donation_total_price;
+  const donation_total_price_usd = _data.donation_total_price_usd;
+
+  const pay_isp_type = _data.pay_isp_type;
+
+  const store_title = _data.store_title;
+  const store_contact = _data.store_contact;
+
+  let pg = _data.pg;
+
+  if(coffee_count === 0){
+    return successCallBack(null);
+  }
+
+  const created_at = _data.created_at;
+
+  if(order_id === undefined || order_id === null){
+      return errorCallBack();
+  }
+
+  let currency_code = _data.currency_code;
+  if(currency_code === undefined){
+      currency_code = types.currency_code.Won;
+  }
+
+  if(pg === undefined){
+    pg = null;
+  }
+
+  const merchant_uid = _data.merchant_uid;
+
+  const selectQuery = mysql.format('SELECT type_contents FROM items WHERE id=?', [item_id]);
+  db.SELECT(selectQuery, {}, (result) => {
+
+    const itemData = result[0];
+
+    let insertDonationData = {
+      store_id: store_id,
+      user_id: user_id,
+      item_id: item_id,
+      orders_item_id: order_id,
+      state: types.order.ORDER_STATE_APP_STORE_STANBY,
+      count: coffee_count,
+      price: DEFAULT_DONATION_PRICE,
+      total_price: donation_total_price,
+      price_USD: DEFAULT_DONATION_PRICE_USD,
+      total_price_USD: donation_total_price_usd,
+      name: name,
+      contact: contact,
+      email: email,
+      currency_code: currency_code,
+      merchant_uid: merchant_uid,
+      pay_method: pay_method,
+      // imp_uid: imp_uid,
+      // currency_code: currency_code,
+      created_at: created_at,
+      updated_at: created_at,
+      confirm_at: null,
+
+      pg: pg,
+      donation_comment_id: null,
+      is_heart: false
+    }
+
+    let confirm_at = null;
+    let state = null;
+    
+
+    if(pay_isp_type === types.pay_isp_type.onetime_donation){
+      const imp_uid = _data.imp_uid;
+      const customer_uid = Util.getPayNewCustom_uid(user_id);
+
+      let _imp_meta = {
+        serializer_uid: PAY_SERIALIZER_ONETIME,
+        imp_uid: imp_uid,
+        merchant_uid: merchant_uid,
+        customer_uid: customer_uid
+      };
+
+      _imp_meta = JSON.stringify(_imp_meta);
+
+      if(itemData.type_contents === types.contents.completed){
+        confirm_at = created_at;
+        state = types.order.ORDER_STATE_APP_PAY_SUCCESS_DONATION;
+      }else{
+        confirm_at = null;
+        state = types.order.ORDER_STATE_APP_STORE_PAYMENT;
+      }
+
+      insertDonationData = {
+        ...insertDonationData,
+        state: state,
+        imp_uid: imp_uid,
+        imp_meta: _imp_meta,
+        serializer_uid: PAY_SERIALIZER_ONETIME,
+        confirm_at: confirm_at
+      }
+
+      if(itemData.type_contents === types.contents.completed){
+        Global_Func.sendKakaoAlimTalk({
+          templateCode: 'Kalarm16v1',
+          to: store_contact,
+          donation_user_name: name,
+          creator_name: store_title,
+          coffee_count: coffee_count,
+          place_manager_url: 'ctee.kr/manager/place'
+        })
+      }        
+    }else{
+      if(itemData.type_contents === types.contents.completed){
+        confirm_at = created_at;
+      }else{
+        confirm_at = null;
+      }
+      
+      state = types.order.ORDER_STATE_APP_STORE_STANBY;
+      
+      insertDonationData = {
+        ...insertDonationData,
+        state: state,
+        confirm_at: confirm_at
+      }
+    }
+
+    db.INSERT("INSERT INTO orders_donations SET ?", insertDonationData, (result_insert_orders_donations) => {
+      const donation_order_id = result_insert_orders_donations.insertId;
+
+      let ordersData = {
+        orders_donation_id: donation_order_id
+      }
+      db.UPDATE("UPDATE orders_items SET ? WHERE id=?", [ordersData, order_id], () => {
+        return successCallBack(donation_order_id);
+      }, (update_error) => {
+        return errorCallBack();
+      })        
+    }, (error) => {
+        return errorCallBack();
+    })
+  })
+}
+*/
 
 router.post("/store/isp/iamport", function(req, res){
   const _data = req.body.data;
