@@ -127,13 +127,15 @@ function sendEmailAlarm(post_id, is_send_email, store_id, callBack=()=>{}){
 
           db.UPDATE("UPDATE stores SET ? WHERE id=?", [storeData, store_id], 
           (result_update) => {
-            slack.webhook({
-              channel: "#bot-대량메일전송확인",
-              username: "bot",
-              text: `메일 전송 요청\n포스트ID: ${post_id}`
-            }, function(err, response) {
-            });
-
+            if(process.env.APP_TYPE !== 'local'){
+              slack.webhook({
+                channel: "#bot-대량메일전송확인",
+                username: "bot",
+                text: `메일 전송 요청\n포스트ID: ${post_id}`
+              }, function(err, response) {
+              });
+            }
+            
             return callBack();
           }, (error) => {
             return callBack();

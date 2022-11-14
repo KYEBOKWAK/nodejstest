@@ -336,7 +336,7 @@ router.post('/any/item/info', function(req, res){
 router.post('/info/userid', function(req, res){
   // const user_id = req.body.data.user_id;
   const store_user_id = req.body.data.store_user_id;
-  const querySelect = mysql.format("SELECT store.business_number, store.is_business, store.thumb_img_url, store.download_file_max, store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name, user.profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", store_user_id);
+  const querySelect = mysql.format("SELECT store.send_email_count, store.business_number, store.is_business, store.thumb_img_url, store.download_file_max, store.alias, store.title, store.contact, store.email, store.content, store.id AS store_id, user.nick_name, user.profile_photo_url FROM stores AS store LEFT JOIN users AS user ON store.user_id=user.id WHERE user_id=?", store_user_id);
 
   db.SELECT(querySelect, {}, (result) => {
     if(result.length === 0){
