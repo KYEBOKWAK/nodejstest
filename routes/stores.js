@@ -1504,14 +1504,16 @@ router.post("/order/total/price/v2", function(req, res){
   const state_currency_code = req.body.data.state_currency_code;
 
   let querySelect = '';
+  //total_price 에는 후원값도 같이 계산되서 나오기 때문에 순수 상품만 판 금액은 price에서 할인값만 빼면 된다.
   if(state_currency_code === null){
-    querySelect = mysql.format("SELECT SUM(price) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END]);
+    // querySelect = mysql.format("SELECT SUM(price-discount_price) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END]);
+    querySelect = mysql.format("SELECT SUM(price-discount_price) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END, Types.currency_code.Won]);
   }
   else if(state_currency_code === Types.currency_code.Won){
-    querySelect = mysql.format("SELECT SUM(price) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END, state_currency_code]);
+    querySelect = mysql.format("SELECT SUM(price-discount_price) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END, state_currency_code]);
   }
   else{
-    querySelect = mysql.format("SELECT ROUND(SUM(price_USD), 2) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END, state_currency_code]);
+    querySelect = mysql.format("SELECT ROUND(SUM(price_USD-discount_price), 2) AS total_price FROM orders_items WHERE store_id=? AND state>=? AND state <? AND currency_code=?", [store_id, Types.order.ORDER_STATE_APP_STORE_READY, Types.order.ORDER_STATE_PAY_END, state_currency_code]);
   }
 
   db.SELECT(querySelect, {}, (result) => {
