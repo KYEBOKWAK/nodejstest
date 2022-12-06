@@ -1713,7 +1713,7 @@ router.post('/any/location/get', function(req, res){
     if(result.status === 200){
       let countryCode = result.data.whois.countryCode;
       if(countryCode === 'none'){
-        countryCode = 'KR';
+        countryCode = null;
       }
 
       //test//
@@ -1730,7 +1730,8 @@ router.post('/any/location/get', function(req, res){
       return res.json({
         result: {
           state: res_state.success,
-          countryCode: 'KR'
+          // countryCode: 'KR'
+          countryCode: null
         }
       })
     }
@@ -1739,7 +1740,8 @@ router.post('/any/location/get', function(req, res){
     return res.json({
       result: {
         state: res_state.success,
-        countryCode: 'KR'
+        // countryCode: 'KR'
+        countryCode: null
       }
     })
   })
