@@ -574,13 +574,13 @@ app.post('/any/call/certify/confirm', function(req, res){
           if(_result.error === 'noData'){
             return res.json({
                 state: 'error',
-                message: '인증시간이 지났습니다.'
+                message: '인증시간이 지났습니다.(Authentication time has passed.)'
             });
           }
           else{
             return res.json({
                 state: 'error',
-                message: '알 수 없는 에러'
+                message: '알 수 없는 에러(unknown error)'
             });
           }
       }
@@ -609,7 +609,7 @@ app.post('/any/call/certify/confirm', function(req, res){
           //console.log('불일치!!');
             return res.json({
             state: 'error',
-            message: '인증번호가 다릅니다.',
+            message: '인증번호가 다릅니다.(The verification code is different.)',
             result: {}
           });
       }

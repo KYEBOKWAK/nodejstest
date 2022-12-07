@@ -1704,6 +1704,15 @@ function getUserIP(req) {
 
 router.post('/any/location/get', function(req, res){
   // console.log(getUserIP(req));
+
+  //test//
+  // return res.json({
+  //   result: {
+  //     state: res_state.success,
+  //     countryCode: 'EN'
+  //   }
+  // })
+  ///////
   let myIp = getUserIP(req);
 
   axios.get(`http://whois.kisa.or.kr/openapi/ipascc.jsp?query=${myIp}&key=${process.env.WHOIS_API_KEY}&answer=json`).then((result) => {
@@ -1713,12 +1722,9 @@ router.post('/any/location/get', function(req, res){
     if(result.status === 200){
       let countryCode = result.data.whois.countryCode;
       if(countryCode === 'none'){
+        // countryCode = 'KR';
         countryCode = null;
       }
-
-      //test//
-      // countryCode = 'US';
-      ////////
 
       return res.json({
         result: {
