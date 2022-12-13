@@ -589,7 +589,7 @@ payISPComplite = (req, res, serializer_uid) => {
                     if(pay_isp_type === types.pay_isp_type.isp_donation){
                       if(orderData.orders_item_id === null){
                         slack.webhook({
-                          channel: "#결제알림",
+                          channel: "#bot-결제알림-유료",
                           username: "알림bot",
                           text: `(후원)\n플레이스: ${orderData.place_title}\n한화: ${orderData.total_price}원\n달러: $${orderData.total_price_USD}\n주문자명: ${orderData.name}`
                         }, function(err, response) {
@@ -1567,15 +1567,28 @@ sendSlackAlim = (req, item_order_id) => {
 
       // console.log(`(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}\n주문ID: ${item_order_id}\n주문위치: ${req.body.data.bug_check_message}\n디바이스정보: ${req.body.data.userAgent}`);
       
-      slack.webhook({
-        channel: "#결제알림",
-        username: "알림bot",
-        text: `(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}\n주문ID: ${item_order_id}\n주문위치: ${req.body.data.bug_check_message}\n디바이스정보: ${req.body.data.userAgent}`
-      }, function(err, response) {
-        if(err){
-          console.log(err);
-        }
-      });
+      if(total_price_text > 0){
+        slack.webhook({
+          channel: "#bot-결제알림-유료",
+          username: "알림bot",
+          text: `(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}\n주문ID: ${item_order_id}\n주문위치: ${req.body.data.bug_check_message}\n디바이스정보: ${req.body.data.userAgent}`
+        }, function(err, response) {
+          if(err){
+            console.log(err);
+          }
+        });
+      }else{
+        slack.webhook({
+          channel: "#bot-결제알림-무료",
+          username: "알림bot",
+          text: `(상품)\n플레이스: ${data.creator_name}\n상품명: ${data.item_title}\n상품금액: ${priceText}\n후원: ${donation_total_price}\n총주문금액: ${total_price_text}\n주문자명: ${data.customer_name}\n주문ID: ${item_order_id}\n주문위치: ${req.body.data.bug_check_message}\n디바이스정보: ${req.body.data.userAgent}`
+        }, function(err, response) {
+          if(err){
+            console.log(err);
+          }
+        });
+      }
+      
     })
 }
 

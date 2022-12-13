@@ -282,7 +282,7 @@ router.post('/pay/onetime', function(req, res){
             
             if(process.env.APP_TYPE !== 'local'){
               slack.webhook({
-                channel: "#결제알림",
+                channel: "#bot-결제알림-유료",
                 username: "알림bot",
                 text: `(후원)\n플레이스: ${store_title}\n한화: ${_data.total_price}원\n달러: $${0}\n주문자명: ${_data.name}`
               }, function(err, response) {
